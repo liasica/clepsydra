@@ -1,0 +1,17 @@
+server:
+  address: ":8080"
+  mode: debug
+database:
+  dsn: "postgres://postgres:postgres@localhost:5432/clepsydra?sslmode=disable"
+jwt:
+  secret: "test-secret"
+  expire: 72h
+admin:
+  username: admin
+  password: admin123
+log:
+  dir: logs
+  max_size: 100
+  max_age: 30
+holiday:
+  file: assets/holidays.json
