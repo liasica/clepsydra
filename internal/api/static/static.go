@@ -2,27 +2,18 @@
 package static
 
 import (
-	"embed"
 	"io/fs"
 	"net/http"
 	"strings"
 
 	"github.com/labstack/echo/v4"
-)
 
-// distFS 前端构建产物，仓库仅含 .gitkeep 占位，make dashboard 时同步真实产物
-//
-//go:embed all:dist
-var distFS embed.FS
+	"clepsydra/assets"
+)
 
 // Register 以内嵌产物注册静态托管
 func Register(e *echo.Echo) {
-	sub, err := fs.Sub(distFS, "dist")
-	if err != nil {
-		panic(err)
-	}
-
-	RegisterFS(e, sub)
+	RegisterFS(e, assets.Dashboard())
 }
 
 // RegisterFS 以给定文件系统注册静态托管，供测试注入
@@ -32,8 +23,8 @@ func RegisterFS(e *echo.Echo, files fs.FS) {
 	e.GET("/*", func(c echo.Context) error {
 		path := strings.TrimPrefix(c.Request().URL.Path, "/")
 
-		// api 前缀不属于页面路由，未命中时保持 404 语义
-		if path == "api" || strings.HasPrefix(path, "api/") {
+		// api、doc 前缀不属于页面路由，未命中时保持 404 语义
+		if path == "api" || strings.HasPrefix(path, "api/") || path == "docs" || strings.HasPrefix(path, "docs/") {
 			return echo.ErrNotFound
 		}
 

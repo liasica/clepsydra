@@ -12,8 +12,8 @@
 bin/
 dashboard/node_modules/
 dashboard/dist/
-internal/api/static/dist/*
-!internal/api/static/dist/.gitkeep
+assets/dashboard/*
+!assets/dashboard/.gitkeep
 
 # 运行时数据与本地配置，不随镜像分发
 logs/

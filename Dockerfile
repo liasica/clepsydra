@@ -16,7 +16,7 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm build
 
 
-# 阶段二：编译 Go 二进制，前端产物内嵌到 internal/api/static/dist 后一并编译
+# 阶段二：编译 Go 二进制，前端产物内嵌到 assets/dashboard 后一并编译
 FROM golang:1.26-alpine AS server-builder
 WORKDIR /src
 
@@ -30,7 +30,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
 COPY . .
-COPY --from=dashboard-builder /src/dashboard/dist/. internal/api/static/dist/
+COPY --from=dashboard-builder /src/dashboard/dist/. assets/dashboard/
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \

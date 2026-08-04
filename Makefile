@@ -17,7 +17,7 @@ generate:
 
 dashboard:
 	cd dashboard && pnpm install --frozen-lockfile && pnpm build
-	rm -rf internal/api/static/dist
-	mkdir -p internal/api/static/dist
-	cp -R dashboard/dist/. internal/api/static/dist/
-	touch internal/api/static/dist/.gitkeep
+	rm -rf assets/dashboard
+	mkdir -p assets/dashboard
+	cp -R dashboard/dist/. assets/dashboard/
+	touch assets/dashboard/.gitkeep

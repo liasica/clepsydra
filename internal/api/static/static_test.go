@@ -49,6 +49,10 @@ func TestStaticServeAndFallback(t *testing.T) {
 	if rec := get(e, "/api/nothing"); rec.Code != http.StatusNotFound {
 		t.Fatalf("api 未知路径应 404, 实际: %d", rec.Code)
 	}
+	// doc 前缀路径不回退页面，与 api 前缀保持一致的 404 语义
+	if rec := get(e, "/docs/unknown"); rec.Code != http.StatusNotFound {
+		t.Fatalf("doc 未知路径应 404, 实际: %d", rec.Code)
+	}
 }
 
 // TestStaticNotBuilt 覆盖未构建（无 index.html）时的兜底提示
