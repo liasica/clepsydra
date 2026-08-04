@@ -122,10 +122,7 @@ func TestHolidaySaveValidation(t *testing.T) {
 	if err := svc.Save(ctx, []workday.Entry{{Date: "2026-10-01", Type: "workday", Name: "国庆调休"}}); err != nil {
 		t.Fatalf("覆盖更新失败: %v", err)
 	}
-	holiday, err := client.Holiday.Query().Where().OnlyX(ctx), nil
-	if err != nil {
-		t.Fatalf("查询节假日失败: %v", err)
-	}
+	holiday := client.Holiday.Query().Where().OnlyX(ctx)
 	if holiday.Type != "workday" {
 		t.Errorf("类型应更新为 workday，实际 %s", holiday.Type)
 	}
