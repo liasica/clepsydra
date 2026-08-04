@@ -1,0 +1,6 @@
+.idea/
+.DS_Store
+bin/
+logs/
+*.log
+config.local.yaml
