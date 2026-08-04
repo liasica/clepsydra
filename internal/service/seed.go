@@ -43,7 +43,8 @@ func Seed(ctx context.Context, client *ent.Client, adminCfg config.Admin, entrie
 		return err
 	}
 	if !exists {
-		hash, err := bcrypt.GenerateFromPassword([]byte(adminCfg.Password), bcrypt.DefaultCost)
+		var hash []byte
+		hash, err = bcrypt.GenerateFromPassword([]byte(adminCfg.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return err
 		}

@@ -72,7 +72,8 @@ func (a *Audit) List(ctx context.Context, targetType string, targetID, page, siz
 		return 0, nil, err
 	}
 
-	rows, err := q.Order(ent.Desc(auditlog.FieldID)).Offset((page - 1) * size).Limit(size).All(ctx)
+	var rows []*ent.AuditLog
+	rows, err = q.Order(ent.Desc(auditlog.FieldID)).Offset((page - 1) * size).Limit(size).All(ctx)
 	if err != nil {
 		return 0, nil, err
 	}

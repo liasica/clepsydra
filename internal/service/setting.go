@@ -141,7 +141,8 @@ func (s *Setting) Calendar(ctx context.Context) (*workday.Calendar, error) {
 		entries = append(entries, workday.Entry{Date: row.Date, Type: row.Type.String(), Name: row.Name})
 	}
 
-	saturday, err := s.Bool(ctx, SettingSaturdayAsWorkday)
+	var saturday bool
+	saturday, err = s.Bool(ctx, SettingSaturdayAsWorkday)
 	if err != nil {
 		return nil, err
 	}

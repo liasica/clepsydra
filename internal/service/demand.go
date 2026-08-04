@@ -236,15 +236,18 @@ func (s *Demand) Finish(ctx context.Context, actor Actor, id int, actualStart, a
 	}
 
 	// 按设置计算确认截止时间
-	window, err := s.setting.Int(ctx, SettingDemandConfirmWindow)
+	var window int
+	window, err = s.setting.Int(ctx, SettingDemandConfirmWindow)
 	if err != nil {
 		return err
 	}
-	unit, err := s.setting.Str(ctx, SettingWindowUnit)
+	var unit string
+	unit, err = s.setting.Str(ctx, SettingWindowUnit)
 	if err != nil {
 		return err
 	}
-	cal, err := s.setting.Calendar(ctx)
+	var cal *workday.Calendar
+	cal, err = s.setting.Calendar(ctx)
 	if err != nil {
 		return err
 	}

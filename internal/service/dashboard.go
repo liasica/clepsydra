@@ -7,6 +7,7 @@ import (
 	"clepsydra/internal/ent"
 	"clepsydra/internal/ent/bill"
 	"clepsydra/internal/ent/demand"
+	"clepsydra/internal/workday"
 )
 
 // Todos 工作台待办汇总
@@ -50,7 +51,8 @@ func (s *Dashboard) Todos(ctx context.Context, role string, now time.Time) (*Tod
 	}
 
 	// 出账截止日与上月账单状态
-	cal, err := s.setting.Calendar(ctx)
+	var cal *workday.Calendar
+	cal, err = s.setting.Calendar(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +60,8 @@ func (s *Dashboard) Todos(ctx context.Context, role string, now time.Time) (*Tod
 	todos.BillingDueDate = due.Format("2006-01-02")
 	todos.BillingDueToday = due.Format("2006-01-02") == now.Format("2006-01-02")
 
-	prev, err := s.client.Bill.Query().Where(bill.Period(PrevPeriod(now))).Only(ctx)
+	var prev *ent.Bill
+	prev, err = s.client.Bill.Query().Where(bill.Period(PrevPeriod(now))).Only(ctx)
 	if err != nil && !ent.IsNotFound(err) {
 		return nil, err
 	}

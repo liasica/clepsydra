@@ -67,7 +67,8 @@ func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.B
 	}
 
 	// 同账期已有账单：非草稿拒绝，草稿删除重建
-	existing, err := s.client.Bill.Query().Where(bill.Period(period)).Only(ctx)
+	var existing *ent.Bill
+	existing, err = s.client.Bill.Query().Where(bill.Period(period)).Only(ctx)
 	if err != nil && !ent.IsNotFound(err) {
 		return nil, err
 	}
@@ -84,7 +85,8 @@ func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.B
 	}
 
 	// 出账前锁定：账期内完成且仍待确认的需求全部自动确认
-	pending, err := s.client.Demand.Query().Where(
+	var pending []*ent.Demand
+	pending, err = s.client.Demand.Query().Where(
 		demand.StatusEQ(demand.StatusPendingAcceptance),
 		demand.ActualEndDateGTE(start),
 		demand.ActualEndDateLT(end),
@@ -99,15 +101,18 @@ func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.B
 	}
 
 	// 读取设置快照
-	rate, err := s.setting.Int(ctx, SettingDailyRate)
+	var rate int
+	rate, err = s.setting.Int(ctx, SettingDailyRate)
 	if err != nil {
 		return nil, err
 	}
-	baseFee, err := s.setting.Int(ctx, SettingBaseFee)
+	var baseFee int
+	baseFee, err = s.setting.Int(ctx, SettingBaseFee)
 	if err != nil {
 		return nil, err
 	}
-	include, err := s.setting.Str(ctx, SettingBillIncludeStatuses)
+	var include string
+	include, err = s.setting.Str(ctx, SettingBillIncludeStatuses)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +122,8 @@ func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.B
 	}
 
 	// 计费行：账期内完成且已确认的需求
-	accepted, err := s.client.Demand.Query().Where(
+	var accepted []*ent.Demand
+	accepted, err = s.client.Demand.Query().Where(
 		demand.StatusEQ(demand.StatusAccepted),
 		demand.ActualEndDateGTE(start),
 		demand.ActualEndDateLT(end),
@@ -132,7 +138,8 @@ func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.B
 		if !includeSet[st.String()] {
 			continue
 		}
-		rows, err := s.client.Demand.Query().Where(demand.StatusEQ(st)).Order(ent.Asc(demand.FieldID)).All(ctx)
+		var rows []*ent.Demand
+		rows, err = s.client.Demand.Query().Where(demand.StatusEQ(st)).Order(ent.Asc(demand.FieldID)).All(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -148,7 +155,8 @@ func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.B
 		}
 	}
 
-	b, err := s.client.Bill.Create().
+	var b *ent.Bill
+	b, err = s.client.Bill.Create().
 		SetPeriod(period).
 		SetDailyRate(rate).
 		SetBaseFee(baseFee).
@@ -295,11 +303,13 @@ func (s *Bill) Share(ctx context.Context, actor Actor, id int) error {
 	if err != nil {
 		return err
 	}
-	unit, err := s.setting.Str(ctx, SettingWindowUnit)
+	var unit string
+	unit, err = s.setting.Str(ctx, SettingWindowUnit)
 	if err != nil {
 		return err
 	}
-	cal, err := s.setting.Calendar(ctx)
+	var cal *workday.Calendar
+	cal, err = s.setting.Calendar(ctx)
 	if err != nil {
 		return err
 	}
@@ -307,7 +317,8 @@ func (s *Bill) Share(ctx context.Context, actor Actor, id int) error {
 	now := time.Now()
 	deadline := cal.Deadline(now, window, workday.Unit(unit))
 
-	n, err := s.client.Bill.Update().
+	var n int
+	n, err = s.client.Bill.Update().
 		Where(bill.ID(id), bill.StatusEQ(bill.StatusDraft)).
 		SetStatus(bill.StatusPending).
 		SetSharedAt(now).

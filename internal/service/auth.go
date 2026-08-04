@@ -57,7 +57,8 @@ func (a *Auth) Login(ctx context.Context, username, password string) (string, *e
 		},
 	}
 
-	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(a.cfg.Secret))
+	var token string
+	token, err = jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(a.cfg.Secret))
 	if err != nil {
 		return "", nil, err
 	}

@@ -41,7 +41,8 @@ func (s *User) Create(ctx context.Context, username, password, name, role string
 		return nil, ErrBadRequest("用户名已存在")
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	var hash []byte
+	hash, err = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
