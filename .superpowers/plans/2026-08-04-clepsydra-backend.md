@@ -3480,14 +3480,21 @@ git commit -m "feat: 添加账单接口与工作台待办"
 
 ### Task 12: 定时任务、路由装配与入口
 
+> 变更整合（来自用户 TODO.md）：运行时配置移到 `configs/config.yaml`（目录已 gitignore）；节假日数据采用 holiday-cn（github.com/NateScarlet/holiday-cn）年度 JSON 格式，新增 `workday.ParseHolidayCN` 适配。
+
 **Files:**
 - Create: `internal/task/task.go`
 - Create: `internal/api/router.go`
 - Create: `internal/api/handler/auditlog.go`
+- Create: `internal/workday/holidaycn.go`
+- Create: `assets/holidays/2026.json`（holiday-cn 原始格式，下载自 `https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/2026.json`；下载失败则报 BLOCKED）
+- Delete: `assets/holidays.json`（旧自定义格式，由 holiday-cn 数据替代）
+- Modify: `config.example.yaml`（holiday.file 改为 `assets/holidays/2026.json`）
 - Create: `cmd/clepsydra/main.go`
 - Create: `Makefile`
 - Create: `.golangci.yml`
 - Test: `internal/task/task_test.go`
+- Test: `internal/workday/holidaycn_test.go`
 
 **Interfaces:**
 - Consumes: 前述全部 service；`lumberjack.Logger.Rotate`
@@ -3857,6 +3864,81 @@ func (NopNotifier) BillConfirmed(ctx context.Context, billID int, auto bool)    
 
 本期不在业务代码中注入 Notifier 调用（避免无意义的 no-op 调用点），接口文件仅声明契约；后续接入通知时在 `Demand.Accept`、`Bill.Share`、`Bill.Confirm` 尾部各加一次调用即可。
 
+`internal/workday/holidaycn.go`：
+
+```go
+package workday
+
+import "encoding/json"
+
+// holidayCNFile holiday-cn（github.com/NateScarlet/holiday-cn）年度数据文件结构
+type holidayCNFile struct {
+	Year int `json:"year"`
+	Days []struct {
+		Name     string `json:"name"`
+		Date     string `json:"date"`
+		IsOffDay bool   `json:"isOffDay"`
+	} `json:"days"`
+}
+
+// ParseHolidayCN 解析 holiday-cn 年度 JSON 为节假日条目
+// isOffDay 为 true 表示放假，false 表示调休补班
+func ParseHolidayCN(data []byte) ([]Entry, error) {
+	var file holidayCNFile
+	if err := json.Unmarshal(data, &file); err != nil {
+		return nil, err
+	}
+
+	entries := make([]Entry, 0, len(file.Days))
+	for _, d := range file.Days {
+		entryType := "workday"
+		if d.IsOffDay {
+			entryType = "holiday"
+		}
+		entries = append(entries, Entry{Date: d.Date, Type: entryType, Name: d.Name})
+	}
+
+	return entries, nil
+}
+```
+
+`internal/workday/holidaycn_test.go`：
+
+```go
+package workday
+
+import "testing"
+
+func TestParseHolidayCN(t *testing.T) {
+	data := []byte(`{
+		"year": 2026,
+		"days": [
+			{"name": "元旦", "date": "2026-01-01", "isOffDay": true},
+			{"name": "春节调休", "date": "2026-02-15", "isOffDay": false}
+		]
+	}`)
+
+	entries, err := ParseHolidayCN(data)
+	if err != nil {
+		t.Fatalf("解析失败: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("条目数 = %d, want 2", len(entries))
+	}
+	if entries[0].Type != "holiday" || entries[0].Date != "2026-01-01" {
+		t.Errorf("放假日解析错误: %+v", entries[0])
+	}
+	if entries[1].Type != "workday" || entries[1].Name != "春节调休" {
+		t.Errorf("调休日解析错误: %+v", entries[1])
+	}
+
+	// 非法 JSON 返回错误
+	if _, err = ParseHolidayCN([]byte("not json")); err == nil {
+		t.Error("非法 JSON 应返回错误")
+	}
+}
+```
+
 `cmd/clepsydra/main.go`：
 
 ```go
@@ -3887,7 +3969,7 @@ import (
 )
 
 func main() {
-	configPath := flag.String("c", "config.yaml", "配置文件路径")
+	configPath := flag.String("c", "configs/config.yaml", "配置文件路径")
 	flag.Parse()
 
 	// 加载配置与日志
@@ -3910,10 +3992,10 @@ func main() {
 		log.Fatal().Err(err).Msg("数据库迁移失败")
 	}
 
-	// 加载节假日数据并种子
+	// 加载 holiday-cn 格式的节假日数据并种子，文件缺失或格式错误时跳过导入
 	var entries []workday.Entry
 	if data, err := os.ReadFile(cfg.Holiday.File); err == nil {
-		_ = json.Unmarshal(data, &entries)
+		entries, _ = workday.ParseHolidayCN(data)
 	}
 	if err = service.Seed(ctx, client, cfg.Admin, entries); err != nil {
 		log.Fatal().Err(err).Msg("初始化基础数据失败")
@@ -3980,7 +4062,7 @@ build:
 	go build -o bin/clepsydra ./cmd/clepsydra
 
 run:
-	go run ./cmd/clepsydra -c config.yaml
+	go run ./cmd/clepsydra -c configs/config.yaml
 
 test:
 	go test ./... -count=1
@@ -4035,4 +4117,4 @@ git commit -m "feat: 添加定时任务、路由装配与服务入口"
 - [ ] `go test ./... -count=1` 全部通过
 - [ ] `gclint run --config .golangci.yml --new-from-rev=HEAD~1 --timeout=10m` 无 issue
 - [ ] 本地起 PostgreSQL 后 `make run`，用 curl 走通：登录 → 创建需求 → 提交/确认预估 → 开工 → 完成 → 验收 → 生成账单 → 减免 → 分享 → 确认
-- [ ] 核对 `assets/holidays.json` 与国务院办公厅 2026 年放假安排一致
+- [ ] 核对 `assets/holidays/2026.json` 与 holiday-cn 上游一致（该数据集跟随国务院办公厅公告维护）
