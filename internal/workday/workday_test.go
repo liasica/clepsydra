@@ -76,8 +76,34 @@ func TestDeadline(t *testing.T) {
 	}
 
 	// 工作日：跳过 10-01 至 10-03 节假日与 10-04 周日
-	// 09-29(二) 09-30(三) 10-05(一) 10-06(二) 10-07(三) → 第 5 个工作日为 10-07
+	// 09-29（二）09-30（三）10-05（一）10-06（二）10-07（三）→ 第 5 个工作日为 10-07
 	if got := c.Deadline(start, 5, UnitWorkday); !got.Equal(date("2026-10-07")) {
 		t.Errorf("工作日 Deadline = %s, want 2026-10-07", got.Format("2006-01-02"))
+	}
+}
+
+func TestIsWorkdayTimezoneNormalization(t *testing.T) {
+	c := testCalendar(true)
+
+	// 构造周一工作日 2026-10-05（本地时区）
+	localTime := time.Date(2026, 10, 5, 3, 0, 0, 0, time.Local)
+	utcTime := localTime.UTC()
+
+	// 验证两个时间点实际指向同一时刻
+	if !localTime.Equal(utcTime) {
+		t.Fatalf("localTime and utcTime should represent the same instant")
+	}
+
+	// 验证 IsWorkday 对两者返回一致结果
+	gotLocal := c.IsWorkday(localTime)
+	gotUTC := c.IsWorkday(utcTime)
+
+	if gotLocal != gotUTC {
+		t.Errorf("IsWorkday(localTime) = %v, IsWorkday(utcTime) = %v, want same result", gotLocal, gotUTC)
+	}
+
+	// 验证结果为 true（周一确实是工作日）
+	if !gotLocal || !gotUTC {
+		t.Errorf("IsWorkday for 2026-10-05 (Monday) = %v, want true", gotLocal)
 	}
 }

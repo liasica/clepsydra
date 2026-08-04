@@ -48,7 +48,9 @@ func New(entries []Entry, saturdayAsWorkday bool) *Calendar {
 
 // IsWorkday 判定某天是否为工作日
 // 规则：节假日一律休息；调休补班日一律上班；否则周一至周五上班，周六按口径，周日休息
+// 入参先规范化到本地时区，避免数据库读出的 UTC 时间导致跨日误判
 func (c *Calendar) IsWorkday(d time.Time) bool {
+	d = d.In(time.Local)
 	key := d.Format(dateLayout)
 
 	if c.holidays[key] {
@@ -70,10 +72,11 @@ func (c *Calendar) IsWorkday(d time.Time) bool {
 
 // BillingDueDate 计算某月的出账截止日
 // 默认 10 号，若非工作日则从 10 号起逐日向前取第一个工作日
+// 业务规则限定在 1-10 号范围内，极端配置下最多回溯到 1 号
 func (c *Calendar) BillingDueDate(year int, month time.Month) time.Time {
 	d := time.Date(year, month, 10, 0, 0, 0, 0, time.Local)
 
-	for !c.IsWorkday(d) {
+	for d.Day() > 1 && !c.IsWorkday(d) {
 		d = d.AddDate(0, 0, -1)
 	}
 
@@ -82,7 +85,9 @@ func (c *Calendar) BillingDueDate(year int, month time.Month) time.Time {
 
 // Deadline 计算确认截止日期
 // 自然日口径直接加 days 天；工作日口径逐日累计 days 个工作日
+// 入参先规范化到本地时区，保证与 IsWorkday 的日界一致
 func (c *Calendar) Deadline(start time.Time, days int, unit Unit) time.Time {
+	start = start.In(time.Local)
 	if unit == UnitNatural {
 		return start.AddDate(0, 0, days)
 	}
