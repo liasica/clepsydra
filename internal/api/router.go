@@ -4,6 +4,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	"clepsydra/internal/api/docs"
 	"clepsydra/internal/service"
 )
 
@@ -80,6 +81,9 @@ type Handlers struct {
 // Register 注册全部路由
 func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	e.Use(middleware.Recover(), middleware.CORS())
+
+	// 接口文档，挂在认证中间件之外，无需登录即可访问
+	docs.RegisterDocs(e)
 
 	root := e.Group("/api")
 	root.POST("/auth/login", h.Auth.Login)

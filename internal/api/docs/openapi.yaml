@@ -1,0 +1,1475 @@
+openapi: 3.1.0
+info:
+  title: Clepsydra API
+  description: 人天统计与月度对账系统接口文档，覆盖需求全生命周期、月度账单与系统设置
+  version: 1.0.0
+servers:
+  - url: /
+    description: 相对当前部署地址
+tags:
+  - name: Auth
+    description: 登录认证
+  - name: Users
+    description: 用户管理，仅超级管理员可访问
+  - name: Demands
+    description: 开发需求（项目）管理，登录即可查看，写操作仅超级管理员
+  - name: Bills
+    description: 月度账单管理，登录即可查看与确认，其余写操作仅超级管理员
+  - name: Settings
+    description: 系统设置，仅超级管理员可访问
+  - name: Holidays
+    description: 节假日与调休补班配置，仅超级管理员可访问
+  - name: AuditLogs
+    description: 审计日志查询，仅超级管理员可访问
+  - name: Dashboard
+    description: 工作台待办汇总，登录即可查看
+
+paths:
+  # 公开接口，1 条，对应 router.go 的 root.POST("/auth/login", ...)
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      operationId: authLogin
+      summary: 登录并签发 JWT
+      description: 校验用户名密码，成功后签发 JWT，后续接口需在 Authorization 头以 Bearer 前缀携带
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LoginData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # 以下 8 条为登录组（authed），登录即可访问，对应 router.go 的 authed.* 分组
+  /api/dashboard/todos:
+    get:
+      tags: [Dashboard]
+      operationId: dashboardTodos
+      summary: 查询工作台待办汇总
+      description: 汇总待预估确认、待验收确认、待出账数量，以及本月出账截止日与上月账单分享状态
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Todos'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/demands:
+    get:
+      tags: [Demands]
+      operationId: demandsList
+      summary: 查询需求列表
+      description: 按状态筛选需求，status 为空返回全部，按 ID 倒序排列
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: 需求状态筛选，为空表示不筛选
+          schema:
+            type: string
+            enum: [draft, pending_estimate, confirmed, in_progress, pending_acceptance, accepted]
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Demand'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Demands]
+      operationId: demandsCreate
+      summary: 创建需求
+      description: 创建开发需求（项目），初始状态为 draft（仅超级管理员）
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemandRequest'
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Demand'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/demands/{id}:
+    get:
+      tags: [Demands]
+      operationId: demandsGet
+      summary: 查询需求详情
+      description: 按 ID 查询单条需求
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Demand'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    put:
+      tags: [Demands]
+      operationId: demandsUpdate
+      summary: 更新需求
+      description: 更新需求基本信息，仅 draft 与 pending_estimate 状态允许（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemandRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Demand'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/demands/{id}/confirm-estimate:
+    post:
+      tags: [Demands]
+      operationId: demandsConfirmEstimate
+      summary: 需求方确认预估人天
+      description: 需求方对预估人天进行确认，状态由 pending_estimate 流转为 confirmed，登录即可操作
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      responses:
+        '200':
+          description: 确认成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/demands/{id}/accept:
+    post:
+      tags: [Demands]
+      operationId: demandsAccept
+      summary: 需求方确认验收
+      description: 需求方人工确认需求完成验收，状态由 pending_acceptance 流转为 accepted，固定 auto=false、locked=false，登录即可操作
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      responses:
+        '200':
+          description: 确认成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills:
+    get:
+      tags: [Bills]
+      operationId: billsList
+      summary: 查询账单列表
+      description: 查询全部月度账单，按账期倒序排列，登录即可访问
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Bill'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills/{id}:
+    get:
+      tags: [Bills]
+      operationId: billsGet
+      summary: 查询账单详情
+      description: 按 ID 查询账单及其明细行，登录即可访问
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillID'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Bill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills/{id}/confirm:
+    post:
+      tags: [Bills]
+      operationId: billsConfirm
+      summary: 需求方确认账单
+      description: 需求方人工确认账单，状态由 pending 流转为 confirmed，固定 auto=false，登录即可操作
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillID'
+      responses:
+        '200':
+          description: 确认成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # 以下 19 条为 admin 分组，仅超级管理员，对应 router.go 的 adminGroup.* 分组
+  /api/users:
+    get:
+      tags: [Users]
+      operationId: usersList
+      summary: 查询用户列表
+      description: 查询全部系统用户，按 ID 升序排列（仅超级管理员）
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Users]
+      operationId: usersCreate
+      summary: 创建用户
+      description: 创建系统用户，角色仅允许 admin 或 client（仅超级管理员）
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/users/{id}:
+    put:
+      tags: [Users]
+      operationId: usersUpdate
+      summary: 更新用户
+      description: 更新用户姓名与启用状态（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/users/{id}/password:
+    put:
+      tags: [Users]
+      operationId: usersResetPassword
+      summary: 重置用户密码
+      description: 重置指定用户的登录密码，至少 6 位（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/UserID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserResetPasswordRequest'
+      responses:
+        '200':
+          description: 重置成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/settings:
+    get:
+      tags: [Settings]
+      operationId: settingsAll
+      summary: 查询全部设置
+      description: 读取全部键值设置，包括单价、基础维护费、确认窗口等（仅超级管理员）
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/SettingsMap'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    put:
+      tags: [Settings]
+      operationId: settingsUpdate
+      summary: 批量更新设置
+      description: 批量更新键值设置，全部校验通过后逐项写入（仅超级管理员）
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SettingsUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/holidays:
+    get:
+      tags: [Holidays]
+      operationId: holidaysList
+      summary: 查询节假日列表
+      description: 按年份查询节假日与调休补班日，year 为空返回全部（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: year
+          in: query
+          required: false
+          description: 年份筛选，如 2026，为空表示不筛选
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Holiday'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    put:
+      tags: [Holidays]
+      operationId: holidaysSave
+      summary: 批量保存节假日
+      description: 批量保存节假日条目，先整体校验再写入，已存在的日期覆盖更新类型与名称（仅超级管理员）
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HolidaySaveRequest'
+      responses:
+        '200':
+          description: 保存成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/holidays/{date}:
+    delete:
+      tags: [Holidays]
+      operationId: holidaysDelete
+      summary: 删除节假日条目
+      description: 按日期删除一条节假日或调休补班配置（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: path
+          required: true
+          description: 日期，格式 YYYY-MM-DD
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/demands/{id}/submit-estimate:
+    post:
+      tags: [Demands]
+      operationId: demandsSubmitEstimate
+      summary: 提交预估人天
+      description: 提交需求预估人天，进入待需求方确认状态，状态由 draft 流转为 pending_estimate（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      responses:
+        '200':
+          description: 提交成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/demands/{id}/start:
+    post:
+      tags: [Demands]
+      operationId: demandsStart
+      summary: 标记需求开工
+      description: 标记需求实际开工日期，状态由 confirmed 流转为 in_progress（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemandStartRequest'
+      responses:
+        '200':
+          description: 标记成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/demands/{id}/finish:
+    post:
+      tags: [Demands]
+      operationId: demandsFinish
+      summary: 标记需求完成
+      description: 写入实际完成日期与实际人天，计算需求方确认截止时间，状态由 in_progress 流转为 pending_acceptance（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemandFinishRequest'
+      responses:
+        '200':
+          description: 标记成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills/generate:
+    post:
+      tags: [Bills]
+      operationId: billsGenerate
+      summary: 生成月度账单
+      description: 生成指定账期的账单草稿，出账前自动锁定确认账期内待验收需求，可对 draft 状态账单重复执行（仅超级管理员）
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BillGenerateRequest'
+      responses:
+        '200':
+          description: 生成成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Bill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills/{id}/items/{itemId}/waive:
+    post:
+      tags: [Bills]
+      operationId: billsToggleWaive
+      summary: 切换账单明细减免状态
+      description: 翻转指定明细行的减免状态并重算账单总额，仅草稿账单允许，展示行不可减免（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillID'
+        - name: itemId
+          in: path
+          required: true
+          description: 账单明细 ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 切换成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills/{id}/share:
+    post:
+      tags: [Bills]
+      operationId: billsShare
+      summary: 分享账单
+      description: 分享账单进入待确认状态，计算需求方确认截止时间，状态由 draft 流转为 pending（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillID'
+      responses:
+        '200':
+          description: 分享成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills/{id}/revoke:
+    post:
+      tags: [Bills]
+      operationId: billsRevoke
+      summary: 撤回账单
+      description: 撤回已分享未确认的账单回到草稿状态，状态由 pending 流转为 draft（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillID'
+      responses:
+        '200':
+          description: 撤回成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/audit-logs:
+    get:
+      tags: [AuditLogs]
+      operationId: auditLogsList
+      summary: 查询审计日志
+      description: 分页查询审计日志，target_type/target_id 为空或 0 时不过滤，按 ID 倒序排列，size 上限 100（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: target_type
+          in: query
+          required: false
+          description: 目标类型筛选，如 demand、bill，为空表示不筛选
+          schema:
+            type: string
+        - name: target_id
+          in: query
+          required: false
+          description: 目标 ID 筛选，为空或 0 表示不筛选
+          schema:
+            type: integer
+        - name: page
+          in: query
+          required: false
+          description: 页码，从 1 起，非正数按 1 处理
+          schema:
+            type: integer
+            default: 1
+        - name: size
+          in: query
+          required: false
+          description: 每页条数，默认 20，上限 100
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AuditLogListData'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 登录接口返回的 JWT，其余接口需在 Authorization 头以 "Bearer <token>" 形式携带
+
+  parameters:
+    DemandID:
+      name: id
+      in: path
+      required: true
+      description: 需求 ID
+      schema:
+        type: integer
+    BillID:
+      name: id
+      in: path
+      required: true
+      description: 账单 ID
+      schema:
+        type: integer
+    UserID:
+      name: id
+      in: path
+      required: true
+      description: 用户 ID
+      schema:
+        type: integer
+
+  responses:
+    BadRequest:
+      description: 参数错误或业务校验未通过
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+          example:
+            code: 40000
+            message: 参数错误
+    Unauthorized:
+      description: 未登录或凭证失效
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+          example:
+            code: 40100
+            message: 未登录或凭证失效
+    Forbidden:
+      description: 无权限操作，接口仅允许超级管理员访问
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+          example:
+            code: 40300
+            message: 无权限操作
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+          example:
+            code: 40400
+            message: 资源不存在
+    InvalidTransition:
+      description: 当前状态不允许该操作
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+          example:
+            code: 42200
+            message: 当前状态不允许该操作
+    ServerError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Envelope'
+          example:
+            code: 50000
+            message: 服务器内部错误
+
+  schemas:
+    Envelope:
+      type: object
+      description: 统一响应包装，业务数据在 data 字段中返回，失败时 data 省略
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          description: 业务状态码，0 表示成功，非 0 见各接口错误响应说明
+          example: 0
+        message:
+          type: string
+          description: 提示信息，成功固定为 ok
+          example: ok
+        data:
+          description: 业务数据，具体结构因接口而异
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          description: 登录用户名
+        password:
+          type: string
+          description: 登录密码
+
+    LoginData:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT 访问令牌
+        user:
+          type: object
+          description: 精简用户信息
+          properties:
+            id:
+              type: integer
+              description: 用户 ID
+            name:
+              type: string
+              description: 姓名
+            role:
+              type: string
+              enum: [admin, client]
+              description: 角色，admin 为超级管理员，client 为需求方
+
+    User:
+      type: object
+      description: 系统用户，admin 为超级管理员，client 为需求方
+      properties:
+        id:
+          type: integer
+          description: 用户 ID
+        username:
+          type: string
+          description: 登录用户名
+        name:
+          type: string
+          description: 姓名
+        role:
+          type: string
+          enum: [admin, client]
+          description: 角色
+        enabled:
+          type: boolean
+          description: 是否启用
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+
+    UserCreateRequest:
+      type: object
+      required: [username, password, name, role]
+      properties:
+        username:
+          type: string
+          description: 登录用户名，不能为空且不能重复
+        password:
+          type: string
+          description: 登录密码，至少 6 位
+        name:
+          type: string
+          description: 姓名
+        role:
+          type: string
+          enum: [admin, client]
+          description: 角色，仅允许 admin 或 client
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 姓名
+        enabled:
+          type: boolean
+          description: 是否启用
+
+    UserResetPasswordRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          description: 新密码，至少 6 位
+
+    SettingsMap:
+      type: object
+      description: 设置键值对，键包括 daily_rate（单价，单位元，正偶数）、base_fee（基础维护费，单位元）、demand_confirm_window（需求确认窗口）、bill_confirm_window（账单确认窗口）、window_unit（窗口口径，natural 或 workday）、saturday_as_workday（周六是否算工作日，true 或 false）、bill_include_statuses（账单包含的需求状态，逗号分隔）
+      additionalProperties:
+        type: string
+
+    SettingsUpdateRequest:
+      type: object
+      required: [values]
+      properties:
+        values:
+          $ref: '#/components/schemas/SettingsMap'
+
+    Holiday:
+      type: object
+      description: 节假日与调休补班配置
+      properties:
+        id:
+          type: integer
+          description: 记录 ID
+        date:
+          type: string
+          format: date
+          description: 日期，格式 YYYY-MM-DD
+        type:
+          type: string
+          enum: [holiday, workday]
+          description: holiday 为休息日，workday 为调休补班日
+        name:
+          type: string
+          description: 名称，如春节、国庆节
+
+    HolidayEntry:
+      type: object
+      description: 节假日保存条目，无 ID，按日期匹配已有记录并覆盖更新
+      required: [date, type]
+      properties:
+        date:
+          type: string
+          format: date
+          description: 日期，格式必须为零填充的 YYYY-MM-DD
+        type:
+          type: string
+          enum: [holiday, workday]
+          description: holiday 为休息日，workday 为调休补班日
+        name:
+          type: string
+          description: 名称
+
+    HolidaySaveRequest:
+      type: object
+      required: [entries]
+      properties:
+        entries:
+          type: array
+          description: 待保存的节假日条目列表，任一条目非法则全部拒绝
+          items:
+            $ref: '#/components/schemas/HolidayEntry'
+
+    Demand:
+      type: object
+      description: 开发需求（项目），人天以半天数存储
+      properties:
+        id:
+          type: integer
+          description: 需求 ID
+        title:
+          type: string
+          description: 需求标题
+        description:
+          type: string
+          description: 需求描述
+        estimated_half_days:
+          type: integer
+          description: 预估人天，单位半天数，如 16 表示 8 人天
+        estimate_confirmed_at:
+          type: ["string", "null"]
+          format: date-time
+          description: 预估人天确认时间，未确认为空
+        estimate_confirmed_by:
+          type: ["integer", "null"]
+          description: 预估人天确认人用户 ID，未确认为空
+        planned_start_date:
+          type: ["string", "null"]
+          format: date-time
+          description: 预测开工日期，未设置为空，创建更新时以 YYYY-MM-DD 字符串传入
+        actual_start_date:
+          type: ["string", "null"]
+          format: date-time
+          description: 实际开工日期，未开工为空
+        actual_end_date:
+          type: ["string", "null"]
+          format: date-time
+          description: 实际完成日期，未完成为空
+        actual_half_days:
+          type: ["integer", "null"]
+          description: 实际人天，单位半天数，未完成为空
+        status:
+          type: string
+          enum: [draft, pending_estimate, confirmed, in_progress, pending_acceptance, accepted]
+          description: 需求状态
+        accept_deadline:
+          type: ["string", "null"]
+          format: date-time
+          description: 验收逾期自动确认截止时间
+        accepted_at:
+          type: ["string", "null"]
+          format: date-time
+          description: 验收确认时间
+        accepted_by:
+          type: ["integer", "null"]
+          description: 验收确认人用户 ID，系统自动确认为 0
+        accept_auto:
+          type: boolean
+          description: 是否为逾期自动确认
+        accept_locked:
+          type: boolean
+          description: 是否为出账前锁定触发的自动确认
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+
+    DemandRequest:
+      type: object
+      description: 创建与更新需求共用的请求体
+      required: [title, estimated_half_days]
+      properties:
+        title:
+          type: string
+          description: 需求标题，不能为空
+        description:
+          type: string
+          description: 需求描述
+        estimated_half_days:
+          type: integer
+          description: 预估人天，单位半天数，必须为正
+        planned_start_date:
+          type: string
+          format: date
+          description: 预测开工日期，格式 YYYY-MM-DD，可为空
+
+    DemandStartRequest:
+      type: object
+      required: [actual_start_date]
+      properties:
+        actual_start_date:
+          type: string
+          format: date
+          description: 实际开工日期，格式 YYYY-MM-DD，不能为空
+
+    DemandFinishRequest:
+      type: object
+      required: [actual_start_date, actual_end_date, actual_half_days]
+      properties:
+        actual_start_date:
+          type: string
+          format: date
+          description: 实际开工日期，格式 YYYY-MM-DD，不能为空
+        actual_end_date:
+          type: string
+          format: date
+          description: 实际完成日期，格式 YYYY-MM-DD，不能早于开工日期且不能晚于当前时间
+        actual_half_days:
+          type: integer
+          description: 实际人天，单位半天数，必须为正
+
+    Bill:
+      type: object
+      description: 月度账单，period 形如 2026-07，全局唯一
+      properties:
+        id:
+          type: integer
+          description: 账单 ID
+        period:
+          type: string
+          description: 账期，格式 YYYY-MM
+          example: "2026-07"
+        status:
+          type: string
+          enum: [draft, pending, confirmed]
+          description: 账单状态
+        daily_rate:
+          type: integer
+          description: 生成时快照的单价，单位元
+        base_fee:
+          type: integer
+          description: 生成时快照的基础维护费，单位元
+        total_half_days:
+          type: integer
+          description: 计费需求的人天合计，单位半天数
+        total_amount:
+          type: integer
+          description: 账单总金额，单位元，等于基础维护费加各计费行金额
+        shared_at:
+          type: ["string", "null"]
+          format: date-time
+          description: 分享时间，未分享为空
+        confirm_deadline:
+          type: ["string", "null"]
+          format: date-time
+          description: 需求方确认截止时间，未分享为空
+        confirmed_at:
+          type: ["string", "null"]
+          format: date-time
+          description: 确认时间，未确认为空
+        confirmed_by:
+          type: ["integer", "null"]
+          description: 确认人用户 ID，未确认为空
+        confirm_auto:
+          type: boolean
+          description: 是否为逾期自动确认
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+        items:
+          type: array
+          description: 账单明细，仅账单详情接口返回
+          items:
+            $ref: '#/components/schemas/BillItem'
+
+    BillItem:
+      type: object
+      description: 账单明细行，快照生成时的需求信息
+      properties:
+        id:
+          type: integer
+          description: 明细 ID
+        demand_id:
+          type: integer
+          description: 关联的需求 ID
+        demand_title:
+          type: string
+          description: 需求标题快照
+        demand_status:
+          type: string
+          description: 需求状态快照
+        half_days:
+          type: integer
+          description: 人天，计费行为实际人天，展示行为预估人天，单位半天数
+        amount:
+          type: integer
+          description: 金额，单位元，展示行与减免行为 0
+        billable:
+          type: boolean
+          description: true 为计费行，false 为展示行
+        waived:
+          type: boolean
+          description: 是否已减免
+        planned_start_date:
+          type: ["string", "null"]
+          format: date-time
+          description: 需求预测开工日期快照
+        note:
+          type: string
+          description: 备注
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+
+    BillGenerateRequest:
+      type: object
+      required: [period]
+      properties:
+        period:
+          type: string
+          description: 账期，格式 YYYY-MM
+          example: "2026-08"
+
+    Todos:
+      type: object
+      description: 工作台待办汇总
+      properties:
+        pending_estimate_count:
+          type: integer
+          description: 待需求方确认预估人天的需求数量
+        pending_acceptance_count:
+          type: integer
+          description: 待需求方确认验收的需求数量
+        pending_bill_count:
+          type: integer
+          description: 待需求方确认的账单数量
+        billing_due_date:
+          type: string
+          format: date
+          description: 本月出账截止日
+        billing_due_today:
+          type: boolean
+          description: 今天是否为出账截止日
+        prev_bill_shared:
+          type: boolean
+          description: 上月账单是否已分享或确认
+
+    AuditLog:
+      type: object
+      description: 审计日志，只增不改不删，是操作依据
+      properties:
+        id:
+          type: integer
+          description: 日志 ID
+        actor_id:
+          type: integer
+          description: 操作者用户 ID，0 表示系统自动操作
+        actor_name:
+          type: string
+          description: 操作者姓名快照，系统操作为 system
+        action:
+          type: string
+          description: 操作动作，如 demand.accept、bill.share
+        target_type:
+          type: string
+          description: 目标类型，如 demand、bill
+        target_id:
+          type: integer
+          description: 目标 ID
+        detail:
+          type: object
+          description: 操作详情，结构因 action 而异
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+          description: 记录时间
+
+    AuditLogListData:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: 总条数
+        rows:
+          type: array
+          description: 当前页日志列表
+          items:
+            $ref: '#/components/schemas/AuditLog'
