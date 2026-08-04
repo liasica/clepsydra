@@ -1,0 +1,222 @@
+package handler
+
+import (
+	"context"
+	"net/http"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/labstack/echo/v4"
+	_ "github.com/mattn/go-sqlite3"
+
+	"clepsydra/internal/config"
+	"clepsydra/internal/ent/enttest"
+	"clepsydra/internal/service"
+)
+
+// TestBillLifecycleHandlers 覆盖账单从生成到确认的完整链路
+func TestBillLifecycleHandlers(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:hbill?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	_ = service.Seed(ctx, client, config.Admin{Username: "a", Password: "admin123"}, nil)
+
+	settingSvc := service.NewSetting(client)
+	audit := service.NewAudit(client)
+	demandSvc := service.NewDemand(client, settingSvc, audit)
+	billSvc := service.NewBill(client, settingSvc, demandSvc, audit)
+	h := NewBill(billSvc)
+	e := echo.New()
+
+	// 准备一个账期内已完成并验收的需求
+	act := service.Actor{ID: 1, Name: "管理员"}
+	d, err := demandSvc.Create(ctx, act, "联调需求", "", 4, nil)
+	if err != nil {
+		t.Fatalf("创建需求失败: %v", err)
+	}
+	_ = demandSvc.SubmitEstimate(ctx, act, d.ID)
+	_ = demandSvc.ConfirmEstimate(ctx, act, d.ID)
+	start := time.Date(2026, 7, 10, 0, 0, 0, 0, time.Local)
+	end := time.Date(2026, 7, 15, 0, 0, 0, 0, time.Local)
+	_ = demandSvc.Start(ctx, act, d.ID, start)
+	if err = demandSvc.Finish(ctx, act, d.ID, start, end, 4); err != nil {
+		t.Fatalf("完成需求失败: %v", err)
+	}
+	if err = demandSvc.Accept(ctx, act, d.ID, false, false); err != nil {
+		t.Fatalf("验收需求失败: %v", err)
+	}
+
+	// Generate：生成 2026-07 账单
+	c, rec := newDemandTestContext(e, http.MethodPost, "/api/bills/generate", `{"period":"2026-07"}`)
+	if err = h.Generate(c); err != nil {
+		t.Fatalf("Generate 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Generate 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	bills, err := billSvc.List(ctx)
+	if err != nil || len(bills) != 1 {
+		t.Fatalf("生成后查询列表失败: %v, len=%d", err, len(bills))
+	}
+	billID := bills[0].ID
+	billIDStr := strconv.Itoa(billID)
+
+	// Generate：账期格式非法应返回 400
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/generate", `{"period":"202607"}`)
+	_ = h.Generate(c)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("非法账期应返回 400, got %d", rec.Code)
+	}
+
+	// List：应能查到刚生成的账单
+	c, rec = newDemandTestContext(e, http.MethodGet, "/api/bills", "")
+	if err = h.List(c); err != nil {
+		t.Fatalf("List 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "2026-07") {
+		t.Errorf("List 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// Get：应含 items 明细
+	c, rec = newDemandTestContext(e, http.MethodGet, "/api/bills/"+billIDStr, "")
+	c.SetParamNames("id")
+	c.SetParamValues(billIDStr)
+	if err = h.Get(c); err != nil {
+		t.Fatalf("Get 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"items"`) {
+		t.Errorf("Get 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// Get：非法 ID 返回 400
+	c, rec = newDemandTestContext(e, http.MethodGet, "/api/bills/abc", "")
+	c.SetParamNames("id")
+	c.SetParamValues("abc")
+	_ = h.Get(c)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("非法 ID 应返回 400, got %d", rec.Code)
+	}
+
+	// 取出计费明细 ID 用于 ToggleWaive
+	full, err := billSvc.Get(ctx, billID)
+	if err != nil || len(full.Edges.Items) == 0 {
+		t.Fatalf("查询账单明细失败: %v", err)
+	}
+	itemID := full.Edges.Items[0].ID
+	itemIDStr := strconv.Itoa(itemID)
+
+	// ToggleWaive：非法 itemId 返回 400
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/items/abc/waive", "")
+	c.SetParamNames("id", "itemId")
+	c.SetParamValues(billIDStr, "abc")
+	_ = h.ToggleWaive(c)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("非法 itemId 应返回 400, got %d", rec.Code)
+	}
+
+	// ToggleWaive：切换明细减免
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/items/"+itemIDStr+"/waive", "")
+	c.SetParamNames("id", "itemId")
+	c.SetParamValues(billIDStr, itemIDStr)
+	if err = h.ToggleWaive(c); err != nil {
+		t.Fatalf("ToggleWaive 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("ToggleWaive 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// Share：草稿 → 待确认
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/share", "")
+	c.SetParamNames("id")
+	c.SetParamValues(billIDStr)
+	if err = h.Share(c); err != nil {
+		t.Fatalf("Share 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("Share 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// Confirm：确认账单，人工确认固定 auto=false
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/confirm", "")
+	c.SetParamNames("id")
+	c.SetParamValues(billIDStr)
+	if err = h.Confirm(c); err != nil {
+		t.Fatalf("Confirm 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("Confirm 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	final, err := billSvc.Get(ctx, billID)
+	if err != nil {
+		t.Fatalf("查询最终状态失败: %v", err)
+	}
+	if final.Status.String() != "confirmed" {
+		t.Errorf("最终状态 = %s, want confirmed", final.Status)
+	}
+	if final.ConfirmAuto {
+		t.Error("人工确认 ConfirmAuto 应为 false")
+	}
+}
+
+// TestBillRevokeHandler 覆盖撤回接口：草稿状态拒绝撤回，分享后可撤回并回到草稿
+func TestBillRevokeHandler(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:hbillrevoke?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	_ = service.Seed(ctx, client, config.Admin{Username: "a", Password: "admin123"}, nil)
+
+	settingSvc := service.NewSetting(client)
+	audit := service.NewAudit(client)
+	demandSvc := service.NewDemand(client, settingSvc, audit)
+	billSvc := service.NewBill(client, settingSvc, demandSvc, audit)
+	h := NewBill(billSvc)
+	e := echo.New()
+
+	act := service.Actor{ID: 1, Name: "管理员"}
+	b, err := billSvc.Generate(ctx, act, "2026-06")
+	if err != nil {
+		t.Fatalf("生成账单失败: %v", err)
+	}
+	billIDStr := strconv.Itoa(b.ID)
+
+	// Revoke：草稿状态应拒绝
+	c, rec := newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/revoke", "")
+	c.SetParamNames("id")
+	c.SetParamValues(billIDStr)
+	_ = h.Revoke(c)
+	if rec.Code == http.StatusOK {
+		t.Errorf("草稿账单不应可撤回, body=%s", rec.Body.String())
+	}
+
+	// Share 后 Revoke 应成功
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/share", "")
+	c.SetParamNames("id")
+	c.SetParamValues(billIDStr)
+	if err = h.Share(c); err != nil {
+		t.Fatalf("Share 失败: %v", err)
+	}
+
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/revoke", "")
+	c.SetParamNames("id")
+	c.SetParamValues(billIDStr)
+	if err = h.Revoke(c); err != nil {
+		t.Fatalf("Revoke 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("Revoke 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	final, err := billSvc.Get(ctx, b.ID)
+	if err != nil {
+		t.Fatalf("查询最终状态失败: %v", err)
+	}
+	if final.Status.String() != "draft" {
+		t.Errorf("撤回后状态 = %s, want draft", final.Status)
+	}
+}
