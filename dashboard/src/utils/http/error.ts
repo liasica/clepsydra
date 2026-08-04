@@ -30,7 +30,7 @@ export interface ErrorResponse {
   /** 错误状态码 */
   code: number
   /** 错误消息 */
-  msg: string
+  message: string
   /** 错误附加数据 */
   data?: unknown
 }
@@ -118,31 +118,43 @@ const getErrorMessage = (status: number): string => {
  * @param error 错误对象
  * @returns 错误对象
  */
-export function handleError(error: AxiosError<ErrorResponse>): never {
+export function handleError(error: AxiosError<ErrorResponse>): HttpError {
   // 处理取消的请求
   if (error.code === 'ERR_CANCELED') {
     console.warn('Request cancelled:', error.message)
-    throw new HttpError($t('httpMsg.requestCancelled'), ApiStatus.error)
+    return new HttpError($t('httpMsg.requestCancelled'), ApiStatus.error)
   }
 
-  const statusCode = error.response?.status
-  const errorMessage = error.response?.data?.msg || error.message
   const requestConfig = error.config
 
   // 处理网络错误
   if (!error.response) {
-    throw new HttpError($t('httpMsg.networkError'), ApiStatus.error, {
+    return new HttpError($t('httpMsg.networkError'), ApiStatus.error, {
       url: requestConfig?.url,
       method: requestConfig?.method?.toUpperCase()
     })
   }
 
-  // 处理 HTTP 状态码错误
+  const statusCode = error.response.status
+  const body: unknown = error.response.data
+
+  // 响应体带业务错误码与 message 时，业务码优先于 HTTP 状态码
+  if (typeof body === 'object' && body !== null && 'code' in body && 'message' in body) {
+    const business = body as ErrorResponse
+    return new HttpError(business.message, business.code, {
+      data: body,
+      url: requestConfig?.url,
+      method: requestConfig?.method?.toUpperCase()
+    })
+  }
+
+  // 退回 HTTP 状态码逻辑
+  const errorMessage = (body as ErrorResponse)?.message || error.message
   const message = statusCode
     ? getErrorMessage(statusCode)
     : errorMessage || $t('httpMsg.requestFailed')
-  throw new HttpError(message, statusCode || ApiStatus.error, {
-    data: error.response.data,
+  return new HttpError(message, statusCode || ApiStatus.error, {
+    data: body,
     url: requestConfig?.url,
     method: requestConfig?.method?.toUpperCase()
   })

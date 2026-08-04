@@ -10,6 +10,7 @@
     "dev": "vite --open",
     "build": "vue-tsc --noEmit && vite build",
     "serve": "vite preview",
+    "test": "vitest run",
     "lint": "eslint",
     "fix": "eslint --fix",
     "lint:prettier": "prettier --write \"**/*.{js,cjs,ts,json,tsx,css,less,scss,vue,html,md}\"",
@@ -75,6 +76,7 @@
     "vite": "^7.1.5",
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-vue-devtools": "^7.7.10",
+    "vitest": "^4.1.10",
     "vue-demi": "^0.14.9",
     "vue-img-cutter": "^3.0.5",
     "vue-tsc": "~2.1.6"

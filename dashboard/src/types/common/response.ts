@@ -19,12 +19,12 @@
  * @author Art Design Pro Team
  */
 
-/** 基础 API 响应结构 */
+/** 后端统一响应包装 */
 export interface BaseResponse<T = unknown> {
-  /** 状态码 */
+  /** 业务状态码，0 表示成功 */
   code: number
-  /** 消息 */
-  msg: string
-  /** 数据 */
+  /** 提示信息 */
+  message: string
+  /** 业务数据 */
   data: T
 }
