@@ -14,4 +14,4 @@ log:
   max_size: 100
   max_age: 30
 holiday:
-  file: assets/holidays.json
+  file: assets/holidays/2026.json
