@@ -1,0 +1,21 @@
+# Git 与编辑器元数据
+.git
+.gitignore
+.idea
+.DS_Store
+
+# 项目管理文档，不影响构建
+.superpowers/
+.claude/
+
+# 本地构建产物，镜像内多阶段构建重新生成
+bin/
+dashboard/node_modules/
+dashboard/dist/
+internal/api/static/dist/*
+!internal/api/static/dist/.gitkeep
+
+# 运行时数据与本地配置，不随镜像分发
+logs/
+*.log
+configs/

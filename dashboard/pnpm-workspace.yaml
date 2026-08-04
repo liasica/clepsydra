@@ -1,0 +1,8 @@
+# pnpm 供应链安全策略默认阻止未审批的依赖构建脚本，此处显式批准下列已知安全的依赖
+allowBuilds:
+  '@parcel/watcher': true
+  '@tailwindcss/oxide': true
+  core-js: true
+  es5-ext: true
+  esbuild: true
+  vue-demi: true
