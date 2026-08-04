@@ -79,3 +79,13 @@ func (a *Auth) ParseToken(token string) (*Claims, error) {
 
 	return claims, nil
 }
+
+// Me 按 ID 返回启用中的用户，用户不存在或已停用一律视为凭证失效
+func (a *Auth) Me(ctx context.Context, userID int) (*ent.User, error) {
+	u, err := a.client.User.Query().Where(user.ID(userID), user.Enabled(true)).Only(ctx)
+	if err != nil {
+		return nil, ErrUnauthorized
+	}
+
+	return u, nil
+}

@@ -14,6 +14,7 @@ import (
 // AuthHandler 认证接口方法集
 type AuthHandler interface {
 	Login(c echo.Context) error
+	Me(c echo.Context) error
 }
 
 // UserHandler 用户管理接口方法集
@@ -90,6 +91,7 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 
 	// 登录可访问
 	authed := root.Group("", RequireAuth(auth))
+	authed.GET("/auth/me", h.Auth.Me)
 	authed.GET("/dashboard/todos", h.Dashboard.Todos)
 	authed.GET("/demands", h.Demand.List)
 	authed.GET("/demands/:id", h.Demand.Get)

@@ -10,9 +10,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// expectedRouteCount 与 router.go 的业务路由数量保持一致：1 条公开 login + 8 条登录组 + 19 条 admin 组，
+// expectedRouteCount 与 router.go 的业务路由数量保持一致：1 条公开 login + 9 条登录组（含 auth/me）+ 19 条 admin 组，
 // docs 自身的两条路由不计入 spec，因此不计入此数
-const expectedRouteCount = 28
+const expectedRouteCount = 29
 
 // httpMethods 用于从 path item 中筛出真正的操作，排除 parameters 等非方法字段
 var httpMethods = map[string]bool{

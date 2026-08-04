@@ -41,3 +41,17 @@ func (h *Auth) Login(c echo.Context) error {
 		},
 	})
 }
+
+// Me GET /api/auth/me
+func (h *Auth) Me(c echo.Context) error {
+	u, err := h.svc.Me(c.Request().Context(), api.Claims(c).UserID)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, map[string]any{
+		"id":   u.ID,
+		"name": u.Name,
+		"role": u.Role,
+	})
+}

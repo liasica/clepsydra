@@ -55,6 +55,43 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      operationId: authMe
+      summary: 查询当前登录用户
+      description: 按凭证返回当前用户精简信息，用户已停用或不存在时视为凭证失效，前端用于页面刷新后的会话恢复
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        description: 当前用户精简信息，字段与登录响应的 user 一致
+                        properties:
+                          id:
+                            type: integer
+                            description: 用户 ID
+                          name:
+                            type: string
+                            description: 姓名
+                          role:
+                            type: string
+                            enum: [admin, client]
+                            description: 角色
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
   # 以下 8 条为登录组（authed），登录即可访问，对应 router.go 的 authed.* 分组
   /api/dashboard/todos:
     get:
