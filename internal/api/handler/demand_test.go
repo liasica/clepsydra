@@ -1,0 +1,263 @@
+package handler
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
+	"testing"
+
+	"github.com/labstack/echo/v4"
+	_ "github.com/mattn/go-sqlite3"
+
+	"clepsydra/internal/config"
+	"clepsydra/internal/ent/enttest"
+	"clepsydra/internal/service"
+)
+
+// TestDemandCreateHandler 覆盖创建接口的正常路径与参数校验
+func TestDemandCreateHandler(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:hdemand?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	_ = service.Seed(ctx, client, config.Admin{Username: "a", Password: "admin123"}, nil)
+
+	settingSvc := service.NewSetting(client)
+	svc := service.NewDemand(client, settingSvc, service.NewAudit(client))
+	h := NewDemand(svc)
+
+	e := echo.New()
+	reqBody := `{"title":"新功能","description":"","estimated_half_days":4,"planned_start_date":"2026-08-10"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/demands", strings.NewReader(reqBody))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+
+	c := e.NewContext(req, rec)
+	c.Set("claims", &service.Claims{UserID: 1, Role: "admin", Name: "管理员"})
+
+	if err := h.Create(c); err != nil {
+		t.Fatalf("创建接口错误: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("HTTP 状态 = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"code":0`) {
+		t.Errorf("响应异常: %s", rec.Body.String())
+	}
+
+	// 预估人天为 0 拒绝
+	req = httptest.NewRequest(http.MethodPost, "/api/demands", strings.NewReader(`{"title":"x","estimated_half_days":0}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	c.Set("claims", &service.Claims{UserID: 1, Role: "admin", Name: "管理员"})
+	_ = h.Create(c)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("非法参数应返回 400, got %d", rec.Code)
+	}
+}
+
+// newDemandTestContext 构造带登录态的测试请求上下文，body 为空串时不携带请求体
+func newDemandTestContext(e *echo.Echo, method, target, body string) (echo.Context, *httptest.ResponseRecorder) {
+	var req *http.Request
+	if body == "" {
+		req = httptest.NewRequest(method, target, nil)
+	} else {
+		req = httptest.NewRequest(method, target, strings.NewReader(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	}
+
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &service.Claims{UserID: 1, Role: "admin", Name: "管理员"})
+
+	return c, rec
+}
+
+// TestDemandLifecycleHandlers 覆盖需求从创建到验收的完整状态流转链路
+func TestDemandLifecycleHandlers(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:hdemandlifecycle?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	_ = service.Seed(ctx, client, config.Admin{Username: "a", Password: "admin123"}, nil)
+
+	settingSvc := service.NewSetting(client)
+	svc := service.NewDemand(client, settingSvc, service.NewAudit(client))
+	h := NewDemand(svc)
+	e := echo.New()
+
+	// 创建需求
+	c, rec := newDemandTestContext(e, http.MethodPost, "/api/demands",
+		`{"title":"周期联调","description":"跨系统联调","estimated_half_days":6,"planned_start_date":"2026-08-05"}`)
+	if err := h.Create(c); err != nil {
+		t.Fatalf("创建失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("创建 HTTP 状态 = %d, body = %s", rec.Code, rec.Body.String())
+	}
+
+	rows, err := svc.List(ctx, "")
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("创建后查询列表失败: %v, len=%d", err, len(rows))
+	}
+	id := rows[0].ID
+	idStr := strconv.Itoa(id)
+
+	// List：带状态过滤应能查到刚创建的 draft 需求
+	c, rec = newDemandTestContext(e, http.MethodGet, "/api/demands?status=draft", "")
+	if err = h.List(c); err != nil {
+		t.Fatalf("List 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "周期联调") {
+		t.Errorf("List 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// Get：按 ID 查询
+	c, rec = newDemandTestContext(e, http.MethodGet, "/api/demands/"+idStr, "")
+	c.SetParamNames("id")
+	c.SetParamValues(idStr)
+	if err = h.Get(c); err != nil {
+		t.Fatalf("Get 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "周期联调") {
+		t.Errorf("Get 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// Get：非法 ID 返回 400
+	c, rec = newDemandTestContext(e, http.MethodGet, "/api/demands/abc", "")
+	c.SetParamNames("id")
+	c.SetParamValues("abc")
+	_ = h.Get(c)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("非法 ID 应返回 400, got %d", rec.Code)
+	}
+
+	// Update：修改标题与预估人天
+	c, rec = newDemandTestContext(e, http.MethodPut, "/api/demands/"+idStr,
+		`{"title":"周期联调-改","description":"跨系统联调","estimated_half_days":8,"planned_start_date":"2026-08-06"}`)
+	c.SetParamNames("id")
+	c.SetParamValues(idStr)
+	if err = h.Update(c); err != nil {
+		t.Fatalf("Update 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "周期联调-改") {
+		t.Errorf("Update 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// SubmitEstimate：draft → pending_estimate
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/"+idStr+"/submit-estimate", "")
+	c.SetParamNames("id")
+	c.SetParamValues(idStr)
+	if err = h.SubmitEstimate(c); err != nil {
+		t.Fatalf("SubmitEstimate 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("SubmitEstimate 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// ConfirmEstimate：pending_estimate → confirmed
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/"+idStr+"/confirm-estimate", "")
+	c.SetParamNames("id")
+	c.SetParamValues(idStr)
+	if err = h.ConfirmEstimate(c); err != nil {
+		t.Fatalf("ConfirmEstimate 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("ConfirmEstimate 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// Start：日期为空应返回 400，且不能影响后续正常流转
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/"+idStr+"/start", `{"actual_start_date":""}`)
+	c.SetParamNames("id")
+	c.SetParamValues(idStr)
+	_ = h.Start(c)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("开工日期为空应返回 400, got %d", rec.Code)
+	}
+
+	// Start：confirmed → in_progress
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/"+idStr+"/start", `{"actual_start_date":"2026-08-05"}`)
+	c.SetParamNames("id")
+	c.SetParamValues(idStr)
+	if err = h.Start(c); err != nil {
+		t.Fatalf("Start 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("Start 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// Finish：in_progress → pending_acceptance
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/"+idStr+"/finish",
+		`{"actual_start_date":"2026-08-05","actual_end_date":"2026-08-12","actual_half_days":9}`)
+	c.SetParamNames("id")
+	c.SetParamValues(idStr)
+	if err = h.Finish(c); err != nil {
+		t.Fatalf("Finish 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("Finish 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// Accept：pending_acceptance → accepted，人工确认固定传 false, false
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/"+idStr+"/accept", "")
+	c.SetParamNames("id")
+	c.SetParamValues(idStr)
+	if err = h.Accept(c); err != nil {
+		t.Fatalf("Accept 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("Accept 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// 验证最终状态与人工确认标记
+	final, err := svc.Get(ctx, id)
+	if err != nil {
+		t.Fatalf("查询最终状态失败: %v", err)
+	}
+	if final.Status.String() != "accepted" {
+		t.Errorf("最终状态 = %s, want accepted", final.Status)
+	}
+	if final.AcceptAuto {
+		t.Error("人工确认 AcceptAuto 应为 false")
+	}
+	if final.AcceptLocked {
+		t.Error("人工确认 AcceptLocked 应为 false")
+	}
+}
+
+// TestDemandFinishRequiresBothDates 校验 Finish 接口两个日期均必填
+func TestDemandFinishRequiresBothDates(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:hdemandfinish?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	_ = service.Seed(ctx, client, config.Admin{Username: "a", Password: "admin123"}, nil)
+
+	settingSvc := service.NewSetting(client)
+	svc := service.NewDemand(client, settingSvc, service.NewAudit(client))
+	h := NewDemand(svc)
+	e := echo.New()
+
+	// 缺少 actual_end_date
+	c, rec := newDemandTestContext(e, http.MethodPost, "/api/demands/1/finish",
+		`{"actual_start_date":"2026-08-05","actual_half_days":4}`)
+	c.SetParamNames("id")
+	c.SetParamValues("1")
+	_ = h.Finish(c)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("缺少完成日期应返回 400, got %d", rec.Code)
+	}
+
+	// 缺少 actual_start_date
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/1/finish",
+		`{"actual_end_date":"2026-08-12","actual_half_days":4}`)
+	c.SetParamNames("id")
+	c.SetParamValues("1")
+	_ = h.Finish(c)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("缺少开工日期应返回 400, got %d", rec.Code)
+	}
+}
