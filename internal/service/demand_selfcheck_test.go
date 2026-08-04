@@ -120,9 +120,9 @@ func TestDemandTransitConcurrentSafety(t *testing.T) {
 	}
 }
 
-// TestDemandUpdateStatusGuard Update 仅允许 draft/pending_estimate，其余状态一律拒绝
+// TestDemandUpdateStatusGuard Update 仅允许 draft/pending_estimate，其余状态一律拒绝，且成功更新均写审计
 func TestDemandUpdateStatusGuard(t *testing.T) {
-	_, svc := newDemandEnv(t, "dupdateguard")
+	client, svc := newDemandEnv(t, "dupdateguard")
 	ctx := context.Background()
 
 	d, _ := svc.Create(ctx, admin, "需求", "", 2, nil)
@@ -151,6 +151,11 @@ func TestDemandUpdateStatusGuard(t *testing.T) {
 	// in_progress 状态禁止更新
 	if _, err := svc.Update(ctx, admin, d.ID, "不应成功", "", 5, nil); err == nil {
 		t.Error("in_progress 状态更新应拒绝")
+	}
+
+	// 两次成功更新（draft、pending_estimate）均应写入审计日志，被拒绝的两次不写
+	if n := client.AuditLog.Query().Where(auditlog.Action("demand.update")).CountX(ctx); n != 2 {
+		t.Errorf("demand.update 审计日志数 = %d, want 2", n)
 	}
 }
 
