@@ -69,6 +69,9 @@ let routeInitFailed = false
 // 路由初始化进行中标记，防止并发请求
 let routeInitInProgress = false
 
+// 会话恢复一次性标记，应用生命周期内只在首次触发守卫时尝试恢复
+let restored = false
+
 /**
  * 获取 pendingLoading 状态
  */
@@ -149,6 +152,14 @@ async function handleRouteGuard(
   // 启动进度条
   if (settingStore.showNprogress) {
     NProgress.start()
+  }
+
+  // 页面刷新后的一次性会话恢复，令牌无效则由 restoreSession 内部登出
+  if (!restored) {
+    restored = true
+    if (userStore.accessToken && !userStore.isLogin) {
+      await userStore.restoreSession()
+    }
   }
 
   // 1. 检查登录状态
@@ -370,8 +381,7 @@ async function handleDynamicRoutes(
 async function fetchUserInfo(): Promise<void> {
   const userStore = useUserStore()
   const data = await fetchMe()
-  // 后端仅返回单一 role，框架菜单过滤按 roles 数组比对，故包装为单元素数组
-  userStore.setUserInfo({ ...data, roles: [data.role] })
+  userStore.setUserInfo(userStore.toUserInfo(data))
   // 检查并清理工作台标签页（如果是不同用户登录）
   userStore.checkAndClearWorktabs()
 }

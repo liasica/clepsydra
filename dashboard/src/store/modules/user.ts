@@ -203,6 +203,42 @@ export const useUserStore = defineStore(
       localStorage.removeItem(StorageConfig.LAST_USER_ID_KEY)
     }
 
+    /**
+     * 后端精简用户转前端会话用户，roles 数组供菜单过滤
+     */
+    const toUserInfo = (user: Api.Auth.SimpleUser): Api.Auth.UserInfo => ({
+      ...user,
+      roles: [user.role]
+    })
+
+    /**
+     * 登录：存令牌与用户信息并标记登录态
+     */
+    const loginByPassword = async (params: Api.Auth.LoginParams) => {
+      const { fetchLogin } = await import('@/api/auth')
+      const data = await fetchLogin(params)
+      setToken(data.token)
+      setUserInfo(toUserInfo(data.user))
+      setLoginStatus(true)
+    }
+
+    /**
+     * 会话恢复：持有令牌时向后端校验并刷新用户信息，失败即登出
+     */
+    const restoreSession = async () => {
+      if (!accessToken.value) return false
+      try {
+        const { fetchMe } = await import('@/api/auth')
+        const user = await fetchMe()
+        setUserInfo(toUserInfo(user))
+        setLoginStatus(true)
+        return true
+      } catch {
+        logOut()
+        return false
+      }
+    }
+
     return {
       language,
       isLogin,
@@ -223,7 +259,10 @@ export const useUserStore = defineStore(
       setLockPassword,
       setToken,
       logOut,
-      checkAndClearWorktabs
+      checkAndClearWorktabs,
+      toUserInfo,
+      loginByPassword,
+      restoreSession
     }
   },
   {
