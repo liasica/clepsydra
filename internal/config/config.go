@@ -1,6 +1,7 @@
 package config
 
 import (
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -52,10 +53,12 @@ type Holiday struct {
 }
 
 // Load 从指定路径加载 YAML 配置，环境变量以 CLEPSYDRA_ 前缀覆盖
+// 嵌套字段的分隔点替换为下划线，如 CLEPSYDRA_SERVER_ADDRESS 覆盖 server.address
 func Load(path string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
 	v.SetEnvPrefix("CLEPSYDRA")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
 	if err := v.ReadInConfig(); err != nil {
