@@ -157,12 +157,11 @@
       const redirect = route.query.redirect as string
       router.push(redirect || '/')
     } catch (error) {
-      // 处理 HttpError
+      // 处理 HttpError：展示后端返回的业务错误提示，如用户名或密码错误
       if (error instanceof HttpError) {
-        // console.log(error.code)
+        ElMessage.error(error.message)
       } else {
         // 处理非 HttpError
-        // ElMessage.error('登录失败，请稍后重试')
         console.error('[Login] Unexpected error:', error)
       }
     } finally {

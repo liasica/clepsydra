@@ -268,7 +268,9 @@ export const useUserStore = defineStore(
   {
     persist: {
       key: 'user',
-      storage: localStorage
+      storage: localStorage,
+      // isLogin 不落盘，避免刷新后从 localStorage 恢复为 true 导致会话恢复守卫分支被跳过
+      omit: ['isLogin']
     }
   }
 )

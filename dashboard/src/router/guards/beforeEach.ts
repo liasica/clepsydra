@@ -154,11 +154,13 @@ async function handleRouteGuard(
     NProgress.start()
   }
 
-  // 页面刷新后的一次性会话恢复，令牌无效则由 restoreSession 内部登出
+  // 页面刷新后的一次性会话恢复，令牌无效则由 restoreSession 内部登出，
+  // 恢复成功时用户信息已是最新，下方 handleDynamicRoutes 的 fetchUserInfo 无需重复请求
+  let sessionRestored = false
   if (!restored) {
     restored = true
     if (userStore.accessToken && !userStore.isLogin) {
-      await userStore.restoreSession()
+      sessionRestored = await userStore.restoreSession()
     }
   }
 
@@ -187,7 +189,7 @@ async function handleRouteGuard(
       next(false)
       return
     }
-    await handleDynamicRoutes(to, next, router)
+    await handleDynamicRoutes(to, next, router, sessionRestored)
     return
   }
 
@@ -267,7 +269,8 @@ function isStaticRoute(path: string): boolean {
 async function handleDynamicRoutes(
   to: RouteLocationNormalized,
   next: NavigationGuardNext,
-  router: Router
+  router: Router,
+  skipUserInfoFetch = false
 ): Promise<void> {
   // 标记初始化进行中
   routeInitInProgress = true
@@ -277,8 +280,8 @@ async function handleDynamicRoutes(
   loadingService.showLoading()
 
   try {
-    // 1. 获取用户信息
-    await fetchUserInfo()
+    // 1. 获取用户信息，会话恢复流程已获取过时跳过，避免重复请求 /api/auth/me
+    await fetchUserInfo(skipUserInfoFetch)
 
     // 2. 获取菜单数据
     const menuList = await menuProcessor.getMenuList()
@@ -377,11 +380,14 @@ async function handleDynamicRoutes(
 
 /**
  * 获取用户信息
+ * @param skipFetch 会话恢复流程已获取过最新用户信息时跳过重复请求，仅补做工作台标签页检查
  */
-async function fetchUserInfo(): Promise<void> {
+async function fetchUserInfo(skipFetch = false): Promise<void> {
   const userStore = useUserStore()
-  const data = await fetchMe()
-  userStore.setUserInfo(userStore.toUserInfo(data))
+  if (!skipFetch) {
+    const data = await fetchMe()
+    userStore.setUserInfo(userStore.toUserInfo(data))
+  }
   // 检查并清理工作台标签页（如果是不同用户登录）
   userStore.checkAndClearWorktabs()
 }

@@ -27,6 +27,9 @@ const LOGOUT_DELAY = 500
 const MAX_RETRIES = 0
 const RETRY_DELAY = 1000
 const UNAUTHORIZED_DEBOUNCE_TIME = 3000
+// 登录接口路径，登录失败的错误提示交由登录页自行处理，不走通用未授权兜底与展示，
+// 避免后端未来把登录失败语义调整为 401 时消息被吞、误触发登出、误占用 401 防抖窗口
+const LOGIN_URL = '/api/auth/login'
 
 /** 401防抖状态 */
 let isUnauthorizedErrorShown = false
@@ -89,10 +92,17 @@ axiosInstance.interceptors.response.use(
     throw createHttpError(message || $t('httpMsg.requestFailed'), code)
   },
   (error) => {
-    if (error.response?.status === ApiStatus.unauthorized) handleUnauthorizedError()
+    if (error.response?.status === ApiStatus.unauthorized && !isLoginRequest(error.config?.url)) {
+      handleUnauthorizedError()
+    }
     return Promise.reject(handleError(error))
   }
 )
+
+/** 判断请求是否为登录接口 */
+function isLoginRequest(url?: string): boolean {
+  return !!url?.includes(LOGIN_URL)
+}
 
 /** 统一创建HttpError */
 function createHttpError(message: string, code: number) {
@@ -184,7 +194,12 @@ async function request<T = any>(config: ExtendedAxiosRequestConfig): Promise<T> 
 
     return res.data.data as T
   } catch (error) {
-    if (error instanceof HttpError && error.code !== ApiStatus.unauthorized) {
+    // 登录接口的错误提示交由登录页自行展示，此处不重复弹出
+    if (
+      error instanceof HttpError &&
+      error.code !== ApiStatus.unauthorized &&
+      !isLoginRequest(config.url)
+    ) {
       const showMsg = config.showErrorMessage !== false
       showError(error, showMsg)
     }
