@@ -15,8 +15,18 @@
     </div>
 
     <RouterView v-if="isRefresh" v-slot="{ Component, route }" :style="contentStyle">
-      <!-- 缓存路由动画 -->
-      <Transition :name="showTransitionMask ? '' : actualTransition" mode="out-in" appear>
+      <!--
+        缓存路由动画
+        Transition 自身也带上 :key="route.path"：一级菜单场景下多个顶层路由共享同一个
+        由框架自动生成的 Layout 壳（isFirstLevel），仅给内部 component 加 key 不足以让
+        Vue 正确识别新旧节点，会导致 Transition 内部沿用旧组件，出现路由与内容不一致的问题
+      -->
+      <Transition
+        :key="route.path"
+        :name="showTransitionMask ? '' : actualTransition"
+        mode="out-in"
+        appear
+      >
         <KeepAlive :max="10" :exclude="keepAliveExclude">
           <component
             class="art-page-view"
@@ -27,8 +37,13 @@
         </KeepAlive>
       </Transition>
 
-      <!-- 非缓存路由动画 -->
-      <Transition :name="showTransitionMask ? '' : actualTransition" mode="out-in" appear>
+      <!-- 非缓存路由动画，原因同上 -->
+      <Transition
+        :key="route.path"
+        :name="showTransitionMask ? '' : actualTransition"
+        mode="out-in"
+        appear
+      >
         <component
           class="art-page-view"
           :is="Component"

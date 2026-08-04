@@ -1,27 +1,19 @@
 import { AppRouteRecord } from '@/types/router'
 
-export const demandsRoutes: AppRouteRecord = {
-  name: 'Demands',
-  path: '/demands',
-  component: '/index/index',
-  redirect: '/demands/list',
-  meta: {
-    title: '需求管理',
-    icon: 'ri:task-line',
-    roles: ['admin', 'client']
+// 一级菜单 + 独立详情路由：两项均无 children，各自触发框架的一级路由自动 Layout
+// 包裹机制；详情路由 isHide 后不会出现在菜单，但 path 前缀匹配仍保证权限与
+// 访问路径 /demands/:id 可达
+export const demandsRoutes: AppRouteRecord[] = [
+  {
+    name: 'DemandList',
+    path: '/demands',
+    component: '/demands/index',
+    meta: { title: '需求管理', icon: 'ri:task-line', roles: ['admin', 'client'] }
   },
-  children: [
-    {
-      path: 'list',
-      name: 'DemandList',
-      component: '/demands/index',
-      meta: { title: '需求管理', icon: 'ri:task-line' }
-    },
-    {
-      path: ':id',
-      name: 'DemandDetail',
-      component: '/demands/detail',
-      meta: { title: '需求详情', isHide: true }
-    }
-  ]
-}
+  {
+    name: 'DemandDetail',
+    path: '/demands/:id',
+    component: '/demands/detail',
+    meta: { title: '需求详情', isHide: true, roles: ['admin', 'client'] }
+  }
+]
