@@ -180,7 +180,7 @@ func TestDemandFinishDeadlineCalculation(t *testing.T) {
 		t.Fatal("accept_deadline 未写入")
 	}
 
-	// 默认 demand_confirm_window=5、window_unit=natural：deadline 应落在 [before+5天, after+5天] 区间
+	// 默认 demand_confirm_window=5、window_unit=natural：deadline 应落在「before+5 天」与「after+5 天」之间
 	wantMin := before.AddDate(0, 0, 5).Truncate(time.Second)
 	wantMax := after.AddDate(0, 0, 5).Add(time.Second)
 	if d.AcceptDeadline.Before(wantMin) || d.AcceptDeadline.After(wantMax) {
