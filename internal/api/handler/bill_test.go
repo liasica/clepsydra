@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -81,15 +82,35 @@ func TestBillLifecycleHandlers(t *testing.T) {
 		t.Errorf("List 响应异常: %d, %s", rec.Code, rec.Body.String())
 	}
 
-	// Get：应含 items 明细
+	// List：契约上明细仅详情接口返回，列表项不应残留 items/edges 字段
+	var listResp struct {
+		Data []map[string]any `json:"data"`
+	}
+	if err = json.Unmarshal(rec.Body.Bytes(), &listResp); err != nil {
+		t.Fatalf("List 响应解析失败: %v", err)
+	}
+	if len(listResp.Data) != 1 {
+		t.Fatalf("List 应返回 1 条账单, got %d", len(listResp.Data))
+	}
+	if _, ok := listResp.Data[0]["items"]; ok {
+		t.Errorf("List 响应不应包含 items 字段, got %s", rec.Body.String())
+	}
+	if _, ok := listResp.Data[0]["edges"]; ok {
+		t.Errorf("List 响应不应包含 edges 字段, got %s", rec.Body.String())
+	}
+
+	// Get：应在顶层含 items 明细，不应再嵌套于 ent 的 edges 结构下
 	c, rec = newDemandTestContext(e, http.MethodGet, "/api/bills/"+billIDStr, "")
 	c.SetParamNames("id")
 	c.SetParamValues(billIDStr)
 	if err = h.Get(c); err != nil {
 		t.Fatalf("Get 失败: %v", err)
 	}
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"items"`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"items":[`) {
 		t.Errorf("Get 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), `"edges"`) {
+		t.Errorf("Get 响应不应包含 edges 嵌套结构, got %s", rec.Body.String())
 	}
 
 	// Get：非法 ID 返回 400
@@ -127,6 +148,17 @@ func TestBillLifecycleHandlers(t *testing.T) {
 	}
 	if rec.Code != http.StatusOK {
 		t.Errorf("ToggleWaive 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// Get：减免后明细金额归零，零值字段不应被 ent 的 omitempty 省略
+	c, rec = newDemandTestContext(e, http.MethodGet, "/api/bills/"+billIDStr, "")
+	c.SetParamNames("id")
+	c.SetParamValues(billIDStr)
+	if err = h.Get(c); err != nil {
+		t.Fatalf("Get 失败: %v", err)
+	}
+	if !strings.Contains(rec.Body.String(), `"amount":0`) {
+		t.Errorf("减免后应保留零值 amount 字段, got %s", rec.Body.String())
 	}
 
 	// Share：草稿 → 待确认

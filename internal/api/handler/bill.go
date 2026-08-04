@@ -41,7 +41,12 @@ func (h *Bill) List(c echo.Context) error {
 		return api.Fail(c, err)
 	}
 
-	return api.OK(c, bills)
+	dtos := make([]billDTO, 0, len(bills))
+	for _, b := range bills {
+		dtos = append(dtos, newBillDTO(b))
+	}
+
+	return api.OK(c, dtos)
 }
 
 // Get GET /api/bills/:id
@@ -56,7 +61,7 @@ func (h *Bill) Get(c echo.Context) error {
 		return api.Fail(c, err)
 	}
 
-	return api.OK(c, b)
+	return api.OK(c, newBillDetailDTO(b))
 }
 
 // Generate POST /api/bills/generate
