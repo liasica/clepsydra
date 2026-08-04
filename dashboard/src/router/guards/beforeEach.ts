@@ -305,8 +305,10 @@ async function handleDynamicRoutes(
     // 7. 验证工作标签页
     useWorktabStore().validateWorktabs(router)
 
-    // 8. 静态路由不依赖菜单权限，初始化后直接恢复目标地址。
-    if (isStaticRoute(to.path)) {
+    // 8. 静态路由、未匹配到任何业务路由（404 兜底）不依赖菜单权限，初始化后直接恢复目标地址。
+    // history 模式下手输不存在的路径会触发整页冷启动，若不在此提前放行，
+    // 会被下方的菜单权限校验误判为无权限并重定向到首页，无法展示 404 页
+    if (isStaticRoute(to.path) || to.name === 'Exception404') {
       routeInitInProgress = false
       next({
         path: to.path,
