@@ -195,7 +195,7 @@ func TestBillRevokeHandler(t *testing.T) {
 	}
 
 	// Share 后 Revoke 应成功
-	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/share", "")
+	c, _ = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/share", "")
 	c.SetParamNames("id")
 	c.SetParamValues(billIDStr)
 	if err = h.Share(c); err != nil {
