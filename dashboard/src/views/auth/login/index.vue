@@ -150,8 +150,8 @@
       // 登录请求
       const { username, password } = formData
 
-      const { token, refreshToken } = await fetchLogin({
-        userName: username,
+      const { token } = await fetchLogin({
+        username,
         password
       })
 
@@ -161,7 +161,7 @@
       }
 
       // 存储 token 和登录状态
-      userStore.setToken(token, refreshToken)
+      userStore.setToken(token)
       userStore.setLoginStatus(true)
 
       // 登录成功处理

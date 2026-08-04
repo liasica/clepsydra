@@ -1,29 +1,16 @@
 import request from '@/utils/http'
 
-/**
- * 登录
- * @param params 登录参数
- * @returns 登录响应
- */
+/** 登录 */
 export function fetchLogin(params: Api.Auth.LoginParams) {
-  return request.post<Api.Auth.LoginResponse>({
+  return request.post<Api.Auth.LoginData>({
     url: '/api/auth/login',
     params
-    // showSuccessMessage: true // 显示成功消息
-    // showErrorMessage: false // 不显示错误消息
   })
 }
 
-/**
- * 获取用户信息
- * @returns 用户信息
- */
-export function fetchGetUserInfo() {
-  return request.get<Api.Auth.UserInfo>({
-    url: '/api/user/info'
-    // 自定义请求头
-    // headers: {
-    //   'X-Custom-Header': 'your-custom-value'
-    // }
+/** 查询当前登录用户，供页面刷新后的会话恢复 */
+export function fetchMe() {
+  return request.get<Api.Auth.SimpleUser>({
+    url: '/api/auth/me'
   })
 }
