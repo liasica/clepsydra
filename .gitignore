@@ -10,3 +10,8 @@ config.local.yaml
 configs/
 .claude/scheduled_tasks.lock
 .superpowers/sdd/review-*.diff
+
+dashboard/node_modules/
+dashboard/dist/
+internal/api/static/dist/*
+!internal/api/static/dist/.gitkeep

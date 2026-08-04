@@ -5,6 +5,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 
 	"clepsydra/internal/api/docs"
+	"clepsydra/internal/api/static"
 	"clepsydra/internal/service"
 )
 
@@ -122,4 +123,7 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	adminGroup.POST("/bills/:id/share", h.Bill.Share)
 	adminGroup.POST("/bills/:id/revoke", h.Bill.Revoke)
 	adminGroup.GET("/audit-logs", h.AuditLog.List)
+
+	// 前端静态资源与 SPA 回退，挂在最后避免遮蔽具体路由
+	static.Register(e)
 }
