@@ -1,7 +1,6 @@
 package logger
 
 import (
-	"os"
 	"path/filepath"
 	"time"
 
@@ -23,14 +22,13 @@ func New(cfg config.Log, debug bool) (zerolog.Logger, *lumberjack.Logger) {
 		return zerolog.New(writer).With().Timestamp().Caller().Logger(), nil
 	}
 
+	// lumberjack 首次写入时会自动创建日志目录
 	rotator := &lumberjack.Logger{
 		Filename: filepath.Join(cfg.Dir, "clepsydra.log"),
 		MaxSize:  cfg.MaxSize,
 		MaxAge:   cfg.MaxAge,
 		Compress: true,
 	}
-
-	_ = os.MkdirAll(cfg.Dir, 0o755)
 
 	return zerolog.New(rotator).With().Timestamp().Logger(), rotator
 }
