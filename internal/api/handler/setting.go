@@ -10,15 +10,15 @@ import (
 
 // Setting 设置相关接口
 type Setting struct {
-	settingSvc  *service.Setting
-	holidaySvc  *service.HolidaySvc
+	settingSvc *service.Setting
+	holidaySvc *service.HolidaySvc
 }
 
 // NewSetting 构建设置 handler
 func NewSetting(settingSvc *service.Setting, holidaySvc *service.HolidaySvc) *Setting {
 	return &Setting{
-		settingSvc:  settingSvc,
-		holidaySvc:  holidaySvc,
+		settingSvc: settingSvc,
+		holidaySvc: holidaySvc,
 	}
 }
 
