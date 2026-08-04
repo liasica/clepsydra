@@ -35,6 +35,11 @@ func main() {
 	log, rotator := logger.New(cfg.Log, cfg.Server.Mode == "debug")
 	zlog.Logger = log // 同步全局 logger，audit 等包的 zerolog/log 输出与主日志一致
 
+	// JWT secret 是签发与校验登录令牌的唯一密钥，为空将导致任意伪造 token 通过校验
+	if cfg.JWT.Secret == "" {
+		log.Fatal().Msg("jwt.secret 不能为空")
+	}
+
 	// 连接数据库并迁移
 	client, err := ent.Open("postgres", cfg.Database.DSN)
 	if err != nil {
@@ -47,10 +52,14 @@ func main() {
 		log.Fatal().Err(err).Msg("数据库迁移失败")
 	}
 
-	// 加载 holiday-cn 格式的节假日数据并种子，文件缺失或格式错误时跳过导入
+	// 加载 holiday-cn 格式的节假日数据并种子，读取或解析失败时跳过导入并告警
 	var entries []workday.Entry
-	if data, err := os.ReadFile(cfg.Holiday.File); err == nil {
-		entries, _ = workday.ParseHolidayCN(data)
+	var data []byte
+	data, err = os.ReadFile(cfg.Holiday.File)
+	if err != nil {
+		log.Warn().Err(err).Str("file", cfg.Holiday.File).Msg("节假日数据文件读取失败，跳过导入")
+	} else if entries, err = workday.ParseHolidayCN(data); err != nil {
+		log.Warn().Err(err).Str("file", cfg.Holiday.File).Msg("节假日数据文件解析失败，跳过导入")
 	}
 	if err = service.Seed(ctx, client, cfg.Admin, entries); err != nil {
 		log.Fatal().Err(err).Msg("初始化基础数据失败")

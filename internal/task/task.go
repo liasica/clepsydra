@@ -114,6 +114,7 @@ func (r *Runner) ScanExpired(ctx context.Context, now time.Time) error {
 }
 
 // EnsurePrevBill 确保上月账单已生成，不存在则生成（内含出账前锁定）
+// 连续跨多月宕机时仅补最近一个账期，更早月份需手动生成
 func (r *Runner) EnsurePrevBill(ctx context.Context, now time.Time) error {
 	period := service.PrevPeriod(now)
 

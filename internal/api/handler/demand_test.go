@@ -178,8 +178,8 @@ func TestDemandLifecycleHandlers(t *testing.T) {
 		t.Errorf("开工日期为空应返回 400, got %d", rec.Code)
 	}
 
-	// Start：confirmed → in_progress
-	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/"+idStr+"/start", `{"actual_start_date":"2026-08-05"}`)
+	// Start：confirmed → in_progress，实际开工日期须落在当前时间之前，避免被 Finish 的未来日期校验波及
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/"+idStr+"/start", `{"actual_start_date":"2026-07-20"}`)
 	c.SetParamNames("id")
 	c.SetParamValues(idStr)
 	if err = h.Start(c); err != nil {
@@ -189,9 +189,9 @@ func TestDemandLifecycleHandlers(t *testing.T) {
 		t.Errorf("Start 响应异常: %d, %s", rec.Code, rec.Body.String())
 	}
 
-	// Finish：in_progress → pending_acceptance
+	// Finish：in_progress → pending_acceptance，完成日期不能晚于当前时间
 	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/"+idStr+"/finish",
-		`{"actual_start_date":"2026-08-05","actual_end_date":"2026-08-12","actual_half_days":9}`)
+		`{"actual_start_date":"2026-07-20","actual_end_date":"2026-07-25","actual_half_days":9}`)
 	c.SetParamNames("id")
 	c.SetParamValues(idStr)
 	if err = h.Finish(c); err != nil {

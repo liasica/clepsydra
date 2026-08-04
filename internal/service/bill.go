@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -199,7 +200,18 @@ func (s *Bill) createItem(ctx context.Context, b *ent.Bill, d *ent.Demand, halfD
 	return err
 }
 
+// rollback 事务失败时回滚，若回滚本身失败则将其原因附加到原始错误，避免掩盖根因
+func rollback(tx *ent.Tx, err error) error {
+	if rerr := tx.Rollback(); rerr != nil {
+		return fmt.Errorf("%w（回滚失败：%v）", err, rerr)
+	}
+
+	return err
+}
+
 // ToggleWaive 翻转明细减免状态并重算账单总额，仅草稿账单允许
+// 明细更新与总额更新包在同一事务内：账单状态在此期间被并发流转（如分享）时，总额的条件更新会影响 0 行，
+// 触发整体回滚，避免明细已改但总额未同步的半套数据
 func (s *Bill) ToggleWaive(ctx context.Context, actor Actor, billID, itemID int) error {
 	b, err := s.Get(ctx, billID)
 	if err != nil {
@@ -209,7 +221,8 @@ func (s *Bill) ToggleWaive(ctx context.Context, actor Actor, billID, itemID int)
 		return ErrBadRequest("仅草稿账单可调整减免")
 	}
 
-	item, err := s.client.BillItem.Query().Where(billitem.ID(itemID), billitem.HasBillWith(bill.ID(billID))).Only(ctx)
+	var item *ent.BillItem
+	item, err = s.client.BillItem.Query().Where(billitem.ID(itemID), billitem.HasBillWith(bill.ID(billID))).Only(ctx)
 	if ent.IsNotFound(err) {
 		return ErrNotFound
 	}
@@ -226,14 +239,22 @@ func (s *Bill) ToggleWaive(ctx context.Context, actor Actor, billID, itemID int)
 	if !waived {
 		amount = item.HalfDays * b.DailyRate / 2
 	}
-	if _, err = item.Update().SetWaived(waived).SetAmount(amount).Save(ctx); err != nil {
+
+	var tx *ent.Tx
+	tx, err = s.client.Tx(ctx)
+	if err != nil {
 		return err
 	}
 
+	if _, err = tx.BillItem.UpdateOneID(item.ID).SetWaived(waived).SetAmount(amount).Save(ctx); err != nil {
+		return rollback(tx, err)
+	}
+
 	// 重算账单合计
-	items, err := s.client.BillItem.Query().Where(billitem.HasBillWith(bill.ID(billID))).All(ctx)
+	var items []*ent.BillItem
+	items, err = tx.BillItem.Query().Where(billitem.HasBillWith(bill.ID(billID))).All(ctx)
 	if err != nil {
-		return err
+		return rollback(tx, err)
 	}
 	total := b.BaseFee
 	for _, it := range items {
@@ -243,7 +264,21 @@ func (s *Bill) ToggleWaive(ctx context.Context, actor Actor, billID, itemID int)
 		}
 		total += it.Amount
 	}
-	if _, err = b.Update().SetTotalAmount(total).Save(ctx); err != nil {
+
+	// 条件更新：账单状态已不是 draft 说明期间被并发流转，回滚整个事务
+	var n int
+	n, err = tx.Bill.Update().
+		Where(bill.ID(billID), bill.StatusEQ(bill.StatusDraft)).
+		SetTotalAmount(total).
+		Save(ctx)
+	if err != nil {
+		return rollback(tx, err)
+	}
+	if n == 0 {
+		return rollback(tx, ErrInvalidTransition)
+	}
+
+	if err = tx.Commit(); err != nil {
 		return err
 	}
 

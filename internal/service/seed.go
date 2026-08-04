@@ -51,7 +51,7 @@ func Seed(ctx context.Context, client *ent.Client, adminCfg config.Admin, entrie
 			SetUsername(adminCfg.Username).
 			SetPasswordHash(string(hash)).
 			SetName("超级管理员").
-			SetRole("admin").
+			SetRole(user.RoleAdmin).
 			Save(ctx); err != nil {
 			return err
 		}

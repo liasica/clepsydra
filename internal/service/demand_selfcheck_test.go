@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"clepsydra/internal/ent/auditlog"
+	"clepsydra/internal/ent/bill"
 	"clepsydra/internal/ent/demand"
 )
 
@@ -275,5 +276,83 @@ func TestDemandListFilterByStatus(t *testing.T) {
 	}
 	if len(all) != 2 {
 		t.Errorf("全部需求数 = %d, want 2", len(all))
+	}
+}
+
+// 以下为最终审查修复补充测试：覆盖 Finish 的未来日期拦截与账期封闭校验
+
+// TestDemandFinishRejectsFutureDate 完成日期晚于当前时间应拒绝
+func TestDemandFinishRejectsFutureDate(t *testing.T) {
+	_, svc := newDemandEnv(t, "dfinishfuture")
+	ctx := context.Background()
+
+	d, _ := svc.Create(ctx, admin, "需求", "", 2, nil)
+	_ = svc.SubmitEstimate(ctx, admin, d.ID)
+	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
+	_ = svc.Start(ctx, admin, d.ID, time.Now())
+
+	future := time.Now().AddDate(0, 1, 0)
+	if err := svc.Finish(ctx, admin, d.ID, time.Now(), future, 2); err == nil {
+		t.Error("完成日期晚于当前时间应拒绝")
+	}
+}
+
+// TestDemandFinishRejectsClosedPeriod 完成日期所在账期已出账（非草稿）时补录应拒绝，防止需求躲过计费行抓取导致漏计费
+func TestDemandFinishRejectsClosedPeriod(t *testing.T) {
+	client, svc := newDemandEnv(t, "dfinishclosed")
+	ctx := context.Background()
+
+	d, _ := svc.Create(ctx, admin, "需求", "", 2, nil)
+	_ = svc.SubmitEstimate(ctx, admin, d.ID)
+	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
+	start := time.Date(2026, 7, 5, 0, 0, 0, 0, time.Local)
+	_ = svc.Start(ctx, admin, d.ID, start)
+
+	// 7 月账单已分享（pending，非草稿），账期视为已封闭
+	_, err := client.Bill.Create().
+		SetPeriod("2026-07").
+		SetStatus(bill.StatusPending).
+		SetDailyRate(1200).
+		SetBaseFee(12000).
+		SetTotalHalfDays(0).
+		SetTotalAmount(12000).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("构造 7 月账单失败: %v", err)
+	}
+
+	end := time.Date(2026, 7, 20, 0, 0, 0, 0, time.Local)
+	if err = svc.Finish(ctx, admin, d.ID, start, end, 2); err == nil {
+		t.Error("完成日期所在账期已出账，补录应拒绝")
+	}
+}
+
+// TestDemandFinishAllowsDraftPeriod 完成日期所在账期账单仍为草稿时，补录同月完成日期应允许
+func TestDemandFinishAllowsDraftPeriod(t *testing.T) {
+	client, svc := newDemandEnv(t, "dfinishdraft")
+	ctx := context.Background()
+
+	d, _ := svc.Create(ctx, admin, "需求", "", 2, nil)
+	_ = svc.SubmitEstimate(ctx, admin, d.ID)
+	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
+	start := time.Date(2026, 7, 5, 0, 0, 0, 0, time.Local)
+	_ = svc.Start(ctx, admin, d.ID, start)
+
+	// 7 月账单仍为草稿，不应阻止同月完成日期补录
+	_, err := client.Bill.Create().
+		SetPeriod("2026-07").
+		SetStatus(bill.StatusDraft).
+		SetDailyRate(1200).
+		SetBaseFee(12000).
+		SetTotalHalfDays(0).
+		SetTotalAmount(12000).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("构造 7 月草稿账单失败: %v", err)
+	}
+
+	end := time.Date(2026, 7, 20, 0, 0, 0, 0, time.Local)
+	if err = svc.Finish(ctx, admin, d.ID, start, end, 2); err != nil {
+		t.Errorf("草稿账期补录完成日期应允许: %v", err)
 	}
 }
