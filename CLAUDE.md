@@ -6,7 +6,11 @@
 ## 框架基本信息
 
 - 后端：Golang（结构参考 ~/projects/nexis/nexa/）+ Postgres
-- 前端：Vue3（参考使用[vue-starter](https://github.com/liasica/vue-starter)初始化）+ Vben Admin 5
+- 前端：Vue3，基于 [Art Design Pro](https://github.com/Daymychen/art-design-pro) v3.0.2（Element Plus + Vite + Pinia），位于 `dashboard/`
+
+## 协作约定
+
+- 子代理驱动开发（subagent-driven-development）执行计划时，**不做逐任务代码审查**；所有子代理任务完成后统一进行全分支审查
 
 ## 基本功能
 
