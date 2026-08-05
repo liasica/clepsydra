@@ -201,3 +201,16 @@ export function showSuccess(msg: string, showMessage: boolean = true): void {
 export const isHttpError = (error: unknown): error is HttpError => {
   return error instanceof HttpError;
 };
+
+/**
+ * 状态机冲突业务码，对应后端 service.ErrInvalidTransition
+ * 需求与账单的状态流转都是单向的，本地缓存的状态过期时后端返回该码
+ */
+export const STATUS_CONFLICT_CODE = 42_200;
+
+/**
+ * 判断错误是否为状态冲突
+ * 命中时页面应重新拉取详情，让界面回到后端的真实状态而不是停在过期的按钮上
+ */
+export const isStatusConflict = (error: unknown): boolean =>
+  isHttpError(error) && error.code === STATUS_CONFLICT_CODE;
