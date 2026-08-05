@@ -12,9 +12,7 @@ configs/*
 .claude/scheduled_tasks.lock
 .superpowers/sdd/review-*.diff
 
-dashboard/node_modules/
-dashboard/dist/
-dashboard-next/**/node_modules/
-dashboard-next/**/dist/
+dashboard/**/node_modules/
+dashboard/**/dist/
 assets/dashboard/*
 !assets/dashboard/.gitkeep

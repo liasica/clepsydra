@@ -10,8 +10,8 @@
 
 # 本地构建产物，镜像内多阶段构建重新生成
 bin/
-dashboard/node_modules/
-dashboard/dist/
+dashboard/**/node_modules/
+dashboard/**/dist/
 assets/dashboard/*
 !assets/dashboard/.gitkeep
 

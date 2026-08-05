@@ -16,7 +16,7 @@ generate:
 	go generate ./internal/ent/...
 
 dashboard:
-	cd dashboard && pnpm install --frozen-lockfile && pnpm build
+	cd dashboard && pnpm install --frozen-lockfile && pnpm build --filter=@vben/web-antdv-next
 	rm -rf assets/dashboard
 	mkdir -p assets/dashboard
 	cp -R dashboard/dist/. assets/dashboard/
