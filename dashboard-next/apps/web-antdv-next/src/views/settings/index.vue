@@ -2,11 +2,14 @@
 import type { FormInstance, FormProps, TableColumnsType } from 'antdv-next';
 import type { Dayjs } from 'dayjs';
 
+import type { Component } from 'vue';
+
 import type { DemandStatus } from '#/utils/clepsydra/dict';
 
 import { onMounted, reactive, ref, watch } from 'vue';
 
 import { confirm, Page, useVbenModal } from '@vben/common-ui';
+import { Check, CircleAlert, CircleCheckBig, LoaderCircle } from '@vben/icons';
 
 import {
   Button,
@@ -52,6 +55,42 @@ const statusList = Object.entries(DEMAND_STATUS).map(([key, meta]) => ({
   key: key as DemandStatus,
   meta,
 }));
+
+/**
+ * 标签按钮组的语义色样式表，key 对应 dict.ts 里 StatusMeta.type
+ *
+ * 不复用 tagColor()/antd Tag 的 solid 填充：
+ * - solid 模式下 info 会映射成深色实心块（黑块），观感突兀
+ * - 直接用 Tailwind 4 + vben 主题令牌自绘「浅色语义背景 + 语义色文字 + 语义色边框」，随亮暗色模式自动切换
+ * 「已确认待开工」与「进行中」在 dict.ts 里同为 primary（两个蓝色），这里不改颜色，
+ * 改用下方 STATUS_ICON 的图标区分，避免为了这一个组件动全站共用的 dict.ts
+ */
+type StatusTagType = (typeof DEMAND_STATUS)[DemandStatus]['type'];
+
+const ACTIVE_TAG_CLASS: Record<StatusTagType, string> = {
+  danger:
+    'border-destructive-border-light bg-destructive-background-lightest text-destructive-text hover:border-destructive-border hover:bg-destructive-background-lighter',
+  info: 'border-muted-foreground/30 bg-muted text-foreground hover:border-muted-foreground/50 hover:bg-muted/70',
+  primary:
+    'border-primary-border-light bg-primary-background-lightest text-primary-text hover:border-primary-border hover:bg-primary-background-lighter',
+  success:
+    'border-success-border-light bg-success-background-lightest text-success-text hover:border-success-border hover:bg-success-background-lighter',
+  warning:
+    'border-warning-border-light bg-warning-background-lightest text-warning-text hover:border-warning-border hover:bg-warning-background-lighter',
+};
+
+/** 未选态统一走中性灰描边，弱化但仍可辨识，hover 时向 foreground 靠近提示可点 */
+const INACTIVE_TAG_CLASS =
+  'border-border bg-transparent text-muted-foreground hover:border-foreground/30 hover:bg-muted/50 hover:text-foreground';
+
+/** 「已确认待开工」与「进行中」颜色相同，用图标进一步区分；草稿为中性态不加图标 */
+const STATUS_ICON: Partial<Record<DemandStatus, Component>> = {
+  accepted: CircleCheckBig,
+  confirmed: Check,
+  in_progress: LoaderCircle,
+  pending_acceptance: CircleAlert,
+  pending_estimate: CircleAlert,
+};
 
 const form = reactive({
   dailyRate: 1200,
@@ -246,24 +285,25 @@ onMounted(() => {
           </FormItem>
           <FormItem label="账单包含的需求状态" name="billIncludeStatuses">
             <div class="flex flex-wrap gap-2">
-              <Tag
+              <button
                 v-for="item in statusList"
                 :key="item.key"
-                :color="
+                :class="
                   form.billIncludeStatuses.includes(item.key)
-                    ? tagColor(item.meta.type)
-                    : undefined
+                    ? ACTIVE_TAG_CLASS[item.meta.type]
+                    : INACTIVE_TAG_CLASS
                 "
-                :variant="
-                  form.billIncludeStatuses.includes(item.key)
-                    ? 'solid'
-                    : 'outlined'
-                "
-                class="cursor-pointer select-none px-3 py-1 text-sm"
+                class="inline-flex select-none items-center gap-1.5 rounded-full border px-3.5 py-1 text-sm font-medium leading-5 transition-all duration-200 ease-out hover:-translate-y-[1px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background active:translate-y-0 active:scale-[0.97]"
+                type="button"
                 @click="toggleStatus(item.key)"
               >
+                <component
+                  :is="STATUS_ICON[item.key]"
+                  v-if="STATUS_ICON[item.key]"
+                  class="size-3.5 shrink-0"
+                />
                 {{ item.meta.label }}
-              </Tag>
+              </button>
             </div>
           </FormItem>
           <FormItem>
