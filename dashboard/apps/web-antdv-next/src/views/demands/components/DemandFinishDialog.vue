@@ -44,7 +44,19 @@ const rules: FormProps['rules'] = {
   actualStartDate: [
     { message: '请选择实际开工日期', required: true, trigger: 'change' },
   ],
-  manday: [{ message: '请输入实际人天', required: true, trigger: 'change' }],
+  manday: [
+    { message: '请输入实际人天', required: true, trigger: 'change' },
+    {
+      trigger: 'change',
+      // 人天以整数半天数存储（1 人天 = 2），非 0.5 整数倍会被 mandayToHalfDays
+      // 静默四舍五入，导致入账人天与用户输入不符——这里直接拒绝，而不是悄悄纠正
+      validator: async (_rule, value: number | undefined) => {
+        if (value !== undefined && !Number.isInteger(value * 2)) {
+          throw new Error('人天须为 0.5 的整数倍');
+        }
+      },
+    },
+  ],
 };
 
 const [Modal, modalApi] = useVbenModal({
@@ -129,9 +141,10 @@ async function submit() {
         <InputNumber
           v-model:value="form.manday"
           :min="0.5"
+          :precision="1"
           :step="0.5"
           class="w-full"
-          placeholder="按 8 小时折算一个人天"
+          placeholder="0.5 的整数倍，按 8 小时折算一个人天"
         />
       </FormItem>
     </Form>
