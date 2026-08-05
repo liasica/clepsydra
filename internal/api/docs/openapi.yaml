@@ -1341,7 +1341,7 @@ components:
         actual_end_date:
           type: string
           format: date
-          description: 实际完成日期，格式 YYYY-MM-DD，不能早于开工日期且不能晚于当前时间
+          description: 实际完成日期，格式 YYYY-MM-DD，不能早于开工日期；允许填写未来日期
         actual_half_days:
           type: integer
           description: 实际人天，单位半天数，必须为正
