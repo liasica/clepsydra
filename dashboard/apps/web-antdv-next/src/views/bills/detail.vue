@@ -4,7 +4,7 @@ import type { TableColumnsType } from 'antdv-next';
 import type { BillAction, DemandStatus } from '#/utils/clepsydra/dict';
 
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { confirm, Page } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
@@ -48,9 +48,14 @@ defineOptions({ name: 'BillDetail' });
 type ButtonAction = Exclude<BillAction, 'waive'>;
 
 const route = useRoute();
+const router = useRouter();
 const userStore = useUserStore();
 
-const billId = Number(route.params.id);
+/**
+ * 当前展示的账单 ID，响应式化以支持「重新生成」切换到新账单
+ * 后端对同账期 draft 是删除重建（新 ID），固定常量会导致重新生成后仍打旧 ID
+ */
+const billId = ref(Number(route.params.id));
 const bill = ref<Api.Bill.Detail>();
 const loading = ref(false);
 
@@ -121,7 +126,12 @@ const ACTION_META: Record<
     run: (target) =>
       runDirect(
         '重新生成',
-        () => generateBill(target.period),
+        async () => {
+          const next = await generateBill(target.period);
+          billId.value = next.id;
+          // 同账期草稿是删除重建，URL 须同步为新 ID，否则刷新页面会 404
+          await router.replace(`/bills/${next.id}`);
+        },
         '重新生成将丢弃当前草稿的减免调整，确定吗？',
       ),
   },
@@ -147,7 +157,11 @@ function demandStatusOf(status: string) {
 async function load() {
   loading.value = true;
   try {
-    bill.value = await fetchBill(billId);
+    bill.value = await fetchBill(billId.value);
+  } catch (error) {
+    // 加载失败（如账单已被删除重建）时清空快照，页面落到空态而不是渲染已过期的账单
+    bill.value = undefined;
+    throw error;
   } finally {
     loading.value = false;
   }
@@ -174,10 +188,12 @@ async function runDirect(
     showSuccess(`${name}成功`);
   } catch (error) {
     // 失败提示已由请求拦截器统一弹出，这里只负责状态冲突时刷新
-    if (isStatusConflict(error)) await load();
+    if (isStatusConflict(error)) await load().catch(() => {});
     return;
   }
-  await load();
+
+  // load() 失败的提示已由请求拦截器弹出，这里仅避免未捕获的 rejection
+  await load().catch(() => {});
 }
 
 /** 切换明细行减免并重算总额，属于高频操作，不做二次确认 */
