@@ -65,17 +65,38 @@ function externalLinkPlugin(md: MarkdownItType) {
   };
 }
 
-/** 围栏代码块把语言标到 pre 上，由 CSS 画出角标，观感贴近编辑器里带语言选择器的代码块 */
+/** 围栏代码块预计算好的高亮结果，key 见 fenceHighlightKey */
+type HighlightMap = Map<string, string>;
+
+/** 高亮结果按「语言 + 原文」做 key，避免同一语言不同代码块相互串味 */
+function fenceHighlightKey(lang: string, code: string): string {
+  return `${lang} ${code}`;
+}
+
+/**
+ * 围栏代码块把语言标到 pre 上，由 CSS 画出角标，观感贴近编辑器里带语言选择器的代码块。
+ *
+ * 若 env.highlightMap 里已经有该代码块的高亮结果（renderMarkdownWithHighlight 异步算好
+ * 的），直接用高亮后的 HTML；否则退化为纯转义文本，与「语言未收录」的表现一致
+ */
 function fenceLangPlugin(md: MarkdownItType) {
-  md.renderer.rules.fence = (tokens, idx) => {
+  md.renderer.rules.fence = (tokens, idx, _options, env: unknown) => {
     const token = tokens[idx];
-    const code = md.utils.escapeHtml(token?.content ?? '');
+    const rawCode = token?.content ?? '';
     const lang = (token?.info ?? '').trim().split(/\s+/)[0];
     const langAttr = lang ? ` data-lang="${md.utils.escapeHtml(lang)}"` : '';
     const codeClass = lang
       ? ` class="language-${md.utils.escapeHtml(lang)}"`
       : '';
-    return `<pre${langAttr}><code${codeClass}>${code}</code></pre>\n`;
+
+    const highlightMap = (env as undefined | { highlightMap?: HighlightMap })
+      ?.highlightMap;
+    const highlighted = lang
+      ? highlightMap?.get(fenceHighlightKey(lang, rawCode))
+      : undefined;
+    const body = highlighted ?? md.utils.escapeHtml(rawCode);
+
+    return `<pre${langAttr}><code${codeClass}>${body}</code></pre>\n`;
   };
 }
 
@@ -89,7 +110,7 @@ const markdown = new MarkdownIt({
   .use(externalLinkPlugin)
   .use(fenceLangPlugin);
 
-/** 把 markdown 原文渲染成可安全插入 DOM 的 HTML 字符串 */
+/** 把 markdown 原文渲染成可安全插入 DOM 的 HTML 字符串（无代码块语法高亮） */
 export function renderMarkdown(source: string): string {
   const trimmed = source.trim();
   if (!trimmed) {
@@ -98,4 +119,54 @@ export function renderMarkdown(source: string): string {
   return DOMPurify.sanitize(markdown.render(trimmed), {
     ADD_ATTR: ['target'],
   });
+}
+
+/**
+ * 带围栏代码块语法高亮的渲染管线。
+ *
+ * 内容里没有语言标注的代码块时，直接复用 renderMarkdown 的同步结果，不会触发任何额外
+ * 加载；否则按需动态 import code-highlight.ts —— highlight.js 核心与具体语言包只在
+ * 真正用得到时才下载，详情页里没有代码块的正文完全零增量
+ */
+export async function renderMarkdownWithHighlight(
+  source: string,
+): Promise<string> {
+  const trimmed = source.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const fenceTokens = markdown
+    .parse(trimmed, {})
+    .filter((token) => token.type === 'fence' && token.info.trim());
+  if (fenceTokens.length === 0) {
+    return renderMarkdown(source);
+  }
+
+  const { highlightFence } = await import('./code-highlight');
+
+  const highlightMap: HighlightMap = new Map();
+  await Promise.all(
+    fenceTokens.map(async (token) => {
+      const [lang] = token.info.trim().split(/\s+/);
+      if (!lang) {
+        return;
+      }
+      const key = fenceHighlightKey(lang, token.content);
+      if (highlightMap.has(key)) {
+        return;
+      }
+      const highlighted = await highlightFence(token.content, lang);
+      if (highlighted !== null) {
+        highlightMap.set(key, highlighted);
+      }
+    }),
+  );
+
+  return DOMPurify.sanitize(
+    markdown.render(trimmed, { highlightMap } satisfies {
+      highlightMap: HighlightMap;
+    }),
+    { ADD_ATTR: ['target'] },
+  );
 }

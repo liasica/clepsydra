@@ -292,6 +292,94 @@
   content: attr(data-lang);
 }
 
+/*
+ * 代码块语法高亮：highlight.js 输出的 .hljs-* class 映射到与编辑器 CodeMirror
+ * 共用的同一批 --md-code-* 变量（见 code-highlight.ts 的选型说明）。
+ * 子作用域（如 title.function_）按 highlight.js 文档生成两个 class，选择器需要
+ * 同时命中两个才够精确，避免笼统的 .hljs-title 把类名也判成函数名。
+ * 这些 class 名由 highlight.js 产出，不受本项目 kebab-case 命名规范约束
+ */
+/* stylelint-disable selector-class-pattern */
+.markdown-body .hljs-keyword,
+.markdown-body .hljs-variable.language_ {
+  color: var(--md-code-keyword);
+}
+
+.markdown-body .hljs-string,
+.markdown-body .hljs-regexp {
+  color: var(--md-code-string);
+}
+
+.markdown-body .hljs-comment,
+.markdown-body .hljs-doctag,
+.markdown-body .hljs-quote {
+  font-style: italic;
+  color: var(--md-code-comment);
+}
+
+.markdown-body .hljs-number,
+.markdown-body .hljs-literal,
+.markdown-body .hljs-variable.constant_ {
+  color: var(--md-code-number);
+}
+
+.markdown-body .hljs-title.function_,
+.markdown-body .hljs-built_in,
+.markdown-body .hljs-title,
+.markdown-body .hljs-section {
+  color: var(--md-code-function);
+}
+
+.markdown-body .hljs-title.class_,
+.markdown-body .hljs-type,
+.markdown-body .hljs-class {
+  color: var(--md-code-type);
+}
+
+.markdown-body .hljs-variable,
+.markdown-body .hljs-params,
+.markdown-body .hljs-symbol,
+.markdown-body .hljs-bullet {
+  color: var(--md-code-variable);
+}
+
+.markdown-body .hljs-operator,
+.markdown-body .hljs-punctuation {
+  color: var(--md-code-punctuation);
+}
+
+.markdown-body .hljs-tag,
+.markdown-body .hljs-name,
+.markdown-body .hljs-selector-tag,
+.markdown-body .hljs-selector-class,
+.markdown-body .hljs-selector-id,
+.markdown-body .hljs-selector-attr,
+.markdown-body .hljs-selector-pseudo {
+  color: var(--md-code-tag);
+}
+
+.markdown-body .hljs-attr,
+.markdown-body .hljs-attribute,
+.markdown-body .hljs-property,
+.markdown-body .hljs-meta {
+  color: var(--md-code-attribute);
+}
+
+.markdown-body .hljs-link {
+  color: var(--md-code-attribute);
+  text-decoration: underline;
+}
+
+.markdown-body .hljs-emphasis {
+  font-style: italic;
+}
+
+.markdown-body .hljs-strong {
+  font-weight: 600;
+}
+
+/* stylelint-enable selector-class-pattern */
+
 .markdown-body hr {
   height: 1px;
   background: var(--md-border);

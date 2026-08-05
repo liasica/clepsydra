@@ -6,6 +6,11 @@
  *    每种语言仍然是按需加载的独立 chunk；
  * 2. 高亮配色全部走 CSS 变量（markdown.css 里的 --md-code-*），因此亮暗切换由
  *    CSS 继承完成，不需要在暗色时重建编辑器
+ *
+ * 只读预览（MarkdownViewer）的语法高亮改走 highlight.js（见 code-highlight.ts），
+ * 不复用这里的 CodeMirror language 对象 —— @codemirror/language 是为交互式编辑器设计的
+ * 重量级依赖（内建 Facet/StateField 等状态管理），只做静态高亮的话体积（gzip 约 100KB+）
+ * 与 Viewer「轻量渲染器」的定位不成比例，详见 task-8-fix-report.md 的选型说明
  */
 
 import {
@@ -81,6 +86,12 @@ export const codeLanguages: LanguageDescription[] = [
     alias: ['css'],
     extensions: ['css'],
     load: () => import('@codemirror/lang-css').then((m) => m.css()),
+  }),
+  LanguageDescription.of({
+    name: 'Markdown',
+    alias: ['markdown', 'md'],
+    extensions: ['md'],
+    load: () => import('@codemirror/lang-markdown').then((m) => m.markdown()),
   }),
 ];
 
