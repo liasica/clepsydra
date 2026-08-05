@@ -61,6 +61,22 @@ let accessInitPromise: null | Promise<void> = null;
 let routeInitFailed = false;
 
 /**
+ * 重置动态路由初始化状态。
+ *
+ * `accessInitPromise` 与 `routeInitFailed` 是模块级变量，只在页面刷新时随模块
+ * 重新加载而重置；但登出不刷新页面（SPA 内跳转），若不在此处显式清空，同一次
+ * 页面生命周期内的「登出再登录」会复用上一个用户已 resolve 的旧 Promise ——
+ * `accessInitPromise ??=` 不会重新触发 `initAccess()`，导致新用户的
+ * `accessStore.isAccessChecked` 永远无法被重新置为 true，守卫反复重定向到同一
+ * 目标路由，最终被 vue-router 判定为死循环并中止导航（登录页表现为「登录失败」）。
+ * 由 authStore.logout()（含 401 自动登出）统一调用，保证两条路径都会重置
+ */
+function resetAccessInitState() {
+  accessInitPromise = null;
+  routeInitFailed = false;
+}
+
+/**
  * 获取用户信息（会话恢复）并按角色生成可访问的菜单 / 路由
  */
 async function initAccess(router: Router): Promise<void> {
@@ -205,4 +221,4 @@ function createRouterGuard(router: Router) {
   setupAccessGuard(router);
 }
 
-export { createRouterGuard };
+export { createRouterGuard, resetAccessInitState };

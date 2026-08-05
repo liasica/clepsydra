@@ -131,12 +131,18 @@ class PreferenceManager {
       this.customPreferencesExtension,
     );
 
-    // 加载缓存的偏好设置，并仅用缓存补齐初始化配置中未显式设置的字段
+    // 加载缓存的偏好设置：用户此前的持久化选择优先生效，初始化配置（覆盖项 +
+    // 默认值）仅用于补齐缓存中缺失的字段（如首次访问，或应用升级后新增的偏好项）。
+    // defu 的合并语义是「靠前的参数优先」，此前的参数顺序（initialPreferences 在前）
+    // 会导致 initialPreferences 是完整对象（覆盖项与默认值兜底后一定齐全），
+    // cachedPreferences 里任何字段都会被判定为「已存在」而被整体忽略——用户在偏好
+    // 设置面板里的每一次修改（暗色模式、侧边栏折叠等）刷新页面后都会被静默还原，
+    // 是本次验收发现的问题，此处调整顺序修复
     const cachedPreferences = (await this.loadFromCache()) || {};
     const mergedPreference = merge(
       {},
-      this.initialPreferences, // 初始化配置优先，缓存仅补齐缺失字段
       cachedPreferences,
+      this.initialPreferences,
     );
 
     // 更新偏好设置

@@ -12,6 +12,7 @@ import { defineStore } from 'pinia';
 
 import { fetchLogin, fetchMe } from '#/api/auth';
 import { $t } from '#/locales';
+import { resetAccessInitState } from '#/router/guard';
 
 /**
  * 后端精简用户（SimpleUser）转前端会话用户，补 roles 数组供框架按角色过滤菜单
@@ -93,6 +94,7 @@ export const useAuthStore = defineStore('auth', () => {
    */
   async function logout(redirect: boolean = true) {
     resetAllStores();
+    resetAccessInitState();
     accessStore.setLoginExpired(false);
 
     // 回登录页带上当前路由地址
