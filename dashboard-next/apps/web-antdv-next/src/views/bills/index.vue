@@ -2,13 +2,15 @@
 import type { TableColumnsType } from 'antdv-next';
 import type { Dayjs } from 'dayjs';
 
+import type { BillStatus } from '#/utils/clepsydra/dict';
+
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
 
-import { Button, DatePicker, Table, Tag } from 'antdv-next';
+import { Button, DatePicker, Select, Table, Tag } from 'antdv-next';
 
 import { fetchBills, generateBill } from '#/api/bill';
 import { formatDateTime } from '#/utils/clepsydra/date';
@@ -20,9 +22,12 @@ import { showSuccess } from '#/utils/http/error';
  * 账单列表
  *
  * 生成账单入口仅超级管理员可见，需求方登录只能查看账单列表与详情
+ * 状态筛选走客户端过滤（后端 /api/bills 不分页也不支持 status 查询参数，
+ * 数据量本身是按月生成，一次性拉全量即可），供工作台待办卡片跳转带筛选使用
  */
 defineOptions({ name: 'BillList' });
 
+const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 
@@ -32,6 +37,20 @@ const list = ref<Api.Bill.Detail[]>([]);
 const loading = ref(false);
 /** 待生成账期，选择月份后才允许点击生成 */
 const period = ref<Dayjs>();
+/** 状态筛选，undefined 表示全部 */
+const status = ref<BillStatus | undefined>(
+  (route.query.status as BillStatus) || undefined,
+);
+const filteredList = computed(() =>
+  status.value
+    ? list.value.filter((item) => item.status === status.value)
+    : list.value,
+);
+
+const statusOptions = Object.entries(BILL_STATUS).map(([value, meta]) => ({
+  label: meta.label,
+  value,
+}));
 
 const columns: TableColumnsType<Api.Bill.Detail> = [
   { dataIndex: 'period', key: 'period', title: '账期', width: 100 },
@@ -72,20 +91,29 @@ onMounted(load);
 
 <template>
   <Page>
-    <div v-if="isAdmin" class="mb-4 flex items-center justify-end gap-2">
-      <DatePicker
-        v-model:value="period"
-        picker="month"
-        placeholder="选择账期"
+    <div class="mb-4 flex items-center justify-between gap-2">
+      <Select
+        v-model:value="status"
+        :options="statusOptions"
+        allow-clear
+        class="w-40"
+        placeholder="全部状态"
       />
-      <Button :disabled="!period" type="primary" @click="generate">
-        生成账单
-      </Button>
+      <div v-if="isAdmin" class="flex items-center gap-2">
+        <DatePicker
+          v-model:value="period"
+          picker="month"
+          placeholder="选择账期"
+        />
+        <Button :disabled="!period" type="primary" @click="generate">
+          生成账单
+        </Button>
+      </div>
     </div>
 
     <Table
       :columns="columns"
-      :data-source="list"
+      :data-source="filteredList"
       :loading="loading"
       :on-row="onRow"
       :pagination="false"

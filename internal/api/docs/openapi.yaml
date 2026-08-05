@@ -919,7 +919,7 @@ paths:
       tags: [AuditLogs]
       operationId: auditLogsList
       summary: 查询审计日志
-      description: 分页查询审计日志，target_type/target_id 为空或 0 时不过滤，按 ID 倒序排列，size 上限 100（仅超级管理员）
+      description: 分页查询审计日志，target_type/action/target_id 为空或 0 时不过滤，按 ID 倒序排列，size 上限 100（仅超级管理员）
       security:
         - bearerAuth: []
       parameters:
@@ -927,6 +927,12 @@ paths:
           in: query
           required: false
           description: 目标类型筛选，如 demand、bill，为空表示不筛选
+          schema:
+            type: string
+        - name: action
+          in: query
+          required: false
+          description: 操作类型筛选，如 demand.create、bill.share，为空表示不筛选
           schema:
             type: string
         - name: target_id
@@ -1156,10 +1162,10 @@ components:
       properties:
         name:
           type: string
-          description: 姓名
+          description: 姓名，缺省该字段表示不改动当前姓名
         enabled:
           type: boolean
-          description: 是否启用
+          description: 是否启用，缺省该字段表示不改动当前启用状态
 
     UserResetPasswordRequest:
       type: object

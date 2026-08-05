@@ -46,9 +46,9 @@ func (a *Audit) Record(ctx context.Context, actor Actor, action, targetType stri
 	}
 }
 
-// List 分页查询审计日志，targetType/targetID 为空或 0 时不过滤
+// List 分页查询审计日志，targetType/action/targetID 为空或 0 时不过滤
 // page 从 1 起，size 上限 100，按 id 倒序
-func (a *Audit) List(ctx context.Context, targetType string, targetID, page, size int) (int, []*ent.AuditLog, error) {
+func (a *Audit) List(ctx context.Context, targetType, action string, targetID, page, size int) (int, []*ent.AuditLog, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -62,6 +62,9 @@ func (a *Audit) List(ctx context.Context, targetType string, targetID, page, siz
 	q := a.client.AuditLog.Query()
 	if targetType != "" {
 		q = q.Where(auditlog.TargetType(targetType))
+	}
+	if action != "" {
+		q = q.Where(auditlog.Action(action))
 	}
 	if targetID > 0 {
 		q = q.Where(auditlog.TargetID(targetID))

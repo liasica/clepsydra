@@ -19,14 +19,15 @@ func NewAuditLog(audit *service.Audit) *AuditLog {
 	return &AuditLog{audit: audit}
 }
 
-// List GET /api/audit-logs?target_type=&target_id=&page=&size=
+// List GET /api/audit-logs?target_type=&action=&target_id=&page=&size=
 func (h *AuditLog) List(c echo.Context) error {
 	targetType := c.QueryParam("target_type")
+	action := c.QueryParam("action")
 	targetID, _ := strconv.Atoi(c.QueryParam("target_id"))
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	size, _ := strconv.Atoi(c.QueryParam("size"))
 
-	total, rows, err := h.audit.List(c.Request().Context(), targetType, targetID, page, size)
+	total, rows, err := h.audit.List(c.Request().Context(), targetType, action, targetID, page, size)
 	if err != nil {
 		return api.Fail(c, err)
 	}
