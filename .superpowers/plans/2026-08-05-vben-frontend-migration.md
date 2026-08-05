@@ -30,7 +30,7 @@ vben v5.7.0 的内部 API（`requestClient` 拦截器签名、`preferences` 字�
 
 ---
 
-### T1: 脚手架落地与产物形态确认
+### Task 1: 脚手架落地与产物形态确认
 
 **Files:**
 - Create: `dashboard-next/`（vben v5.7.0 clone 后精简）
@@ -89,7 +89,7 @@ git commit -m "chore: 引入 vue-vben-admin v5.7.0 脚手架并精简为 antdv-n
 
 ---
 
-### T2: 环境变量与构建配置定型
+### Task 2: 环境变量与构建配置定型
 
 **Files:**
 - Modify: `dashboard-next/apps/web-antdv-next/.env`、`.env.development`、`.env.production`
@@ -141,7 +141,7 @@ git commit -m "chore: 前端环境变量与构建产物路径定型"
 
 ---
 
-### T3: 品牌与主题定型
+### Task 3: 品牌与主题定型
 
 **Files:**
 - Modify: `dashboard-next/apps/web-antdv-next/src/preferences.ts`
@@ -176,7 +176,7 @@ git commit -m "feat: 前端品牌与主题定型为 Clepsydra"
 
 ---
 
-### T4: 请求层装配与 API 模块迁移
+### Task 4: 请求层装配与 API 模块迁移
 
 **Files:**
 - Create: `dashboard-next/apps/web-antdv-next/src/api/request.ts`（或沿用 vben 既有的 `src/api/request.ts`，以实际结构为准）
@@ -236,7 +236,7 @@ git commit -m "feat: 请求层装配与业务 API 模块迁移"
 
 ---
 
-### T5: 业务工具与字典迁移
+### Task 5: 业务工具与字典迁移
 
 **Files:**
 - Create: `dashboard-next/apps/web-antdv-next/src/utils/clepsydra/{manday,date,dict}.ts`
@@ -319,7 +319,7 @@ git commit -m "feat: 业务工具与状态字典迁移"
 
 ---
 
-### T6: 认证与会话
+### Task 6: 认证与会话
 
 **Files:**
 - Modify: `dashboard-next/apps/web-antdv-next/src/store/auth.ts`（vben 自带的 auth store）
@@ -367,7 +367,7 @@ git commit -m "feat: 登录与会话恢复接入后端"
 
 ---
 
-### T7: 路由与守卫
+### Task 7: 路由与守卫
 
 **Files:**
 - Create/Modify: `dashboard-next/apps/web-antdv-next/src/router/routes/modules/*.ts`
@@ -419,7 +419,7 @@ git commit -m "feat: 业务路由与权限守卫迁移"
 
 ---
 
-### T8: Markdown 编辑器与预览组件
+### Task 8: Markdown 编辑器与预览组件
 
 **Files:**
 - Create: `dashboard-next/apps/web-antdv-next/src/components/markdown/MarkdownEditor.vue`
@@ -487,7 +487,7 @@ git commit -m "feat: markdown 编辑器与预览组件"
 
 ---
 
-### T9: 需求模块页面
+### Task 9: 需求模块页面
 
 **Files:**
 - Create: `dashboard-next/apps/web-antdv-next/src/views/demands/index.vue`（列表）
@@ -570,7 +570,7 @@ git commit -m "feat: 需求模块页面迁移并接入 markdown 编辑器"
 
 ---
 
-### T10: 账单模块页面
+### Task 10: 账单模块页面
 
 **Files:**
 - Create: `dashboard-next/apps/web-antdv-next/src/views/bills/index.vue`
@@ -611,7 +611,7 @@ git commit -m "feat: 账单模块页面迁移"
 
 ---
 
-### T11: 设置、用户、审计日志、工作台
+### Task 11: 设置、用户、审计日志、工作台
 
 **Files:**
 - Create: `dashboard-next/apps/web-antdv-next/src/views/settings/index.vue`
@@ -661,7 +661,7 @@ git commit -m "feat: 设置、用户、审计日志、工作台页面迁移"
 
 ---
 
-### T12: 集成切换
+### Task 12: 集成切换
 
 **Files:**
 - Delete: `dashboard/`（旧）
@@ -743,7 +743,7 @@ git commit -m "chore: 前端切换为 vue-vben-admin 并对齐构建集成"
 
 ---
 
-### T13: 端到端验收与收尾
+### Task 13: 端到端验收与收尾
 
 **Files:**
 - Create: `.superpowers/sdd/vben-acceptance-checklist.md`（验收清单）
