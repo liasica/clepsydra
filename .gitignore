@@ -7,7 +7,8 @@ config.local.yaml
 /config.yaml
 !.superpowers/
 !CLAUDE.md
-configs/
+configs/*
+!configs/config.example.yaml
 .claude/scheduled_tasks.lock
 .superpowers/sdd/review-*.diff
 

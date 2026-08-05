@@ -187,7 +187,7 @@ git add internal/config/ go.mod go.sum
 git commit -m "feat: 添加配置加载包"
 ```
 
-注：根目录 `config.yaml` 含本地凭据，已在 `.gitignore` 追加 `config.yaml`（提交 `config.example.yaml` 替代，内容同 testdata）。
+注：根目录 `config.yaml` 含本地凭据，已在 `.gitignore` 追加 `config.yaml`（提交 `../../configs/config.example.yaml` 替代，内容同 testdata）。
 
 ---
 
@@ -3493,7 +3493,7 @@ git commit -m "feat: 添加账单接口与工作台待办"
 - Create: `internal/workday/holidaycn.go`
 - Create: `assets/holidays/2026.json`（holiday-cn 原始格式，下载自 `https://raw.githubusercontent.com/NateScarlet/holiday-cn/master/2026.json`；下载失败则报 BLOCKED）
 - Delete: `assets/holidays.json`（旧自定义格式，由 holiday-cn 数据替代）
-- Modify: `config.example.yaml`（holiday.file 改为 `assets/holidays/2026.json`）
+- Modify: `../../configs/config.example.yaml`（holiday.file 改为 `assets/holidays/2026.json`）
 - Create: `cmd/clepsydra/main.go`
 - Create: `Makefile`
 - Create: `.golangci.yml`
