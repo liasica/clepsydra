@@ -17,7 +17,7 @@ generate:
 
 dashboard:
 	cd dashboard && pnpm install --frozen-lockfile && pnpm build --filter=@vben/web-antdv-next
-	rm -rf assets/dashboard
 	mkdir -p assets/dashboard
-	cp -R dashboard/dist/. assets/dashboard/
 	touch assets/dashboard/.gitkeep
+	find assets/dashboard -mindepth 1 ! -name '.gitkeep' -delete
+	cp -R dashboard/apps/web-antdv-next/dist/. assets/dashboard/

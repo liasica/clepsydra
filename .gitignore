@@ -14,5 +14,6 @@ configs/*
 
 dashboard/**/node_modules/
 dashboard/**/dist/
+.turbo/
 assets/dashboard/*
 !assets/dashboard/.gitkeep

@@ -77,7 +77,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
 COPY . .
-COPY --from=dashboard-builder /src/dashboard/dist/. assets/dashboard/
+COPY --from=dashboard-builder /src/dashboard/apps/web-antdv-next/dist/. assets/dashboard/
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \

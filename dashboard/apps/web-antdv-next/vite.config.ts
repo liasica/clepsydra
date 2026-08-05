@@ -15,12 +15,9 @@ export default defineConfig(async ({ mode }) => {
   return {
     application: {},
     vite: {
-      build: {
-        // 产物重定向到 monorepo 根 dist/，改名回 dashboard/ 后即 dashboard/dist/，
-        // 与现有 Makefile、Dockerfile、ignore 规则对齐
-        emptyOutDir: true,
-        outDir: '../../dist',
-      },
+      // 产物落在包内默认的 dist/（即 dashboard/apps/web-antdv-next/dist/），
+      // 与 turbo.json 的 build.outputs（按包目录解析为 apps/web-antdv-next/dist/**）保持一致，
+      // 避免 outDir 重定向到 monorepo 根导致 turbo 缓存声明与实际产物目录错配
       server: {
         proxy: {
           '/api': {
