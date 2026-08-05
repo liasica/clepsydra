@@ -13,7 +13,6 @@ import {
 } from '@vben/locales';
 import { preferences } from '@vben/preferences';
 
-import antdEnLocale from 'antdv-next/dist/locale/en_US';
 import antdDefaultLocale from 'antdv-next/dist/locale/zh_CN';
 import dayjs from 'dayjs';
 
@@ -48,46 +47,24 @@ async function loadThirdPartyMessage(lang: SupportedLanguagesType) {
 
 /**
  * 加载dayjs的语言包
+ * 项目只提供 zh-CN，其余情况使用 dayjs 内置的英语兜底
  * @param lang
  */
 async function loadDayjsLocale(lang: SupportedLanguagesType) {
-  let locale;
-  switch (lang) {
-    case 'en-US': {
-      locale = await import('dayjs/locale/en');
-      break;
-    }
-    case 'zh-CN': {
-      locale = await import('dayjs/locale/zh-cn');
-      break;
-    }
-    // 默认使用英语
-    default: {
-      locale = await import('dayjs/locale/en');
-    }
-  }
-  if (locale) {
-    dayjs.locale(locale);
+  if (lang === 'zh-CN') {
+    dayjs.locale(await import('dayjs/locale/zh-cn'));
   } else {
-    console.error(`Failed to load dayjs locale for ${lang}`);
+    dayjs.locale('en');
   }
 }
 
 /**
  * 加载antd的语言包
- * @param lang
+ * 项目只提供 zh-CN，未匹配的语言统一兜底为 zh-CN
+ * @param _lang
  */
-async function loadAntdLocale(lang: SupportedLanguagesType) {
-  switch (lang) {
-    case 'en-US': {
-      antdLocale.value = antdEnLocale;
-      break;
-    }
-    case 'zh-CN': {
-      antdLocale.value = antdDefaultLocale;
-      break;
-    }
-  }
+function loadAntdLocale(_lang: SupportedLanguagesType) {
+  antdLocale.value = antdDefaultLocale;
 }
 
 async function setupI18n(app: App, options: LocaleSetupOptions = {}) {

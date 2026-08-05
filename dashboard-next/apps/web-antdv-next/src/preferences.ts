@@ -9,5 +9,23 @@ export const overridesPreferences = defineOverridesPreferences({
   // overrides
   app: {
     name: import.meta.env.VITE_APP_TITLE,
+    // 前端角色路由过滤（admin / client 两个角色），不走后端下发菜单
+    accessMode: 'frontend',
+    // 只提供 zh-CN 语言包，锁定默认语言避免随 vben 升级漂移
+    locale: 'zh-CN',
+  },
+  theme: {
+    // 默认亮色，主题色与暗色切换开关保留，暗色可手动切换
+    mode: 'light',
+  },
+  widget: {
+    // 只有 zh-CN 一种语言，关闭语言切换部件
+    languageToggle: false,
+  },
+  copyright: {
+    // 登录页版权栏默认写死 Vben 官网外链，替换为项目自身信息
+    companyName: 'Clepsydra',
+    companySiteLink: '',
+    date: `${new Date().getFullYear()}`,
   },
 });
