@@ -86,21 +86,29 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 
 // Update 更新需求标题与描述（markdown 原文），仅 draft 与 pending_estimate 状态允许
 func (s *Demand) Update(ctx context.Context, actor Actor, id int, title, description string) (*ent.Demand, error) {
-	d, err := s.Get(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	if d.Status != demand.StatusDraft && d.Status != demand.StatusPendingEstimate {
-		return nil, ErrInvalidTransition
-	}
 	if title == "" {
 		return nil, ErrBadRequest("标题不能为空")
 	}
 
-	d, err = d.Update().
+	// 状态检查随 UPDATE 语句条件化（Where 带状态谓词 + n==0 判定），避免 Get 后无条件写入的 TOCTOU
+	n, err := s.client.Demand.Update().
+		Where(demand.ID(id), demand.StatusIn(demand.StatusDraft, demand.StatusPendingEstimate)).
 		SetTitle(title).
 		SetDescription(description).
 		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if n == 0 {
+		// 区分「需求不存在」与「状态不允许更新」，保持原有 404 / 422 语义
+		if _, getErr := s.Get(ctx, id); getErr != nil {
+			return nil, getErr
+		}
+
+		return nil, ErrInvalidTransition
+	}
+
+	d, err := s.Get(ctx, id)
 	if err != nil {
 		return nil, err
 	}
