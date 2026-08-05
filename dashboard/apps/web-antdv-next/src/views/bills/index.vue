@@ -15,7 +15,7 @@ import { Button, DatePicker, Select, Table, Tag } from 'antdv-next';
 import { fetchBills, generateBill } from '#/api/bill';
 import { formatDateTime } from '#/utils/clepsydra/date';
 import { BILL_STATUS, tagColor } from '#/utils/clepsydra/dict';
-import { formatAmount, formatManday } from '#/utils/clepsydra/manday';
+import { formatAmount, formatMandayStrict } from '#/utils/clepsydra/manday';
 import { showSuccess } from '#/utils/http/error';
 
 /**
@@ -127,7 +127,7 @@ onMounted(load);
           </Tag>
         </template>
         <template v-else-if="column.key === 'total_half_days'">
-          {{ formatManday(record.total_half_days) }}
+          {{ formatMandayStrict(record.total_half_days) }}
         </template>
         <template v-else-if="column.key === 'total_amount'">
           {{ formatAmount(record.total_amount) }}

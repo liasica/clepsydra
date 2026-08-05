@@ -32,7 +32,7 @@ import {
 } from '#/api/bill';
 import { formatDate, formatDateTime } from '#/utils/clepsydra/date';
 import { BILL_STATUS, DEMAND_STATUS, tagColor } from '#/utils/clepsydra/dict';
-import { formatAmount, formatManday } from '#/utils/clepsydra/manday';
+import { formatAmount, formatMandayStrict } from '#/utils/clepsydra/manday';
 import { isStatusConflict, showSuccess } from '#/utils/http/error';
 
 /**
@@ -236,7 +236,7 @@ onMounted(load);
             {{ formatAmount(bill.base_fee) }}
           </DescriptionsItem>
           <DescriptionsItem label="计费人天">
-            {{ formatManday(bill.total_half_days) }}
+            {{ formatMandayStrict(bill.total_half_days) }}
           </DescriptionsItem>
           <DescriptionsItem label="账单总额">
             {{ formatAmount(bill.total_amount) }}
@@ -270,7 +270,7 @@ onMounted(load);
               }}
             </template>
             <template v-else-if="column.key === 'half_days'">
-              {{ formatManday(record.half_days) }}
+              {{ formatMandayStrict(record.half_days) }}
             </template>
             <template v-else-if="column.key === 'amount'">
               {{ formatAmount(record.amount) }}

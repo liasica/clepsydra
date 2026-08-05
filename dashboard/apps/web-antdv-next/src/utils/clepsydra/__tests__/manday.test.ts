@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatAmount,
   formatManday,
+  formatMandayStrict,
   halfDaysToManday,
   mandayToHalfDays,
 } from '../manday';
@@ -25,6 +26,13 @@ describe('人天换算', () => {
     expect(formatManday(0)).toBe('—');
     expect(formatManday(null)).toBe('—');
     expect(formatManday(undefined)).toBe('—');
+  });
+
+  it('格式化人天（严格版），0 视为真实值正常显示，仅空值显示占位符', () => {
+    expect(formatMandayStrict(16)).toBe('8 人天');
+    expect(formatMandayStrict(0)).toBe('0 人天');
+    expect(formatMandayStrict(null)).toBe('—');
+    expect(formatMandayStrict(undefined)).toBe('—');
   });
 
   it('格式化金额为千分位元，空值显示占位符', () => {
