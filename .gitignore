@@ -14,5 +14,7 @@ configs/*
 
 dashboard/node_modules/
 dashboard/dist/
+dashboard-next/**/node_modules/
+dashboard-next/**/dist/
 assets/dashboard/*
 !assets/dashboard/.gitkeep
