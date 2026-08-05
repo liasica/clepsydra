@@ -26,6 +26,18 @@
     "#/*": "./src/*"
   },
   "dependencies": {
+    "@codemirror/lang-css": "catalog:",
+    "@codemirror/lang-go": "catalog:",
+    "@codemirror/lang-html": "catalog:",
+    "@codemirror/lang-javascript": "catalog:",
+    "@codemirror/lang-json": "catalog:",
+    "@codemirror/lang-sql": "catalog:",
+    "@codemirror/lang-yaml": "catalog:",
+    "@codemirror/language": "catalog:",
+    "@codemirror/legacy-modes": "catalog:",
+    "@lezer/highlight": "catalog:",
+    "@milkdown/crepe": "catalog:",
+    "@milkdown/kit": "catalog:",
     "@vben/access": "workspace:*",
     "@vben/common-ui": "workspace:*",
     "@vben/constants": "workspace:*",
@@ -43,6 +55,8 @@
     "@vueuse/core": "catalog:",
     "antdv-next": "catalog:",
     "dayjs": "catalog:",
+    "dompurify": "catalog:",
+    "markdown-it": "catalog:",
     "pinia": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"

@@ -1,0 +1,273 @@
+/**
+ * Crepe 主题定制层（只随 MarkdownEditor 异步 chunk 加载）
+ *
+ * 底座是 Crepe 官方的 frame 主题（中性灰，无衬线标题），这里把它的 --crepe-* 变量
+ * 全部重新指向 markdown.css 里的 --md-* 令牌，从而与 antd / vben 的主题色、亮暗、
+ * 圆角保持一致。
+ *
+ * 所有选择器都限定在 .clepsydra-md-editor 之下：
+ * 1. 特异度（0,2,x）稳定高于 frame 主题的 .milkdown（0,1,x），无需依赖样式表顺序；
+ * 2. 把 Crepe 自带的 reset（.milkdown * { margin: 0 }）圈在容器内，不会外溢到页面其它
+ *    部分，也不会与 Tailwind preflight 互相污染
+ */
+
+.clepsydra-md-editor {
+  position: relative;
+  background: var(--md-bg);
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.clepsydra-md-editor:hover {
+  border-color: hsl(var(--primary) / 60%);
+}
+
+.clepsydra-md-editor:focus-within {
+  border-color: var(--md-primary);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 12%);
+}
+
+.clepsydra-md-editor--readonly:hover,
+.clepsydra-md-editor--readonly:focus-within {
+  border-color: var(--md-border);
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------------ */
+
+/* 变量映射                                                            */
+
+/* ------------------------------------------------------------------ */
+
+.clepsydra-md-editor .milkdown {
+  /* 颜色 */
+  --crepe-color-background: var(--md-bg);
+  --crepe-color-on-background: var(--md-fg);
+  --crepe-color-surface: hsl(var(--popover));
+  --crepe-color-surface-low: hsl(var(--accent));
+  --crepe-color-on-surface: hsl(var(--popover-foreground));
+  --crepe-color-on-surface-variant: var(--md-fg-muted);
+
+  /* outline 在 Crepe 里既画描边也给工具栏 / 拖拽手柄的图标上色，用中性灰而不是
+     很浅的 --md-border，否则图标会淡到几乎看不见 */
+  --crepe-color-outline: var(--md-fg-muted);
+  --crepe-color-primary: var(--md-primary);
+  --crepe-color-secondary: hsl(var(--primary) / 16%);
+  --crepe-color-on-secondary: var(--md-fg);
+  --crepe-color-inverse: var(--md-fg);
+  --crepe-color-on-inverse: var(--md-bg);
+  --crepe-color-inline-code: var(--md-inline-code-fg);
+  --crepe-color-error: hsl(var(--destructive));
+  --crepe-color-hover: var(--md-hover);
+  --crepe-color-selected: var(--md-selection);
+  --crepe-color-inline-area: hsl(var(--muted));
+
+  /* 字体：frame 主题默认 Noto Serif 标题，换成与 antd 一致的无衬线栈 */
+  --crepe-base-font-size: var(--md-font-size);
+  --crepe-font-title: var(--md-font-title);
+  --crepe-font-default: var(--md-font-body);
+  --crepe-font-code: var(--md-font-code);
+
+  /* 阴影：frame-dark 用的是白色阴影，这里统一成黑色柔和投影 */
+  --crepe-shadow-1:
+    0 2px 8px hsl(0deg 0% 0% / 10%), 0 1px 2px hsl(0deg 0% 0% / 6%);
+  --crepe-shadow-2:
+    0 8px 24px hsl(0deg 0% 0% / 14%), 0 2px 6px hsl(0deg 0% 0% / 8%);
+
+  background: transparent;
+}
+
+.dark .clepsydra-md-editor .milkdown {
+  --crepe-shadow-1:
+    0 2px 8px hsl(0deg 0% 0% / 45%), 0 1px 2px hsl(0deg 0% 0% / 30%);
+  --crepe-shadow-2:
+    0 8px 24px hsl(0deg 0% 0% / 55%), 0 2px 6px hsl(0deg 0% 0% / 35%);
+}
+
+/* ------------------------------------------------------------------ */
+
+/* 正文排版：与 .markdown-body 使用同一套 --md-* 阶梯                    */
+
+/* ------------------------------------------------------------------ */
+
+/* 左侧留出块拖拽手柄（两个 32px 操作按钮）的位置，否则手柄会被容器边框裁掉 */
+.clepsydra-md-editor .milkdown .ProseMirror {
+  min-height: var(--md-editor-min-height, 320px);
+  padding: 14px 24px 22px 68px;
+  line-height: var(--md-line-height);
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror p {
+  padding: 3px 0;
+  line-height: var(--md-line-height);
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror h1,
+.clepsydra-md-editor .milkdown .ProseMirror h2,
+.clepsydra-md-editor .milkdown .ProseMirror h3,
+.clepsydra-md-editor .milkdown .ProseMirror h4,
+.clepsydra-md-editor .milkdown .ProseMirror h5,
+.clepsydra-md-editor .milkdown .ProseMirror h6 {
+  font-family: var(--md-font-title);
+  font-weight: var(--md-heading-weight);
+  line-height: 1.35;
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror h1 {
+  margin-top: 20px;
+  font-size: var(--md-h1-size);
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror h2 {
+  margin-top: 18px;
+  font-size: var(--md-h2-size);
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror h3 {
+  margin-top: 16px;
+  font-size: var(--md-h3-size);
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror h4 {
+  margin-top: 14px;
+  font-size: var(--md-h4-size);
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror h5 {
+  margin-top: 12px;
+  font-size: var(--md-h5-size);
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror h6 {
+  margin-top: 12px;
+  font-size: var(--md-h6-size);
+  font-weight: var(--md-heading-weight);
+  color: var(--md-fg-muted);
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror strong {
+  font-weight: 600;
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror a {
+  text-underline-offset: 2px;
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror code {
+  padding: 0.15em 0.35em;
+  font-size: 0.875em;
+  background: var(--md-inline-code-bg);
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror blockquote::before {
+  width: 3px;
+  background: var(--md-quote-bar);
+}
+
+.clepsydra-md-editor .milkdown .ProseMirror blockquote {
+  padding-left: 1.1em;
+  color: var(--md-fg-muted);
+}
+
+/* ------------------------------------------------------------------ */
+
+/* 组件细节                                                            */
+
+/* ------------------------------------------------------------------ */
+
+/* 代码块统一走 --md-code-* 调色板，与只读预览的 pre 保持一致 */
+.clepsydra-md-editor .milkdown .milkdown-code-block {
+  padding: 6px 12px 12px;
+  margin: 8px 0;
+  background: var(--md-code-bg);
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+}
+
+/* CodeMirror 是按需挂载的，进入视口前先渲染成 placeholder，这里让它和最终形态同色，
+   避免出现一段粉色行内代码风格的闪现 */
+.clepsydra-md-editor .milkdown .milkdown-code-block-placeholder,
+.clepsydra-md-editor .milkdown .milkdown-code-block-placeholder code {
+  color: var(--md-code-fg);
+  background: transparent;
+}
+
+.clepsydra-md-editor .milkdown .milkdown-code-block .cm-editor,
+.clepsydra-md-editor .milkdown .milkdown-code-block .cm-gutters {
+  color: var(--md-code-fg);
+  background: transparent;
+}
+
+.clepsydra-md-editor .milkdown .milkdown-code-block .cm-content {
+  font-family: var(--md-font-code);
+  caret-color: var(--md-fg);
+}
+
+.clepsydra-md-editor .milkdown .milkdown-code-block .cm-cursor,
+.clepsydra-md-editor .milkdown .milkdown-code-block .cm-dropCursor {
+  border-left-color: var(--md-fg);
+}
+
+.clepsydra-md-editor
+  .milkdown
+  .milkdown-code-block
+  .cm-activeLine.cm-activeLine {
+  background: hsl(var(--primary) / 6%);
+}
+
+.clepsydra-md-editor .milkdown .milkdown-code-block .cm-selectionBackground,
+.clepsydra-md-editor
+  .milkdown
+  .milkdown-code-block
+  .cm-focused
+  .cm-selectionBackground {
+  background: var(--md-selection);
+}
+
+/* 任务列表已勾选项用主题色，和只读预览里 CSS 画的勾选框保持一致 */
+.clepsydra-md-editor
+  .milkdown
+  .milkdown-list-item-block
+  li
+  .label-wrapper
+  .checked
+  svg {
+  fill: var(--md-primary);
+}
+
+/* 弹层圆角与 antd 的 8px 卡片语言对齐 */
+.clepsydra-md-editor .milkdown .milkdown-slash-menu {
+  border: 1px solid var(--md-border);
+  border-radius: 8px;
+}
+
+.clepsydra-md-editor .milkdown .milkdown-toolbar,
+.clepsydra-md-editor .milkdown .milkdown-link-preview,
+.clepsydra-md-editor .milkdown .milkdown-link-edit {
+  border: 1px solid var(--md-border);
+  border-radius: 8px;
+}
+
+/* 拖拽落点指示线跟随主题色 */
+.clepsydra-md-editor .crepe-drop-cursor {
+  background: var(--md-primary) !important;
+}
+
+/* 表格与只读预览的表格观感对齐 */
+.clepsydra-md-editor .milkdown .milkdown-table-block table {
+  font-size: 0.95em;
+}
+
+.clepsydra-md-editor .milkdown .milkdown-table-block th,
+.clepsydra-md-editor .milkdown .milkdown-table-block td {
+  border-color: var(--md-border);
+}
+
+/* 只读态：去掉编辑器特有的交互态，观感贴近详情页 */
+.clepsydra-md-editor--readonly .milkdown .ProseMirror {
+  padding: 14px 24px;
+  cursor: default;
+}

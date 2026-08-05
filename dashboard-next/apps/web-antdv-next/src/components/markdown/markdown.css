@@ -1,0 +1,337 @@
+/**
+ * markdown 共享排版层
+ *
+ * MarkdownEditor（Crepe / ProseMirror）与 MarkdownViewer（markdown-it）共用这里的
+ * --md-* 令牌与 .markdown-body 排版规则，保证「编辑时所见」与「详情页所见」一致。
+ *
+ * 所有颜色统一映射到 vben 设计令牌（hsl(var(--foreground)) 之类），因此主题色切换与
+ * 亮暗切换全部由 CSS 变量继承完成，组件侧不需要任何 JS 联动
+ */
+
+.clepsydra-markdown {
+  /* 字体 */
+  --md-font-body:
+    -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', arial, sans-serif;
+  --md-font-title: var(--md-font-body);
+  --md-font-code:
+    'JetBrains Mono', 'Fira Code', 'SF Mono', menlo, monaco, consolas,
+    'Liberation Mono', 'Courier New', monospace;
+  --md-font-size: 15px;
+  --md-line-height: 1.75;
+
+  /* 标题字号阶梯：控制在后台表单可接受的范围内，比 Crepe 默认阶梯收敛一档 */
+  --md-h1-size: 1.75em;
+  --md-h2-size: 1.45em;
+  --md-h3-size: 1.25em;
+  --md-h4-size: 1.1em;
+  --md-h5-size: 1em;
+  --md-h6-size: 0.9em;
+  --md-heading-weight: 600;
+
+  /* 颜色 */
+  --md-fg: hsl(var(--foreground));
+  --md-fg-muted: hsl(var(--muted-foreground));
+  --md-bg: hsl(var(--background));
+  --md-surface: hsl(var(--accent));
+  --md-border: hsl(var(--border));
+  --md-primary: hsl(var(--primary));
+  --md-selection: hsl(var(--primary) / 18%);
+  --md-hover: hsl(var(--accent-hover));
+  --md-quote-bar: hsl(var(--primary) / 45%);
+  --md-inline-code-fg: #c7254e;
+  --md-inline-code-bg: hsl(var(--primary) / 8%);
+  --md-code-bg: hsl(240deg 5% 97%);
+  --md-code-fg: #24292f;
+
+  /* 代码高亮调色板（亮色，取 GitHub Light 主色），CodeMirror 与只读预览共用 */
+  --md-code-keyword: #cf222e;
+  --md-code-string: #0a3069;
+  --md-code-comment: #6e7781;
+  --md-code-number: #0550ae;
+  --md-code-function: #8250df;
+  --md-code-type: #953800;
+  --md-code-variable: #24292f;
+  --md-code-punctuation: #57606a;
+  --md-code-tag: #116329;
+  --md-code-attribute: #0550ae;
+
+  /* 版式尺寸 */
+  --md-block-gap: 0.75em;
+  --md-radius: 6px;
+}
+
+.dark .clepsydra-markdown {
+  --md-inline-code-fg: #ff7b72;
+  --md-code-bg: hsl(220deg 13% 9%);
+  --md-code-fg: #c9d1d9;
+
+  /* 代码高亮调色板（暗色，取 GitHub Dark 主色） */
+  --md-code-keyword: #ff7b72;
+  --md-code-string: #a5d6ff;
+  --md-code-comment: #8b949e;
+  --md-code-number: #79c0ff;
+  --md-code-function: #d2a8ff;
+  --md-code-type: #ffa657;
+  --md-code-variable: #c9d1d9;
+  --md-code-punctuation: #8b949e;
+  --md-code-tag: #7ee787;
+  --md-code-attribute: #79c0ff;
+}
+
+/* ------------------------------------------------------------------ */
+
+/* 只读预览排版                                                        */
+
+/* ------------------------------------------------------------------ */
+
+.markdown-body {
+  font-family: var(--md-font-body);
+  font-size: var(--md-font-size);
+  line-height: var(--md-line-height);
+  color: var(--md-fg);
+  overflow-wrap: break-word;
+}
+
+.markdown-body > :first-child {
+  margin-top: 0;
+}
+
+.markdown-body > :last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body blockquote,
+.markdown-body pre,
+.markdown-body table,
+.markdown-body hr {
+  margin: 0 0 var(--md-block-gap);
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  margin: 1.4em 0 0.6em;
+  font-family: var(--md-font-title);
+  font-weight: var(--md-heading-weight);
+  line-height: 1.35;
+  color: var(--md-fg);
+}
+
+.markdown-body h1 {
+  font-size: var(--md-h1-size);
+}
+
+.markdown-body h2 {
+  font-size: var(--md-h2-size);
+}
+
+.markdown-body h3 {
+  font-size: var(--md-h3-size);
+}
+
+.markdown-body h4 {
+  font-size: var(--md-h4-size);
+}
+
+.markdown-body h5 {
+  font-size: var(--md-h5-size);
+}
+
+.markdown-body h6 {
+  font-size: var(--md-h6-size);
+  color: var(--md-fg-muted);
+}
+
+.markdown-body a {
+  color: var(--md-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-body a:hover {
+  opacity: 0.8;
+}
+
+.markdown-body strong {
+  font-weight: 600;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 1.5em;
+}
+
+/* 各层级统一用实心圆点，与编辑器里 Crepe 的列表符号一致 */
+.markdown-body ul {
+  list-style: disc;
+}
+
+.markdown-body ol {
+  list-style: decimal;
+}
+
+.markdown-body li {
+  margin: 0.2em 0;
+}
+
+.markdown-body li > ul,
+.markdown-body li > ol {
+  margin: 0.2em 0;
+}
+
+.markdown-body li::marker {
+  font-weight: 400;
+  color: var(--md-fg-muted);
+}
+
+/* 任务列表：markdown-it 侧只打标记类，勾选框完全用 CSS 画，避免注入任何 HTML */
+.markdown-body li.task-list-item {
+  position: relative;
+  padding-left: 1.6em;
+  margin-left: -1.5em;
+  list-style: none;
+}
+
+.markdown-body li.task-list-item::before {
+  position: absolute;
+  top: 0.42em;
+  left: 0;
+  box-sizing: border-box;
+  width: 1em;
+  height: 1em;
+  content: '';
+  border: 1px solid var(--md-border);
+  border-radius: 3px;
+}
+
+.markdown-body li.task-list-item-checked::before {
+  background: var(--md-primary);
+  border-color: var(--md-primary);
+}
+
+.markdown-body li.task-list-item-checked::after {
+  position: absolute;
+  top: 0.56em;
+  left: 0.24em;
+  width: 0.5em;
+  height: 0.26em;
+  content: '';
+  border-bottom: 2px solid hsl(var(--primary-foreground));
+  border-left: 2px solid hsl(var(--primary-foreground));
+  transform: rotate(-45deg);
+}
+
+.markdown-body li.task-list-item-checked {
+  color: var(--md-fg-muted);
+}
+
+.markdown-body blockquote {
+  position: relative;
+  padding: 0.1em 0 0.1em 1.1em;
+  color: var(--md-fg-muted);
+}
+
+.markdown-body blockquote::before {
+  position: absolute;
+  top: 0.15em;
+  bottom: 0.15em;
+  left: 0;
+  width: 3px;
+  content: '';
+  background: var(--md-quote-bar);
+  border-radius: 100px;
+}
+
+.markdown-body code {
+  padding: 0.15em 0.35em;
+  font-family: var(--md-font-code);
+  font-size: 0.875em;
+  color: var(--md-inline-code-fg);
+  background: var(--md-inline-code-bg);
+  border-radius: 4px;
+}
+
+.markdown-body pre {
+  position: relative;
+  padding: 0.9em 1em;
+  overflow-x: auto;
+  font-family: var(--md-font-code);
+  font-size: 0.875em;
+  line-height: 1.6;
+  color: var(--md-code-fg);
+  background: var(--md-code-bg);
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+}
+
+.markdown-body pre code {
+  padding: 0;
+  font-size: 1em;
+  color: inherit;
+  background: none;
+}
+
+/* 语言角标，对齐编辑器代码块左上角的语言选择器 */
+.markdown-body pre[data-lang] {
+  padding-top: 2.1em;
+}
+
+.markdown-body pre[data-lang]::before {
+  position: absolute;
+  top: 0.5em;
+  left: 1em;
+  font-size: 0.85em;
+  color: var(--md-fg-muted);
+  content: attr(data-lang);
+}
+
+.markdown-body hr {
+  height: 1px;
+  background: var(--md-border);
+  border: none;
+}
+
+.markdown-body table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 0.95em;
+  border-collapse: collapse;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 0.45em 0.8em;
+  text-align: left;
+  border: 1px solid var(--md-border);
+}
+
+.markdown-body th {
+  font-weight: 600;
+  background: var(--md-surface);
+}
+
+.markdown-body img {
+  max-width: 100%;
+  border-radius: var(--md-radius);
+}
+
+.markdown-body kbd {
+  padding: 0.1em 0.4em;
+  font-family: var(--md-font-code);
+  font-size: 0.85em;
+  border: 1px solid var(--md-border);
+  border-radius: 4px;
+}
+
+.markdown-body--empty {
+  color: var(--md-fg-muted);
+}
