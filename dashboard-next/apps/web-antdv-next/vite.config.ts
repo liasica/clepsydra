@@ -1,6 +1,17 @@
+import process from 'node:process';
+
 import { defineConfig } from '@vben/vite-config';
 
-export default defineConfig(async () => {
+import { loadEnv } from 'vite';
+
+export default defineConfig(async ({ mode }) => {
+  // dev 代理目标可通过 VITE_API_PROXY_URL 覆盖，默认 8080 与入库 config.example.yaml 一致；
+  // 本机后端若监听其它端口，在不入库的 .env.development.local 中单独覆盖，勿改这里的默认值
+  const { VITE_API_PROXY_URL = 'http://localhost:8080' } = loadEnv(
+    mode,
+    process.cwd(),
+  );
+
   return {
     application: {},
     vite: {
@@ -15,7 +26,7 @@ export default defineConfig(async () => {
           '/api': {
             changeOrigin: true,
             // 不 rewrite，保留 /api 前缀 —— 后端 router.go 的 e.Group("/api") 依赖它
-            target: 'http://localhost:8080',
+            target: VITE_API_PROXY_URL,
             ws: true,
           },
         },
