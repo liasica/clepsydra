@@ -23,8 +23,8 @@ func TestDashboardTodos(t *testing.T) {
 	demandSvc := NewDemand(client, settingSvc, audit)
 
 	// 一个待确认人天的需求
-	d, _ := demandSvc.Create(ctx, admin, "待确认", "", 2, nil)
-	_ = demandSvc.SubmitEstimate(ctx, admin, d.ID)
+	d, _ := demandSvc.Create(ctx, admin, "待确认", "")
+	_ = demandSvc.SubmitEstimate(ctx, admin, d.ID, 2, nil)
 
 	svc := NewDashboard(client, settingSvc)
 	now := time.Date(2026, 8, 4, 10, 0, 0, 0, time.Local)

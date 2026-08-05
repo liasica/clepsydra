@@ -23,8 +23,12 @@ func NewDemand(svc *service.Demand) *Demand {
 
 // demandRequest 创建与更新共用的请求体
 type demandRequest struct {
-	Title             string `json:"title"`
-	Description       string `json:"description"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+// estimateRequest 提交人天确认请求体
+type estimateRequest struct {
 	EstimatedHalfDays int    `json:"estimated_half_days"`
 	PlannedStartDate  string `json:"planned_start_date"`
 }
@@ -106,12 +110,7 @@ func (h *Demand) Create(c echo.Context) error {
 		return api.Fail(c, service.ErrBadRequest("参数错误"))
 	}
 
-	planned, err := parseDate(req.PlannedStartDate)
-	if err != nil {
-		return api.Fail(c, err)
-	}
-
-	d, err := h.svc.Create(c.Request().Context(), actor(c), req.Title, req.Description, req.EstimatedHalfDays, planned)
+	d, err := h.svc.Create(c.Request().Context(), actor(c), req.Title, req.Description)
 	if err != nil {
 		return api.Fail(c, err)
 	}
@@ -131,22 +130,8 @@ func (h *Demand) Update(c echo.Context) error {
 		return api.Fail(c, service.ErrBadRequest("参数错误"))
 	}
 
-	var planned *time.Time
-	planned, err = parseDate(req.PlannedStartDate)
-	if err != nil {
-		return api.Fail(c, err)
-	}
-
 	var d *ent.Demand
-	d, err = h.svc.Update(
-		c.Request().Context(),
-		actor(c),
-		id,
-		req.Title,
-		req.Description,
-		req.EstimatedHalfDays,
-		planned,
-	)
+	d, err = h.svc.Update(c.Request().Context(), actor(c), id, req.Title, req.Description)
 	if err != nil {
 		return api.Fail(c, err)
 	}
@@ -161,7 +146,18 @@ func (h *Demand) SubmitEstimate(c echo.Context) error {
 		return api.Fail(c, err)
 	}
 
-	if err = h.svc.SubmitEstimate(c.Request().Context(), actor(c), id); err != nil {
+	var req estimateRequest
+	if err = c.Bind(&req); err != nil {
+		return api.Fail(c, service.ErrBadRequest("参数错误"))
+	}
+
+	var planned *time.Time
+	planned, err = parseDate(req.PlannedStartDate)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	if err = h.svc.SubmitEstimate(c.Request().Context(), actor(c), id, req.EstimatedHalfDays, planned); err != nil {
 		return api.Fail(c, err)
 	}
 

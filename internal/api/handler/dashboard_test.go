@@ -27,11 +27,11 @@ func TestDashboardTodosHandler(t *testing.T) {
 	demandSvc := service.NewDemand(client, settingSvc, audit)
 
 	act := service.Actor{ID: 1, Name: "管理员"}
-	d, err := demandSvc.Create(ctx, act, "待确认", "", 2, nil)
+	d, err := demandSvc.Create(ctx, act, "待确认", "")
 	if err != nil {
 		t.Fatalf("创建需求失败: %v", err)
 	}
-	if err = demandSvc.SubmitEstimate(ctx, act, d.ID); err != nil {
+	if err = demandSvc.SubmitEstimate(ctx, act, d.ID, 2, nil); err != nil {
 		t.Fatalf("提交预估失败: %v", err)
 	}
 

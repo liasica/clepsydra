@@ -44,8 +44,8 @@ func finishDemand(t *testing.T, svc *service.Demand, title string) int {
 	t.Helper()
 
 	ctx := context.Background()
-	d, _ := svc.Create(ctx, admin, title, "", 4, nil)
-	_ = svc.SubmitEstimate(ctx, admin, d.ID)
+	d, _ := svc.Create(ctx, admin, title, "")
+	_ = svc.SubmitEstimate(ctx, admin, d.ID, 4, nil)
 	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
 	_ = svc.Start(ctx, admin, d.ID, time.Now().AddDate(0, 0, -10))
 	if err := svc.Finish(ctx, admin, d.ID, time.Now().AddDate(0, 0, -10), time.Now().AddDate(0, 0, -8), 4); err != nil {

@@ -62,37 +62,30 @@ func (s *Demand) Get(ctx context.Context, id int) (*ent.Demand, error) {
 	return d, err
 }
 
-// Create 创建需求，初始状态 draft
-func (s *Demand) Create(ctx context.Context, actor Actor, title, description string, estimatedHalfDays int, plannedStart *time.Time) (*ent.Demand, error) {
+// Create 创建需求，初始状态 draft，预估人天与预计开工由提交人天确认时填写
+func (s *Demand) Create(ctx context.Context, actor Actor, title, description string) (*ent.Demand, error) {
 	if title == "" {
 		return nil, ErrBadRequest("标题不能为空")
 	}
-	if estimatedHalfDays <= 0 {
-		return nil, ErrBadRequest("预估人天必须为正")
-	}
 
-	builder := s.client.Demand.Create().
+	d, err := s.client.Demand.Create().
 		SetTitle(title).
 		SetDescription(description).
-		SetEstimatedHalfDays(estimatedHalfDays)
-	if plannedStart != nil {
-		builder.SetPlannedStartDate(*plannedStart)
-	}
-
-	d, err := builder.Save(ctx)
+		SetEstimatedHalfDays(0).
+		Save(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	s.audit.Record(ctx, actor, "demand.create", "demand", d.ID, map[string]any{
-		"title": title, "estimated_half_days": estimatedHalfDays,
+		"title": title,
 	})
 
 	return d, nil
 }
 
-// Update 更新需求基本信息，仅 draft 与 pending_estimate 状态允许
-func (s *Demand) Update(ctx context.Context, actor Actor, id int, title, description string, estimatedHalfDays int, plannedStart *time.Time) (*ent.Demand, error) {
+// Update 更新需求标题与描述（markdown 原文），仅 draft 与 pending_estimate 状态允许
+func (s *Demand) Update(ctx context.Context, actor Actor, id int, title, description string) (*ent.Demand, error) {
 	d, err := s.Get(ctx, id)
 	if err != nil {
 		return nil, err
@@ -100,27 +93,20 @@ func (s *Demand) Update(ctx context.Context, actor Actor, id int, title, descrip
 	if d.Status != demand.StatusDraft && d.Status != demand.StatusPendingEstimate {
 		return nil, ErrInvalidTransition
 	}
-	if title == "" || estimatedHalfDays <= 0 {
-		return nil, ErrBadRequest("标题不能为空且预估人天必须为正")
+	if title == "" {
+		return nil, ErrBadRequest("标题不能为空")
 	}
 
-	builder := d.Update().
+	d, err = d.Update().
 		SetTitle(title).
 		SetDescription(description).
-		SetEstimatedHalfDays(estimatedHalfDays)
-	if plannedStart != nil {
-		builder.SetPlannedStartDate(*plannedStart)
-	} else {
-		builder.ClearPlannedStartDate()
-	}
-
-	d, err = builder.Save(ctx)
+		Save(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	s.audit.Record(ctx, actor, "demand.update", "demand", d.ID, map[string]any{
-		"title": title, "estimated_half_days": estimatedHalfDays,
+		"title": title,
 	})
 
 	return d, nil
@@ -148,19 +134,49 @@ func (s *Demand) transit(ctx context.Context, id int, from, to demand.Status, ap
 	return nil
 }
 
-// SubmitEstimate 提交预估，进入待需求方确认人天
-func (s *Demand) SubmitEstimate(ctx context.Context, actor Actor, id int) error {
+// SubmitEstimate 提交预估人天与预计开工并进入待需求方确认；pending_estimate 下可重复提交修正
+func (s *Demand) SubmitEstimate(ctx context.Context, actor Actor, id int, estimatedHalfDays int, plannedStart *time.Time) error {
+	if estimatedHalfDays <= 0 {
+		return ErrBadRequest("预估人天必须为正")
+	}
+
 	d, err := s.Get(ctx, id)
 	if err != nil {
 		return err
 	}
 
-	err = s.transit(ctx, id, d.Status, demand.StatusPendingEstimate, func(u *ent.DemandUpdate) {})
+	apply := func(u *ent.DemandUpdate) {
+		u.SetEstimatedHalfDays(estimatedHalfDays)
+		if plannedStart != nil {
+			u.SetPlannedStartDate(*plannedStart)
+		} else {
+			u.ClearPlannedStartDate()
+		}
+	}
+
+	switch d.Status {
+	case demand.StatusDraft:
+		err = s.transit(ctx, id, d.Status, demand.StatusPendingEstimate, apply)
+	case demand.StatusPendingEstimate:
+		// 状态不变，仅修正预估数据；条件更新防止并发下状态已流转
+		update := s.client.Demand.Update().
+			Where(demand.ID(id), demand.StatusEQ(demand.StatusPendingEstimate))
+		apply(update)
+		var n int
+		n, err = update.Save(ctx)
+		if err == nil && n == 0 {
+			err = ErrInvalidTransition
+		}
+	default:
+		err = ErrInvalidTransition
+	}
 	if err != nil {
 		return err
 	}
 
-	s.audit.Record(ctx, actor, "demand.submit_estimate", "demand", id, nil)
+	s.audit.Record(ctx, actor, "demand.submit_estimate", "demand", id, map[string]any{
+		"estimated_half_days": estimatedHalfDays,
+	})
 
 	return nil
 }

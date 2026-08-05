@@ -56,8 +56,8 @@ func TestBillToggleWaiveRejectsDisplayRow(t *testing.T) {
 	client, demandSvc, billSvc := newBillEnv(t, "bwaivedisplay")
 	ctx := context.Background()
 
-	d, _ := demandSvc.Create(ctx, admin, "进行中需求", "", 8, nil)
-	_ = demandSvc.SubmitEstimate(ctx, admin, d.ID)
+	d, _ := demandSvc.Create(ctx, admin, "进行中需求", "")
+	_ = demandSvc.SubmitEstimate(ctx, admin, d.ID, 8, nil)
 	_ = demandSvc.ConfirmEstimate(ctx, clientActor, d.ID)
 	_ = demandSvc.Start(ctx, admin, d.ID, time.Date(2026, 7, 25, 0, 0, 0, 0, time.Local))
 

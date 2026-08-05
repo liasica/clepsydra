@@ -29,7 +29,7 @@ func TestDemandCreateHandler(t *testing.T) {
 	h := NewDemand(svc)
 
 	e := echo.New()
-	reqBody := `{"title":"新功能","description":"","estimated_half_days":4,"planned_start_date":"2026-08-10"}`
+	reqBody := `{"title":"新功能","description":""}`
 	req := httptest.NewRequest(http.MethodPost, "/api/demands", strings.NewReader(reqBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
@@ -47,13 +47,21 @@ func TestDemandCreateHandler(t *testing.T) {
 		t.Errorf("响应异常: %s", rec.Body.String())
 	}
 
-	// 预估人天为 0 拒绝
-	req = httptest.NewRequest(http.MethodPost, "/api/demands", strings.NewReader(`{"title":"x","estimated_half_days":0}`))
+	rows, err := svc.List(ctx, "")
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("创建后查询列表失败: %v, len=%d", err, len(rows))
+	}
+	idStr := strconv.Itoa(rows[0].ID)
+
+	// submit-estimate 时预估人天为 0 应拒绝
+	req = httptest.NewRequest(http.MethodPost, "/api/demands/"+idStr+"/submit-estimate", strings.NewReader(`{"estimated_half_days":0}`))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues(idStr)
 	c.Set("claims", &service.Claims{UserID: 1, Role: "admin", Name: "管理员"})
-	_ = h.Create(c)
+	_ = h.SubmitEstimate(c)
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("非法参数应返回 400, got %d", rec.Code)
 	}
@@ -91,7 +99,7 @@ func TestDemandLifecycleHandlers(t *testing.T) {
 
 	// 创建需求
 	c, rec := newDemandTestContext(e, http.MethodPost, "/api/demands",
-		`{"title":"周期联调","description":"跨系统联调","estimated_half_days":6,"planned_start_date":"2026-08-05"}`)
+		`{"title":"周期联调","description":"跨系统联调"}`)
 	if err := h.Create(c); err != nil {
 		t.Fatalf("创建失败: %v", err)
 	}
@@ -135,9 +143,9 @@ func TestDemandLifecycleHandlers(t *testing.T) {
 		t.Errorf("非法 ID 应返回 400, got %d", rec.Code)
 	}
 
-	// Update：修改标题与预估人天
+	// Update：仅修改标题与描述
 	c, rec = newDemandTestContext(e, http.MethodPut, "/api/demands/"+idStr,
-		`{"title":"周期联调-改","description":"跨系统联调","estimated_half_days":8,"planned_start_date":"2026-08-06"}`)
+		`{"title":"周期联调-改","description":"跨系统联调"}`)
 	c.SetParamNames("id")
 	c.SetParamValues(idStr)
 	if err = h.Update(c); err != nil {
@@ -147,8 +155,9 @@ func TestDemandLifecycleHandlers(t *testing.T) {
 		t.Errorf("Update 响应异常: %d, %s", rec.Code, rec.Body.String())
 	}
 
-	// SubmitEstimate：draft → pending_estimate
-	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/"+idStr+"/submit-estimate", "")
+	// SubmitEstimate：draft → pending_estimate，携带预估人天与预计开工日期
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands/"+idStr+"/submit-estimate",
+		`{"estimated_half_days":6,"planned_start_date":"2026-08-05"}`)
 	c.SetParamNames("id")
 	c.SetParamValues(idStr)
 	if err = h.SubmitEstimate(c); err != nil {

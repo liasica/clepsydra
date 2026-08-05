@@ -156,7 +156,7 @@ paths:
       tags: [Demands]
       operationId: demandsCreate
       summary: 创建需求
-      description: 创建开发需求（项目），初始状态为 draft（仅超级管理员）
+      description: 创建开发需求（项目），初始状态为 draft，仅需标题与描述，预估人天与预计开工由提交人天确认时填写；登录即可操作，需求方也可创建
       security:
         - bearerAuth: []
       requestBody:
@@ -181,8 +181,6 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -220,7 +218,7 @@ paths:
       tags: [Demands]
       operationId: demandsUpdate
       summary: 更新需求
-      description: 更新需求基本信息，仅 draft 与 pending_estimate 状态允许（仅超级管理员）
+      description: 更新需求标题与描述（markdown 原文），仅 draft 与 pending_estimate 状态允许，人天确认后锁定；登录即可操作，需求方也可修改
       security:
         - bearerAuth: []
       parameters:
@@ -247,8 +245,6 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
         '422':
@@ -688,11 +684,17 @@ paths:
       tags: [Demands]
       operationId: demandsSubmitEstimate
       summary: 提交预估人天
-      description: 提交需求预估人天，进入待需求方确认状态，状态由 draft 流转为 pending_estimate（仅超级管理员）
+      description: 提交需求预估人天与预计开工日期，进入待需求方确认状态，状态由 draft 流转为 pending_estimate；pending_estimate 状态下可重复提交修正预估（仅超级管理员）
       security:
         - bearerAuth: []
       parameters:
         - $ref: '#/components/parameters/DemandID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemandEstimateRequest'
       responses:
         '200':
           description: 提交成功
@@ -1238,7 +1240,7 @@ components:
           description: 需求标题
         description:
           type: string
-          description: 需求描述
+          description: 需求描述，markdown 原文
         estimated_half_days:
           type: integer
           description: 预估人天，单位半天数，如 16 表示 8 人天
@@ -1296,22 +1298,28 @@ components:
 
     DemandRequest:
       type: object
-      description: 创建与更新需求共用的请求体
-      required: [title, estimated_half_days]
+      description: 创建与更新需求共用的请求体，仅标题与描述，预估人天与预计开工由提交人天确认时填写
+      required: [title]
       properties:
         title:
           type: string
           description: 需求标题，不能为空
         description:
           type: string
-          description: 需求描述
+          description: 需求描述，markdown 原文
+
+    DemandEstimateRequest:
+      type: object
+      description: 提交人天确认的请求体，pending_estimate 状态下可重复提交修正预估
+      required: [estimated_half_days]
+      properties:
         estimated_half_days:
           type: integer
           description: 预估人天，单位半天数，必须为正
         planned_start_date:
           type: string
           format: date
-          description: 预测开工日期，格式 YYYY-MM-DD，可为空
+          description: 预计开工日期，格式 YYYY-MM-DD，可为空，缺省时清空预计开工
 
     DemandStartRequest:
       type: object
