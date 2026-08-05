@@ -23,6 +23,8 @@ export const overridesPreferences = defineOverridesPreferences({
   widget: {
     // 只有 zh-CN 一种语言，关闭语言切换部件
     languageToggle: false,
+    // 后端未提供通知接口，关闭通知部件，避免展示 vben 脚手架的示例通知数据
+    notification: false,
   },
   copyright: {
     // 登录页版权栏默认写死 Vben 官网外链，替换为项目自身信息
