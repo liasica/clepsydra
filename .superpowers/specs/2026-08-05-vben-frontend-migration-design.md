@@ -17,9 +17,25 @@
 | 目标应用 | 目录 `apps/web-antdv-next`，包名 `@vben/web-antdv-next`（workspace 私有包，未发布 npm） |
 | UI 库 | `antdv-next` ^1.4.5，独立组织 antdv-next/antdv-next 的接棒项目，非 ant-design-vue 的 next tag |
 | 技术栈 | Vue 3.5 / vue-router 5 / Pinia 4 / Vite 8(Rolldown) / **Tailwind 4** / vue-i18n 11 |
-| 运行时要求 | Node `^22.18.0 \|\| ^24.12.0`、pnpm >=11（根 package.json 声明 `packageManager: pnpm@11.16.0`） |
+| 运行时要求 | Node `^22.18.0 \|\| ^24.12.0`；**pnpm 实测为 `>=10.0.0`，`packageManager: pnpm@10.33.4`**（T1 实测，非调研时记录的 11.x） |
 | 初始化方式 | 无官方 CLI。clone 后手工精简（5.0 起不再提供独立精简仓库）。**`thin` 分支是 2.8.0 老版本，不可用** |
 | 构建命令 | 根无 `build:antdv-next` 脚本，用 `pnpm build --filter=@vben/web-antdv-next` |
+
+## T1 实测修正（以下覆盖调研阶段的记录）
+
+- **pnpm 版本**：vben v5.7.0 实际声明 `packageManager: pnpm@10.33.4`、engines `pnpm >=10.0.0`。本机 pnpm 10.33.0 满足 engines，**唯一不满足的是 Node**（本机 25.3.0）
+- **corepack**：Node 25 不再内置 corepack，用 `npx corepack@latest pnpm ...` 代理调用。engines 字段未改动，靠 `.npmrc` 的 `engine-strict=false` 放行
+- **`prepare` 脚本的坑（已修复）**：`dashboard-next/package.json` 的 `prepare: lefthook install` 因该目录无独立 `.git`，会向上污染父仓库 `clepsydra/.git/hooks/` 与仓库根目录。T1 已清理残留并删除该脚本
+
+### `extraAppConfig` 产物形态（T1 已查明，T2/T12 依赖）
+
+- 生成固定文件 **`dist/_app.config.js`**，把构建时所有 `VITE_GLOB_*` 变量写入并 freeze 到 `window._VBEN_ADMIN_PRO_APP_CONF_`
+- **它是运行时配置文件，生产构建下运行时无 fallback、必读该全局变量** —— 因此**必须与产物一起 embed**，缺了它前端起不来
+- 类型上有开关但在 `internal/vite-config` 里硬编码为 `true`，无环境变量入口，只能改源码关闭。**决策：不关闭，照常 embed**
+- 现有 `//go:embed all:dashboard` 的 `all:` 前缀已能覆盖下划线开头的文件，Go 侧无需改动
+- 产物顶层清单：`_app.config.js`、`css/`、`favicon.ico`、`index.html`、`js/`、`jse/`
+- 默认产物含 `dist.zip`（1.18MB，`VITE_ARCHIVER` 默认值），T2 必须设 `VITE_ARCHIVER=false`
+- 无 `.gz` 副本（`VITE_COMPRESS=none` 已是脚手架默认值）
 
 ## 已定决策
 
@@ -106,7 +122,7 @@
 
 ## 待验证项（实施中确认）
 
-1. `extraAppConfig: true`（vite-config 硬编码）的产物形态——是否生成运行时配置文件、能否关闭、embed 场景下是否会覆盖 `VITE_GLOB_API_URL`
+1. ~~`extraAppConfig` 产物形态~~ —— **T1 已查明，见上文**
 2. outDir 重定向到 Vite root 之外的警告/副作用（`emptyOutDir` 必须显式设 true）
 3. Crepe CSS 与 Tailwind 4 preflight 的互相覆盖——建议把 Crepe 容器 scope 起来
 4. antdv-next 的 CSS-in-JS 与 vben `@vben/styles/antdv-next` 适配层在自定义主题色下的表现
