@@ -50,10 +50,24 @@ const loading = ref(false);
 const saving = ref(false);
 const formRef = ref<FormInstance>();
 
+/**
+ * 「账单包含的需求状态」实际可勾选的状态集合
+ *
+ * draft / pending_estimate 被排除：出账逻辑（internal/service/bill.go 的展示行 for 循环）
+ * 只检查 confirmed / in_progress 是否在此设置内，且 draft / pending_estimate 需求尚无
+ * actual_end_date，永远不会被任何账期捞中——勾选它们不会有任何效果，暴露出来只会误导
+ */
+const BILL_TOGGLABLE_STATUSES: DemandStatus[] = [
+  'confirmed',
+  'in_progress',
+  'pending_acceptance',
+  'accepted',
+];
+
 /** 状态字典转数组供标签按钮组遍历，key 需要还原 DemandStatus 类型供 toggleStatus 使用 */
-const statusList = Object.entries(DEMAND_STATUS).map(([key, meta]) => ({
-  key: key as DemandStatus,
-  meta,
+const statusList = BILL_TOGGLABLE_STATUSES.map((key) => ({
+  key,
+  meta: DEMAND_STATUS[key],
 }));
 
 /**
