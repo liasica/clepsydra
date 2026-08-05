@@ -279,10 +279,10 @@ func TestDemandListFilterByStatus(t *testing.T) {
 	}
 }
 
-// 以下为最终审查修复补充测试：覆盖 Finish 的未来日期拦截与账期封闭校验
+// 以下为最终审查修复补充测试：覆盖 Finish 的未来日期放行与账期封闭校验
 
-// TestDemandFinishRejectsFutureDate 完成日期晚于当前时间应拒绝
-func TestDemandFinishRejectsFutureDate(t *testing.T) {
+// TestDemandFinishAllowsFutureDate 完成日期允许晚于当前时间（支持预登记未来完成）
+func TestDemandFinishAllowsFutureDate(t *testing.T) {
 	_, svc := newDemandEnv(t, "dfinishfuture")
 	ctx := context.Background()
 
@@ -292,8 +292,8 @@ func TestDemandFinishRejectsFutureDate(t *testing.T) {
 	_ = svc.Start(ctx, admin, d.ID, time.Now())
 
 	future := time.Now().AddDate(0, 1, 0)
-	if err := svc.Finish(ctx, admin, d.ID, time.Now(), future, 2); err == nil {
-		t.Error("完成日期晚于当前时间应拒绝")
+	if err := svc.Finish(ctx, admin, d.ID, time.Now(), future, 2); err != nil {
+		t.Errorf("完成日期晚于当前时间应允许: %v", err)
 	}
 }
 

@@ -218,9 +218,6 @@ func (s *Demand) Finish(ctx context.Context, actor Actor, id int, actualStart, a
 	if actualEnd.Before(actualStart) {
 		return ErrBadRequest("完成日期不能早于开工日期")
 	}
-	if actualEnd.After(time.Now()) {
-		return ErrBadRequest("完成日期不能晚于当前时间")
-	}
 
 	// 完成日期所在账期已出账（非草稿）则拒绝，保证账期封闭、防止补录漏计费
 	period := actualEnd.In(time.Local).Format("2006-01")
