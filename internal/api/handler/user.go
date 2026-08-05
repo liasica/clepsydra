@@ -57,8 +57,8 @@ func (h *User) Update(c echo.Context) error {
 	}
 
 	var req struct {
-		Name    string `json:"name"`
-		Enabled bool   `json:"enabled"`
+		Name    *string `json:"name"`
+		Enabled *bool   `json:"enabled"`
 	}
 	if err := c.Bind(&req); err != nil {
 		return api.Fail(c, service.ErrBadRequest("参数错误"))

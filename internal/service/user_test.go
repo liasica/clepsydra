@@ -33,8 +33,24 @@ func TestUserCRUD(t *testing.T) {
 	}
 
 	// 更新与禁用
-	u, err = svc.Update(ctx, u.ID, "新名字", false)
+	newName := "新名字"
+	disabled := false
+	u, err = svc.Update(ctx, u.ID, &newName, &disabled)
 	if err != nil || u.Name != "新名字" || u.Enabled {
 		t.Errorf("更新失败: %v, %+v", err, u)
+	}
+
+	// enabled 传 nil 表示未携带该字段，只改姓名不应影响启用状态
+	renamed := "改名不改状态"
+	u, err = svc.Update(ctx, u.ID, &renamed, nil)
+	if err != nil || u.Name != "改名不改状态" || u.Enabled {
+		t.Errorf("仅改姓名时启用状态被意外改动: %v, %+v", err, u)
+	}
+
+	// name 传 nil 表示未携带该字段，只改启用状态不应影响姓名（对应启停开关只传 enabled 的场景）
+	enabled := true
+	u, err = svc.Update(ctx, u.ID, nil, &enabled)
+	if err != nil || u.Name != "改名不改状态" || !u.Enabled {
+		t.Errorf("仅改启用状态时姓名被意外清空: %v, %+v", err, u)
 	}
 }

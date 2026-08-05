@@ -55,9 +55,20 @@ func (s *User) Create(ctx context.Context, username, password, name, role string
 		Save(ctx)
 }
 
-// Update 更新用户姓名与启用状态
-func (s *User) Update(ctx context.Context, id int, name string, enabled bool) (*ent.User, error) {
-	u, err := s.client.User.UpdateOneID(id).SetName(name).SetEnabled(enabled).Save(ctx)
+// Update 更新用户姓名与启用状态，name/enabled 均为 nil 表示请求未携带该字段、不做改动
+// 前端有两处只传其中一个字段的场景：编辑弹窗只传 name、启停开关只传 enabled，
+// 若不区分「未传」与「传零值」会把另一个字段静默清空（曾经的真实缺陷：
+// 启停开关把姓名清空、编辑姓名把启用状态清空）
+func (s *User) Update(ctx context.Context, id int, name *string, enabled *bool) (*ent.User, error) {
+	builder := s.client.User.UpdateOneID(id)
+	if name != nil {
+		builder = builder.SetName(*name)
+	}
+	if enabled != nil {
+		builder = builder.SetEnabled(*enabled)
+	}
+
+	u, err := builder.Save(ctx)
 	if ent.IsNotFound(err) {
 		return nil, ErrNotFound
 	}
