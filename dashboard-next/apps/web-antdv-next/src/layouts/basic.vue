@@ -61,15 +61,6 @@ const notifications = ref<NotificationItem[]>([
     date: '1天前',
     isRead: false,
     message: '描述信息描述信息描述信息',
-    title: '跳转Workspace示例',
-    link: '/workspace',
-  },
-  {
-    id: 6,
-    avatar: 'https://avatar.vercel.sh/satori',
-    date: '1天前',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
     title: '跳转外部链接示例',
     link: 'https://doc.vben.pro',
   },
@@ -86,13 +77,6 @@ const showDot = computed(() =>
 );
 
 const menus = computed(() => [
-  {
-    handler: () => {
-      router.push({ name: 'Profile' });
-    },
-    icon: 'lucide:user',
-    text: $t('page.auth.profile'),
-  },
   {
     handler: () => {
       openWindow(VBEN_DOC_URL, {

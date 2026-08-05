@@ -11,6 +11,8 @@ export const overridesPreferences = defineOverridesPreferences({
     name: import.meta.env.VITE_APP_TITLE,
     // 前端角色路由过滤（admin / client 两个角色），不走后端下发菜单
     accessMode: 'frontend',
+    // 默认首页改为本项目的工作台路由（vben 默认值 /analytics 是脚手架示例页，已删除）
+    defaultHomePath: '/dashboard',
     // 只提供 zh-CN 语言包，锁定默认语言避免随 vben 升级漂移
     locale: 'zh-CN',
   },

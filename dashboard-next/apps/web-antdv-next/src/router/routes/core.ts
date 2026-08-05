@@ -56,41 +56,24 @@ const coreRoutes: RouteRecordRaw[] = [
           title: $t('page.auth.login'),
         },
       },
-      {
-        name: 'CodeLogin',
-        path: 'code-login',
-        component: () => import('#/views/_core/authentication/code-login.vue'),
-        meta: {
-          title: $t('page.auth.codeLogin'),
-        },
-      },
-      {
-        name: 'QrCodeLogin',
-        path: 'qrcode-login',
-        component: () =>
-          import('#/views/_core/authentication/qrcode-login.vue'),
-        meta: {
-          title: $t('page.auth.qrcodeLogin'),
-        },
-      },
-      {
-        name: 'ForgetPassword',
-        path: 'forget-password',
-        component: () =>
-          import('#/views/_core/authentication/forget-password.vue'),
-        meta: {
-          title: $t('page.auth.forgetPassword'),
-        },
-      },
-      {
-        name: 'Register',
-        path: 'register',
-        component: () => import('#/views/_core/authentication/register.vue'),
-        meta: {
-          title: $t('page.auth.register'),
-        },
-      },
     ],
+  },
+  /**
+   * 路由初始化意外失败（非 401，如网络故障）时的兜底错误页，见 router/guard.ts
+   * 的 routeInitFailed 标记；与 401 已被通用拦截器接管登出不同，其余错误一律
+   * 导向本页避免死循环。放进 coreRoutes（登录态无关）与旧前端 Exception500
+   * 语义一致——静态异常页不需要鉴权即可访问
+   */
+  {
+    name: 'FallbackInternalError',
+    path: '/fallback/internal-error',
+    component: () => import('#/views/_core/fallback/internal-error.vue'),
+    meta: {
+      hideInBreadcrumb: true,
+      hideInMenu: true,
+      hideInTab: true,
+      title: '500',
+    },
   },
 ];
 

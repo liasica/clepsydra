@@ -56,6 +56,11 @@ async function handleSubmit(values: Recordable<any>) {
   <AuthenticationLogin
     :form-schema="formSchema"
     :loading="authStore.loginLoading"
+    :show-code-login="false"
+    :show-forget-password="false"
+    :show-qrcode-login="false"
+    :show-register="false"
+    :show-third-party-login="false"
     @submit="handleSubmit"
   />
 </template>
