@@ -1,9 +1,8 @@
 /**
  * 接口数据类型定义，与 internal/api/docs/openapi.yaml 保持一致
  *
- * Status 类型目前内联为字面量联合类型；utils/clepsydra/dict.ts（状态字典，含
- * label/type/actions）尚未迁移到本应用，届时应改为 `import('#/utils/clepsydra/dict').DemandStatus`
- * 与 `BillStatus`，与旧前端 dashboard/src/types/api/api.d.ts 的写法保持一致
+ * Status 类型引用 utils/clepsydra/dict.ts（状态字典，含 label/type/actions），
+ * 与旧前端 dashboard/src/types/api/api.d.ts 的写法保持一致
  */
 declare namespace Api {
   /** 通用类型 */
@@ -56,13 +55,7 @@ declare namespace Api {
 
   /** 需求 */
   namespace Demand {
-    type Status =
-      | 'accepted'
-      | 'confirmed'
-      | 'draft'
-      | 'in_progress'
-      | 'pending_acceptance'
-      | 'pending_estimate';
+    type Status = import('#/utils/clepsydra/dict').DemandStatus;
 
     /** 需求实体 */
     interface Item {
@@ -116,7 +109,7 @@ declare namespace Api {
 
   /** 账单 */
   namespace Bill {
-    type Status = 'confirmed' | 'draft' | 'pending';
+    type Status = import('#/utils/clepsydra/dict').BillStatus;
 
     /** 账单明细行 */
     interface Item {
