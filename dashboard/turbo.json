@@ -28,7 +28,8 @@
     },
     "build:analyze": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": [],
+      "cache": false
     },
     "@vben/backend-mock#build": {
       "dependsOn": ["^build"],
