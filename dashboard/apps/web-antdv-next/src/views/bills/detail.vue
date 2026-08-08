@@ -4,9 +4,9 @@ import type { TableColumnsType } from 'antdv-next';
 import type { BillAction, DemandStatus } from '#/utils/clepsydra/dict';
 
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 
-import { confirm, Page } from '@vben/common-ui';
+import { confirm, Page, useVbenModal } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
 
 import {
@@ -15,6 +15,7 @@ import {
   Card,
   Descriptions,
   DescriptionsItem,
+  Popconfirm,
   Space,
   Spin,
   Switch,
@@ -25,9 +26,8 @@ import {
 import {
   confirmBill,
   fetchBill,
-  generateBill,
-  revokeBill,
-  shareBill,
+  payBill,
+  removeBillItem,
   toggleWaive,
 } from '#/api/bill';
 import { formatDate, formatDateTime } from '#/utils/clepsydra/date';
@@ -35,26 +35,23 @@ import { BILL_STATUS, DEMAND_STATUS, tagColor } from '#/utils/clepsydra/dict';
 import { formatAmount, formatMandayStrict } from '#/utils/clepsydra/manday';
 import { isStatusConflict, showSuccess } from '#/utils/http/error';
 
+import AddDemandsDialog from './components/AddDemandsDialog.vue';
+
 /**
  * 账单详情
  *
  * 操作按钮完全由 BILL_STATUS[status].actions[role] 驱动，页面不另写任何权限判断——
  * 该字典与后端状态机白名单一一对应，是按钮级权限的唯一来源。
- * waive 是白名单里的一项，但它不对应页面上的按钮，而是决定明细行「减免」开关是否可交互
+ * waive / addItem / removeItem 为明细区交互动作，决定减免开关、添加需求按钮与移除按钮是否可用，不渲染为顶部按钮
  */
 defineOptions({ name: 'BillDetail' });
 
-/** 顶部实际渲染为按钮的操作，waive 已被排除（见上方说明） */
-type ButtonAction = Exclude<BillAction, 'waive'>;
+/** 顶部实际渲染为按钮的操作，明细区交互动作已被排除（见上方说明） */
+type ButtonAction = Exclude<BillAction, 'addItem' | 'removeItem' | 'waive'>;
 
 const route = useRoute();
-const router = useRouter();
 const userStore = useUserStore();
 
-/**
- * 当前展示的账单 ID，响应式化以支持「重新生成」切换到新账单
- * 后端对同账期 draft 是删除重建（新 ID），固定常量会导致重新生成后仍打旧 ID
- */
 const billId = ref(Number(route.params.id));
 const bill = ref<Api.Bill.Detail>();
 const loading = ref(false);
@@ -75,10 +72,15 @@ const actions = computed<BillAction[]>(() =>
 
 /** 明细行「减免」开关是否可交互 */
 const canWaive = computed(() => actions.value.includes('waive'));
+/** 明细加/移项是否可用（已支付后锁定） */
+const canAdjustItems = computed(() => actions.value.includes('addItem'));
 
 /** 顶部按钮实际渲染的动作，渲染顺序即字典中的声明顺序 */
 const buttonActions = computed<ButtonAction[]>(() =>
-  actions.value.filter((action): action is ButtonAction => action !== 'waive'),
+  actions.value.filter(
+    (action): action is ButtonAction =>
+      action !== 'addItem' && action !== 'removeItem' && action !== 'waive',
+  ),
 );
 
 const columns: TableColumnsType<Api.Bill.Item> = [
@@ -104,6 +106,7 @@ const columns: TableColumnsType<Api.Bill.Item> = [
     minWidth: 120,
     title: '备注',
   },
+  { key: 'actions', title: '操作', width: 80 },
 ];
 
 /** 操作按钮元数据，键与 ButtonAction 一一对应，少一个键 TS 就报错 */
@@ -121,33 +124,27 @@ const ACTION_META: Record<
     primary: true,
     run: (target) => runDirect('确认账单', () => confirmBill(target.id)),
   },
-  regenerate: {
-    label: '重新生成',
-    primary: false,
+  pay: {
+    label: '标记已支付',
+    primary: true,
     run: (target) =>
       runDirect(
-        '重新生成',
-        async () => {
-          const next = await generateBill(target.period);
-          billId.value = next.id;
-          // 同账期草稿是删除重建，URL 须同步为新 ID，否则刷新页面会 404
-          await router.replace(`/bills/${next.id}`);
-        },
-        '重新生成将丢弃当前草稿的减免调整，确定吗？',
+        '标记已支付',
+        () => payBill(target.id),
+        '标记已支付后账单将完全锁定，确定吗？',
       ),
   },
-  revoke: {
-    danger: true,
-    label: '撤回',
-    primary: false,
-    run: (target) => runDirect('撤回账单', () => revokeBill(target.id)),
-  },
-  share: {
-    label: '分享给需求方',
-    primary: true,
-    run: (target) => runDirect('分享账单', () => shareBill(target.id)),
-  },
 };
+
+const [AddDemandsModal, addDemandsModalApi] = useVbenModal({
+  connectedComponent: AddDemandsDialog,
+});
+
+/** 打开添加需求弹窗，携带当前账单 ID */
+function openAddDemands() {
+  if (!bill.value) return;
+  addDemandsModalApi.setData({ billId: bill.value.id }).open();
+}
 
 /** 明细行状态快照转字典项，未知值时兜底为 undefined，模板里原样展示原始字符串 */
 function demandStatusOf(status: string) {
@@ -207,6 +204,17 @@ async function onWaive(item: Api.Bill.Item) {
   }
 }
 
+/** 移除明细行并重算总额，失败提示由拦截器统一弹出 */
+async function onRemoveItem(item: Api.Bill.Item) {
+  if (!bill.value) return;
+  try {
+    await removeBillItem(bill.value.id, item.id);
+    showSuccess('已移除');
+  } finally {
+    await load().catch(() => {});
+  }
+}
+
 onMounted(load);
 </script>
 
@@ -215,7 +223,7 @@ onMounted(load);
     <Spin :spinning="loading">
       <Card v-if="bill && statusMeta">
         <template #title>
-          <span class="text-base font-semibold">{{ bill.period }} 账单</span>
+          <span class="text-base font-semibold">{{ bill.name }}</span>
         </template>
         <template #extra>
           <Tag :color="tagColor(statusMeta.type)">{{ statusMeta.label }}</Tag>
@@ -230,6 +238,9 @@ onMounted(load);
         />
 
         <Descriptions :column="3" bordered size="small">
+          <DescriptionsItem label="账期">
+            {{ bill.period ?? '—' }}
+          </DescriptionsItem>
           <DescriptionsItem label="人天单价">
             {{ formatAmount(bill.daily_rate) }}
           </DescriptionsItem>
@@ -242,8 +253,8 @@ onMounted(load);
           <DescriptionsItem label="账单总额">
             {{ formatAmount(bill.total_amount) }}
           </DescriptionsItem>
-          <DescriptionsItem label="分享时间">
-            {{ formatDateTime(bill.shared_at) }}
+          <DescriptionsItem label="支付时间">
+            {{ formatDateTime(bill.paid_at) }}
           </DescriptionsItem>
           <DescriptionsItem label="确认时间">
             {{ formatDateTime(bill.confirmed_at)
@@ -251,7 +262,12 @@ onMounted(load);
           </DescriptionsItem>
         </Descriptions>
 
-        <h4 class="mb-3 mt-5 text-sm font-semibold">账单明细</h4>
+        <div class="mb-3 mt-5 flex items-center justify-between">
+          <h4 class="text-sm font-semibold">账单明细</h4>
+          <Button v-if="canAdjustItems" size="small" @click="openAddDemands">
+            添加需求
+          </Button>
+        </div>
         <Table
           :columns="columns"
           :data-source="bill.items ?? []"
@@ -288,6 +304,16 @@ onMounted(load);
               <Tag v-else-if="record.waived" color="error">已减免</Tag>
               <span v-else>—</span>
             </template>
+            <template v-else-if="column.key === 'actions'">
+              <Popconfirm
+                v-if="canAdjustItems"
+                title="移除该明细并重算总额？"
+                @confirm="onRemoveItem(record)"
+              >
+                <Button danger size="small" type="link">移除</Button>
+              </Popconfirm>
+              <span v-else>—</span>
+            </template>
           </template>
         </Table>
 
@@ -303,6 +329,8 @@ onMounted(load);
           </Button>
         </Space>
       </Card>
+
+      <AddDemandsModal @success="load" />
     </Spin>
   </Page>
 </template>

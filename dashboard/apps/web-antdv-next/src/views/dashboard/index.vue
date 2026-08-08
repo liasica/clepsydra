@@ -15,7 +15,7 @@ import { fetchTodos } from '#/api/dashboard';
  * 工作台，admin / client 两个角色都可见
  *
  * 三张待办卡片点击跳转对应列表并带上状态筛选；出账截止提醒仅超级管理员可见
- * （分享账单是超级管理员的操作，需求方无需关心出账截止日）
+ * （出账与账单调整是超级管理员的操作，需求方无需关心出账截止日）
  */
 defineOptions({ name: 'Dashboard' });
 
@@ -31,8 +31,8 @@ const loading = ref(false);
 const billingAlertText = computed(() => {
   if (!todos.value) return '';
   return todos.value.billing_due_today
-    ? `今天（${todos.value.billing_due_date}）是本月出账截止日，上月账单尚未分享`
-    : `本月出账截止日为 ${todos.value.billing_due_date}，上月账单尚未分享`;
+    ? `今天（${todos.value.billing_due_date}）是本月出账截止日，上月账单尚未生成`
+    : `本月出账截止日为 ${todos.value.billing_due_date}，上月账单尚未生成`;
 });
 
 /** 跳转需求列表并带上状态筛选 */
@@ -61,7 +61,7 @@ onMounted(load);
 <template>
   <Page>
     <Alert
-      v-if="isAdmin && todos && !todos.prev_bill_shared"
+      v-if="isAdmin && todos && !todos.prev_bill_generated"
       :closable="false"
       :message="billingAlertText"
       :type="todos.billing_due_today ? 'error' : 'warning'"

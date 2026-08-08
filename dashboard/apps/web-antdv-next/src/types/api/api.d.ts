@@ -220,7 +220,7 @@ declare namespace Api {
     /** 分页查询参数 */
     interface Query {
       target_type?: string;
-      /** 操作类型筛选，如 demand.create、bill.share */
+      /** 操作类型筛选，如 demand.create、bill.confirm */
       action?: string;
       target_id?: number;
       page?: number;
