@@ -306,32 +306,8 @@ func (s *Bill) ToggleWaive(ctx context.Context, actor Actor, billID, itemID int)
 		return rollback(tx, err)
 	}
 
-	// 重算账单合计
-	var items []*ent.BillItem
-	items, err = tx.BillItem.Query().Where(billitem.HasBillWith(bill.ID(billID))).All(ctx)
-	if err != nil {
+	if err = txRecalcTotals(ctx, tx, b); err != nil {
 		return rollback(tx, err)
-	}
-	total := b.BaseFee
-	for _, it := range items {
-		if it.ID == item.ID {
-			total += amount
-			continue
-		}
-		total += it.Amount
-	}
-
-	// 事务内条件更新（原 StatusEQ(bill.StatusDraft)），并发流转到已支付时回滚
-	var n int
-	n, err = tx.Bill.Update().
-		Where(bill.ID(billID), bill.StatusNEQ(bill.StatusPaid)).
-		SetTotalAmount(total).
-		Save(ctx)
-	if err != nil {
-		return rollback(tx, err)
-	}
-	if n == 0 {
-		return rollback(tx, ErrInvalidTransition)
 	}
 
 	if err = tx.Commit(); err != nil {
@@ -492,4 +468,168 @@ func (s *Bill) CreateManual(ctx context.Context, actor Actor, name string, deman
 	})
 
 	return b, nil
+}
+
+// txRecalcTotals 在事务内按明细重算账单合计并条件更新
+// 合计口径：人天为全部计费行（含已减免），金额为基础费加计费行金额（减免行金额恒为 0）
+// 账单在事务期间被并发流转到已支付时更新影响 0 行，返回 ErrInvalidTransition 触发调用方回滚
+func txRecalcTotals(ctx context.Context, tx *ent.Tx, b *ent.Bill) error {
+	items, err := tx.BillItem.Query().Where(billitem.HasBillWith(bill.ID(b.ID))).All(ctx)
+	if err != nil {
+		return err
+	}
+
+	halfDays, amount := 0, b.BaseFee
+	for _, it := range items {
+		if !it.Billable {
+			continue
+		}
+		halfDays += it.HalfDays
+		amount += it.Amount
+	}
+
+	var n int
+	n, err = tx.Bill.Update().
+		Where(bill.ID(b.ID), bill.StatusNEQ(bill.StatusPaid)).
+		SetTotalHalfDays(halfDays).
+		SetTotalAmount(amount).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrInvalidTransition
+	}
+
+	return nil
+}
+
+// AddItem 向账单添加需求明细并重算合计，已支付账单拒绝
+func (s *Bill) AddItem(ctx context.Context, actor Actor, billID, demandID int) error {
+	b, err := s.Get(ctx, billID)
+	if err != nil {
+		return err
+	}
+	if b.Status == bill.StatusPaid {
+		return ErrBadRequest("已支付账单不可调整")
+	}
+
+	// 同一账单内同一需求至多一行
+	var dup bool
+	dup, err = s.client.BillItem.Query().
+		Where(billitem.DemandID(demandID), billitem.HasBillWith(bill.ID(billID))).
+		Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if dup {
+		return ErrBadRequest("该需求已在账单中")
+	}
+
+	var d *ent.Demand
+	d, err = s.client.Demand.Query().Where(demand.ID(demandID)).Only(ctx)
+	if ent.IsNotFound(err) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	var billed map[int]bool
+	billed, err = s.billedDemandIDs(ctx)
+	if err != nil {
+		return err
+	}
+	var billable bool
+	billable, err = classifyDemand(d, billed)
+	if err != nil {
+		return err
+	}
+
+	halfDays, amount := d.EstimatedHalfDays, 0
+	if billable {
+		halfDays = 0
+		if d.ActualHalfDays != nil {
+			halfDays = *d.ActualHalfDays
+		}
+		amount = halfDays * b.DailyRate / 2
+	}
+
+	var tx *ent.Tx
+	tx, err = s.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+
+	builder := tx.BillItem.Create().
+		SetBill(b).
+		SetDemandID(d.ID).
+		SetDemandTitle(d.Title).
+		SetDemandStatus(d.Status.String()).
+		SetHalfDays(halfDays).
+		SetAmount(amount).
+		SetBillable(billable)
+	if d.PlannedStartDate != nil {
+		builder.SetPlannedStartDate(*d.PlannedStartDate)
+	}
+	if _, err = builder.Save(ctx); err != nil {
+		return rollback(tx, err)
+	}
+
+	if err = txRecalcTotals(ctx, tx, b); err != nil {
+		return rollback(tx, err)
+	}
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	s.audit.Record(ctx, actor, "bill.add_item", "bill", billID, map[string]any{
+		"demand_id": demandID, "billable": billable,
+	})
+
+	return nil
+}
+
+// RemoveItem 从账单移除明细并重算合计，已支付账单拒绝，计费行与展示行均可移除
+func (s *Bill) RemoveItem(ctx context.Context, actor Actor, billID, itemID int) error {
+	b, err := s.Get(ctx, billID)
+	if err != nil {
+		return err
+	}
+	if b.Status == bill.StatusPaid {
+		return ErrBadRequest("已支付账单不可调整")
+	}
+
+	var item *ent.BillItem
+	item, err = s.client.BillItem.Query().
+		Where(billitem.ID(itemID), billitem.HasBillWith(bill.ID(billID))).
+		Only(ctx)
+	if ent.IsNotFound(err) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+
+	var tx *ent.Tx
+	tx, err = s.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err = tx.BillItem.DeleteOneID(item.ID).Exec(ctx); err != nil {
+		return rollback(tx, err)
+	}
+	if err = txRecalcTotals(ctx, tx, b); err != nil {
+		return rollback(tx, err)
+	}
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	s.audit.Record(ctx, actor, "bill.remove_item", "bill", billID, map[string]any{
+		"item_id": itemID, "demand_id": item.DemandID,
+	})
+
+	return nil
 }
