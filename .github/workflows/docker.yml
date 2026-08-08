@@ -1,5 +1,5 @@
-# 构建 Docker 镜像并发布到 GitHub Container Registry（ghcr.io）
-name: 构建并发布 Docker 镜像
+# 构建 Docker 镜像并发布到 GitHub Container Registry（ghcr.io），master 分支推送后自动部署到服务器
+name: 构建发布并部署 Docker 镜像
 
 on:
   push:
@@ -11,6 +11,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  DEPLOY_DIR: /app/clepsydra
 
 permissions:
   contents: read
@@ -54,3 +55,43 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    name: 部署到服务器
+    needs: build-push
+    # 仅 master 分支推送时部署，打 tag 只发镜像不动线上
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v7.0.1
+
+      - name: 同步 docker-compose.yml 到服务器
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: docker-compose.yml
+          target: ${{ env.DEPLOY_DIR }}
+
+      - name: 拉取镜像并重启服务
+        uses: appleboy/ssh-action@v1.2.5
+        env:
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: GHCR_USERNAME,GHCR_TOKEN
+          script: |
+            set -e
+            cd ${{ env.DEPLOY_DIR }}
+            echo "$GHCR_TOKEN" | docker login ${{ env.REGISTRY }} -u "$GHCR_USERNAME" --password-stdin
+            docker compose pull
+            docker compose up -d
+            docker logout ${{ env.REGISTRY }}
+            docker image prune -f
