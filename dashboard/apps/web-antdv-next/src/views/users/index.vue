@@ -26,8 +26,9 @@ const columns: TableColumnsType<Api.User.Item> = [
   { dataIndex: 'name', key: 'name', minWidth: 140, title: '姓名' },
   { key: 'role', title: '角色', width: 120 },
   { key: 'enabled', title: '状态', width: 90 },
-  { key: 'created_at', title: '创建时间', width: 160 },
-  { key: 'action', title: '操作', width: 160 },
+  { key: 'created_at', title: '创建时间', width: 176 },
+  // 「编辑」「重置密码」两个链接按钮并排，列宽不足会折行把行高撑高
+  { key: 'action', title: '操作', width: 190 },
 ];
 
 const [FormModal, formModalApi] = useVbenModal({

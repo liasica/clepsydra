@@ -22,6 +22,16 @@ export function updateDemand(id: number, params: Api.Demand.SaveParams) {
   return requestClient.put<Api.Demand.Item>(`/api/demands/${id}`, params);
 }
 
+/**
+ * 删除需求，任意状态均可（仅超级管理员）
+ *
+ * 后端是软删除：记录保留，只是不再出现在列表、工作台统计与后续账单里；
+ * 已生成账单存的是快照，金额与明细不受影响
+ */
+export function deleteDemand(id: number): Promise<void> {
+  return requestClient.delete(`/api/demands/${id}`);
+}
+
 /** 提交预估人天与预计开工日期，draft 流转 pending_estimate；pending_estimate 下可重复提交修正（仅超级管理员） */
 export function submitEstimate(
   id: number,

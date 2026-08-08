@@ -57,7 +57,8 @@ const columns: TableColumnsType<Api.Bill.Detail> = [
   { key: 'status', title: '状态', width: 110 },
   { key: 'total_half_days', title: '总人天', width: 110 },
   { key: 'total_amount', title: '总金额', width: 130 },
-  { key: 'created_at', title: '生成时间', width: 152 },
+  // 与其它列表的日期时间列统一，避免「2026-08-05 18:34」折行
+  { key: 'created_at', title: '生成时间', width: 176 },
 ];
 
 /** 加载账单列表 */

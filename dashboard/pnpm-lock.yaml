@@ -60,6 +60,9 @@ catalogs:
     '@eslint/js':
       specifier: ^10.0.1
       version: 10.0.1
+    '@floating-ui/dom':
+      specifier: ^1.7.6
+      version: 1.7.6
     '@iconify/json':
       specifier: ^2.2.476
       version: 2.2.476
@@ -669,6 +672,9 @@ importers:
       '@codemirror/legacy-modes':
         specifier: 'catalog:'
         version: 6.5.3
+      '@floating-ui/dom':
+        specifier: 'catalog:'
+        version: 1.7.6
       '@lezer/highlight':
         specifier: 'catalog:'
         version: 1.2.3

@@ -58,7 +58,8 @@ const columns: TableColumnsType<Api.AuditLog.Item> = [
   { key: 'action', minWidth: 160, title: '动作' },
   { key: 'target_type', title: '目标类型', width: 100 },
   { dataIndex: 'target_id', key: 'target_id', title: '目标 ID', width: 90 },
-  { key: 'created_at', title: '时间', width: 160 },
+  // 与其它列表的日期时间列统一，避免「2026-08-06 10:00」折行
+  { key: 'created_at', title: '时间', width: 176 },
 ];
 
 const rows = ref<Api.AuditLog.Item[]>([]);

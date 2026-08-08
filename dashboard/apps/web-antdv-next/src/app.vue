@@ -4,7 +4,7 @@ import { computed, watch } from 'vue';
 import { useAntdDesignTokens } from '@vben/hooks';
 import { preferences, usePreferences } from '@vben/preferences';
 
-import { App, ConfigProvider, theme } from 'antdv-next';
+import { App, ConfigProvider, StyleProvider, theme } from 'antdv-next';
 
 import { antdLocale } from '#/locales';
 
@@ -39,9 +39,13 @@ watch(
 </script>
 
 <template>
-  <ConfigProvider :locale="antdLocale" :theme="tokenTheme">
-    <App>
-      <RouterView />
-    </App>
-  </ConfigProvider>
+  <!-- layer 把 antd 的 css-in-js 样式包进 @layer antd，层序在 theme.css 中声明，
+       使写在 antd 组件上的 Tailwind 工具类（mb-4 等）不再被组件自身样式压过 -->
+  <StyleProvider layer>
+    <ConfigProvider :locale="antdLocale" :theme="tokenTheme">
+      <App>
+        <RouterView />
+      </App>
+    </ConfigProvider>
+  </StyleProvider>
 </template>

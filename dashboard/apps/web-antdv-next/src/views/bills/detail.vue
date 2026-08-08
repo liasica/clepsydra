@@ -94,7 +94,8 @@ const columns: TableColumnsType<Api.Bill.Item> = [
   { key: 'demand_status', title: '状态快照', width: 120 },
   { key: 'half_days', title: '人天', width: 90 },
   { key: 'amount', title: '金额', width: 110 },
-  { key: 'planned_start_date', title: '预计开工', width: 112 },
+  // 与需求列表同宽，容下「2026-08-20」加单元格内边距
+  { key: 'planned_start_date', title: '预计开工', width: 124 },
   { key: 'waived', title: '减免', width: 110 },
   {
     dataIndex: 'note',

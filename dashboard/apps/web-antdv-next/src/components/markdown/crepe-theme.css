@@ -11,28 +11,32 @@
  *    部分，也不会与 Tailwind preflight 互相污染
  */
 
+/**
+ * 外框直接借用 antd 输入框的令牌（--ant-*），这样描述框与同一表单里的标题 Input
+ * 共用一套边框、圆角、聚焦环，主题切换时也不会跑偏
+ */
 .clepsydra-md-editor {
   position: relative;
-  background: var(--md-bg);
-  border: 1px solid var(--md-border);
-  border-radius: var(--md-radius);
+  background: var(--ant-color-bg-container, var(--md-bg));
+  border: 1px solid var(--ant-color-border, var(--md-border));
+  border-radius: var(--ant-border-radius, 8px);
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
 }
 
 .clepsydra-md-editor:hover {
-  border-color: hsl(var(--primary) / 60%);
+  border-color: var(--ant-color-primary-hover, hsl(var(--primary) / 60%));
 }
 
 .clepsydra-md-editor:focus-within {
-  border-color: var(--md-primary);
-  box-shadow: 0 0 0 2px hsl(var(--primary) / 12%);
+  border-color: var(--ant-color-primary, var(--md-primary));
+  box-shadow: 0 0 0 2px var(--ant-control-outline, hsl(var(--primary) / 12%));
 }
 
 .clepsydra-md-editor--readonly:hover,
 .clepsydra-md-editor--readonly:focus-within {
-  border-color: var(--md-border);
+  border-color: var(--ant-color-border, var(--md-border));
   box-shadow: none;
 }
 
@@ -93,10 +97,13 @@
 
 /* ------------------------------------------------------------------ */
 
-/* 左侧留出块拖拽手柄（两个 32px 操作按钮）的位置，否则手柄会被容器边框裁掉 */
+/**
+ * 水平内边距对齐 antd Input 的 11px，让描述正文与同表单标题输入框的文字左边界
+ * 严格对齐（块拖拽手柄已关闭，不再需要为它预留 68px）
+ */
 .clepsydra-md-editor .milkdown .ProseMirror {
-  min-height: var(--md-editor-min-height, 320px);
-  padding: 14px 24px 22px 68px;
+  min-height: var(--md-editor-min-height, 200px);
+  padding: 10px 11px 14px;
   line-height: var(--md-line-height);
 }
 
@@ -238,17 +245,87 @@
   fill: var(--md-primary);
 }
 
-/* 弹层圆角与 antd 的 8px 卡片语言对齐 */
-.clepsydra-md-editor .milkdown .milkdown-slash-menu {
-  border: 1px solid var(--md-border);
-  border-radius: 8px;
-}
-
-.clepsydra-md-editor .milkdown .milkdown-toolbar,
+/* 弹层圆角与 antd 的 8px 卡片语言对齐（选区浮动 toolbar 已由常驻工具栏取代，不再装配） */
+.clepsydra-md-editor .milkdown .milkdown-slash-menu,
 .clepsydra-md-editor .milkdown .milkdown-link-preview,
 .clepsydra-md-editor .milkdown .milkdown-link-edit {
   border: 1px solid var(--md-border);
   border-radius: 8px;
+}
+
+/**
+ * 菜单列表高度改由 size 中间件按可用空间实时下发（见 MarkdownEditor 的 slashMenu
+ * 配置）。Crepe 默认写死 max-height: 420px，在 Modal 里塞不下就会被容器裁掉半截
+ */
+.clepsydra-md-editor .milkdown .milkdown-slash-menu .menu-groups {
+  max-height: var(--md-slash-max-height, 420px);
+  padding: 0 6px 6px;
+}
+
+/**
+ * 收紧 slash 菜单的留白
+ *
+ * Crepe 默认每项 14px 上下内边距 + 24px 图标，单项接近 48px 高，弹窗里一屏放不下
+ * 几项。这里压到约 32px，同一高度能多露一倍条目
+ */
+.clepsydra-md-editor .milkdown .milkdown-slash-menu .tab-group {
+  padding: 6px 6px 0;
+}
+
+.clepsydra-md-editor .milkdown .milkdown-slash-menu .tab-group ul {
+  gap: 6px;
+  padding: 4px 6px;
+}
+
+.clepsydra-md-editor .milkdown .milkdown-slash-menu .tab-group ul li {
+  padding: 4px 10px;
+}
+
+.clepsydra-md-editor .milkdown .milkdown-slash-menu .menu-group h6 {
+  padding: 8px 8px 2px;
+}
+
+.clepsydra-md-editor .milkdown .milkdown-slash-menu .menu-group li {
+  gap: 10px;
+  min-width: 184px;
+  padding: 6px 8px;
+}
+
+.clepsydra-md-editor .milkdown .milkdown-slash-menu .menu-group li svg {
+  width: 18px;
+  height: 18px;
+}
+
+.clepsydra-md-editor
+  .milkdown
+  .milkdown-slash-menu
+  .menu-group
+  + .menu-group::before {
+  margin: 4px 8px;
+}
+
+/**
+ * slash 菜单的浮层宿主（见 MarkdownEditor 的 createSlashPortal）
+ *
+ * 它复用了 .clepsydra-md-editor 这个类名只为命中 --crepe-* 令牌映射，本身不该被
+ * 看见，所以要把编辑器外框的边框、底色、交互态全部中和掉，并且不占位、不拦事件
+ */
+.clepsydra-md-portal,
+.clepsydra-md-portal:hover,
+.clepsydra-md-portal:focus-within {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* 菜单自身要能点，单独把事件收回来 */
+.clepsydra-md-portal .milkdown-slash-menu {
+  pointer-events: auto;
 }
 
 /* 拖拽落点指示线跟随主题色 */
@@ -268,6 +345,6 @@
 
 /* 只读态：去掉编辑器特有的交互态，观感贴近详情页 */
 .clepsydra-md-editor--readonly .milkdown .ProseMirror {
-  padding: 14px 24px;
+  padding: 10px 11px;
   cursor: default;
 }

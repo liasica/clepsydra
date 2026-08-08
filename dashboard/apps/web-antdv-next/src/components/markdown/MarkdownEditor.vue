@@ -1,19 +1,37 @@
 <script lang="ts" setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import type { BlockKind, InlineMark, ToolbarState } from './toolbar-actions';
 
+import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+
+import { flip, offset, size } from '@floating-ui/dom';
 import { CrepeBuilder } from '@milkdown/crepe/builder';
 import { blockEdit } from '@milkdown/crepe/feature/block-edit';
 import { codeMirror } from '@milkdown/crepe/feature/code-mirror';
 import { cursor } from '@milkdown/crepe/feature/cursor';
+import { imageBlock } from '@milkdown/crepe/feature/image-block';
 import { linkTooltip } from '@milkdown/crepe/feature/link-tooltip';
 import { listItem } from '@milkdown/crepe/feature/list-item';
 import { placeholder as placeholderFeature } from '@milkdown/crepe/feature/placeholder';
 import { table } from '@milkdown/crepe/feature/table';
-import { toolbar } from '@milkdown/crepe/feature/toolbar';
 import { remarkStringifyOptionsCtx } from '@milkdown/kit/core';
+import { remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark';
 import { replaceAll } from '@milkdown/kit/utils';
 
+import { uploadImage } from '#/api/upload';
+
 import { codeExtensions, codeLanguages } from './code-mirror-setup';
+import MarkdownToolbar from './MarkdownToolbar.vue';
+import {
+  applyLink,
+  EMPTY_TOOLBAR_STATE,
+  insertDivider,
+  insertTable,
+  readToolbarState,
+  refocus,
+  setBlock,
+  toggleList,
+  toggleMark,
+} from './toolbar-actions';
 
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
@@ -35,7 +53,7 @@ defineOptions({ name: 'MarkdownEditor' });
 
 const props = withDefaults(
   defineProps<{
-    /** 编辑区最小高度，内容超出后自动增高（不做内部滚动，避免浮层被裁切） */
+    /** 编辑区最小高度，内容超出后自动增高，不做内部滚动 */
     height?: string;
     /** 空白时的占位提示 */
     placeholder?: string;
@@ -43,7 +61,7 @@ const props = withDefaults(
     readonly?: boolean;
   }>(),
   {
-    height: '320px',
+    height: '200px',
     placeholder: '输入 / 唤出命令菜单，或直接开始编写需求描述',
     readonly: false,
   },
@@ -54,6 +72,9 @@ const content = defineModel<string>({ default: '' });
 
 const hostRef = ref<HTMLDivElement>();
 
+/** 工具栏按钮的点亮状态，跟随光标位置与文档变化刷新 */
+const toolbarState = shallowRef<ToolbarState>(EMPTY_TOOLBAR_STATE);
+
 let crepe: CrepeBuilder | undefined;
 
 /**
@@ -63,6 +84,52 @@ let crepe: CrepeBuilder | undefined;
  * 外部回写与内部输入靠这个快照区分，避免「输入 → emit → watch → replaceAll」自激循环
  */
 let lastEmitted = '';
+
+/** slash 菜单的浮层宿主，挂在裁切容器之外，卸载时要一并移除 */
+let slashPortal: HTMLDivElement | undefined;
+
+/**
+ * 找一个不会裁掉浮层的挂载点
+ *
+ * 从编辑器往上定位「最外层的裁切祖先」，返回它的父级：既跳出了 overflow 裁切范围，
+ * 又仍在 Modal 内部 —— 挂到 document.body 会落到 Dialog 的「外部」，点菜单项时会被
+ * 判成外部点击，把整个弹窗关掉
+ */
+function findClipFreeRoot(el: HTMLElement): HTMLElement {
+  let outermostClipper: HTMLElement | undefined;
+
+  for (let node = el.parentElement; node && node !== document.body; ) {
+    const { overflow, overflowX, overflowY } = getComputedStyle(node);
+    if ([overflow, overflowX, overflowY].some((value) => value !== 'visible')) {
+      outermostClipper = node;
+    }
+    node = node.parentElement;
+  }
+
+  return outermostClipper?.parentElement ?? document.body;
+}
+
+/**
+ * 建一个浮层宿主给 slash 菜单
+ *
+ * Crepe 的样式全部写在 `.milkdown { ... }` 之下，菜单一旦挂到编辑器外就会掉光样式；
+ * 我们的 --crepe-* 令牌映射又挂在 `.clepsydra-md-editor .milkdown` 上。所以这里原样
+ * 复刻一层 `.clepsydra-md-editor > .milkdown` 结构，菜单挂进内层，样式与令牌都还在，
+ * 同时又待在裁切容器之外，不会被 Modal 切掉
+ */
+function createSlashPortal(host: HTMLElement): HTMLElement {
+  const portal = document.createElement('div');
+  portal.className =
+    'clepsydra-markdown clepsydra-md-editor clepsydra-md-portal';
+
+  const inner = document.createElement('div');
+  inner.className = 'milkdown';
+  portal.append(inner);
+
+  findClipFreeRoot(host).append(portal);
+  slashPortal = portal;
+  return inner;
+}
 
 onMounted(async () => {
   if (!hostRef.value) {
@@ -91,6 +158,15 @@ onMounted(async () => {
     .addFeature(listItem)
     .addFeature(placeholderFeature, { text: props.placeholder, mode: 'block' })
     .addFeature(linkTooltip, { inputPlaceholder: '粘贴或输入链接' })
+    .addFeature(imageBlock, {
+      onUpload: uploadImage,
+      blockUploadButton: '上传图片',
+      blockUploadPlaceholderText: '或粘贴图片链接',
+      blockConfirmButton: '确定',
+      blockCaptionPlaceholderText: '写点图注……',
+      inlineUploadButton: '上传图片',
+      inlineUploadPlaceholderText: '或粘贴图片链接',
+    })
     .addFeature(table)
     .addFeature(codeMirror, {
       languages: codeLanguages,
@@ -102,15 +178,40 @@ onMounted(async () => {
       previewToggleText: (previewOnlyMode: boolean) =>
         previewOnlyMode ? '编辑' : '隐藏',
     })
-    .addFeature(toolbar, {
-      boldLabel: '加粗',
-      italicLabel: '斜体',
-      strikethroughLabel: '删除线',
-      codeLabel: '行内代码',
-      linkLabel: '链接',
-    })
+    // 不装 Crepe 的 toolbar feature：它是跟随选区的浮动条，会盖住顶部常驻工具栏，
+    // 且能力已被常驻工具栏完全覆盖
     // blockEdit 的 slash 菜单会读取已注册的 feature 列表决定显示哪些条目，放在最后装配
     .addFeature(blockEdit, {
+      // 左侧块拖拽手柄要占掉 66px 正文缩进，正文会明显比同表单的 antd Input 靠右；
+      // 表单场景下块排序是低频操作，关掉手柄换取与表单对齐的左边界，加块仍走 slash 菜单
+      blockHandle: { shouldShow: () => false },
+      slashMenu: {
+        // 挂到弹窗的裁切范围之外，菜单才能用满视口高度而不是被压成一两行
+        root: createSlashPortal(hostRef.value),
+        /**
+         * floatingUIOptions 会整体覆盖 plugin-slash 内部的 middleware 链，这里重建：
+         * - flip 换成 bestFit，上下都不够时至少挑空间大的一侧
+         * - size 按最终方向的可用高度下发 --md-slash-max-height，超出部分菜单内部滚动
+         */
+        floatingUIOptions: {
+          placement: 'bottom-start',
+          middleware: [
+            flip({ fallbackStrategy: 'bestFit', padding: 8 }),
+            offset(6),
+            size({
+              padding: 8,
+              apply({ availableHeight, elements }) {
+                // 76px 是顶部标签栏 + 上下内边距，剩下的才是可滚动的列表区
+                const listHeight = Math.max(96, availableHeight - 76);
+                elements.floating.style.setProperty(
+                  '--md-slash-max-height',
+                  `${listHeight}px`,
+                );
+              },
+            }),
+          ],
+        },
+      },
       textGroup: {
         label: '文本',
         text: { label: '正文' },
@@ -131,21 +232,38 @@ onMounted(async () => {
       },
       advancedGroup: {
         label: '高级',
+        image: { label: '图片' },
         codeBlock: { label: '代码块' },
         table: { label: '表格' },
-        // 图片与公式对应的 feature 未启用，这里一并从菜单里摘掉
-        image: null,
+        // 公式对应的 latex feature 未启用，从菜单里摘掉
         math: null,
       },
     });
 
+  /**
+   * 关掉「空段落保留成 `<br />`」
+   *
+   * commonmark preset 默认注册 remarkPreserveEmptyLinePlugin，空段落只要不是文档
+   * 末节点就会被序列化成字面量 `<br />`。粘贴图片时 plugin-upload 是就地插入、不吃掉
+   * 光标所在的空段落，于是描述里常留下一行 `<br />`；而 MarkdownViewer 关闭了 html
+   * 渲染，详情页会把它原样显示成文本。段落间距靠 markdown 的空行本来就够用
+   */
+  await instance.editor.remove(remarkPreserveEmptyLinePlugin);
+
   instance.on((listener) => {
-    listener.markdownUpdated((_ctx, markdown) => {
+    listener.markdownUpdated((ctx, markdown) => {
+      // 输入过程中格式也会变（如打完 `**粗**`），跟着刷新工具栏点亮状态
+      toolbarState.value = readToolbarState(ctx);
+
       if (markdown === content.value) {
         return;
       }
       lastEmitted = markdown;
       content.value = markdown;
+    });
+
+    listener.selectionUpdated((ctx) => {
+      toolbarState.value = readToolbarState(ctx);
     });
   });
 
@@ -158,6 +276,9 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   crepe?.destroy();
   crepe = undefined;
+  // 浮层宿主是手动挂到编辑器外面的，Crepe 销毁不会带走它
+  slashPortal?.remove();
+  slashPortal = undefined;
 });
 
 // 外部回写（表单异步加载详情等）时把整篇内容换掉
@@ -176,6 +297,23 @@ watch(
   },
 );
 
+/**
+ * 工具栏动作统一入口
+ *
+ * 每个动作都是「执行命令 → 把焦点还给正文 → 重算点亮状态」，抽出来避免在每个
+ * 事件处理里重复这三步
+ */
+function runAction(action: (ctx: Parameters<typeof refocus>[0]) => void) {
+  if (!crepe || props.readonly) {
+    return;
+  }
+  crepe.editor.action((ctx) => {
+    action(ctx);
+    refocus(ctx);
+    toolbarState.value = readToolbarState(ctx);
+  });
+}
+
 defineExpose({
   /** 取当前 markdown 原文（提交前兜底用，正常走 v-model 即可） */
   getMarkdown: () => crepe?.getMarkdown() ?? content.value ?? '',
@@ -188,6 +326,19 @@ defineExpose({
     :class="{ 'clepsydra-md-editor--readonly': readonly }"
     :style="{ '--md-editor-min-height': height }"
   >
+    <MarkdownToolbar
+      v-if="!readonly"
+      :state="toolbarState"
+      @divider="runAction(insertDivider)"
+      @link="(href: string) => runAction((ctx) => applyLink(ctx, href))"
+      @list="(kind) => runAction((ctx) => toggleList(ctx, kind))"
+      @mark="(mark: InlineMark) => runAction((ctx) => toggleMark(ctx, mark))"
+      @set-block="
+        (kind: Exclude<BlockKind, 'other'>) =>
+          runAction((ctx) => setBlock(ctx, kind))
+      "
+      @table="runAction(insertTable)"
+    />
     <div ref="hostRef"></div>
   </div>
 </template>

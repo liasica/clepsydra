@@ -36,6 +36,7 @@
     "@codemirror/lang-yaml": "catalog:",
     "@codemirror/language": "catalog:",
     "@codemirror/legacy-modes": "catalog:",
+    "@floating-ui/dom": "catalog:",
     "@lezer/highlight": "catalog:",
     "@milkdown/crepe": "catalog:",
     "@milkdown/kit": "catalog:",

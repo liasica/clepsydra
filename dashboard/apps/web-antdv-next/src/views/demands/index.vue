@@ -51,9 +51,10 @@ const columns: TableColumnsType<Api.Demand.Item> = [
   },
   { key: 'estimated', title: '预估人天', width: 100 },
   { key: 'actual', title: '实际人天', width: 100 },
-  { key: 'plannedStart', title: '预计开工', width: 112 },
+  // 日期列宽需容下「2026-08-20」「2026-08-05 18:30」加单元格左右内边距，否则会折行
+  { key: 'plannedStart', title: '预计开工', width: 124 },
   { key: 'status', title: '状态', width: 120 },
-  { key: 'updatedAt', title: '更新时间', width: 152 },
+  { key: 'updatedAt', title: '更新时间', width: 176 },
 ];
 
 const [FormModal, formModalApi] = useVbenModal({

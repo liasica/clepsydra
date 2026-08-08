@@ -2,6 +2,9 @@
  * 需求与账单状态字典
  * label 为展示文案，type 为 Element Plus 标签配色，actions 为该状态下各角色可执行的操作
  * 与后端状态机白名单保持一致，页面按钮渲染与操作守卫共用此定义
+ *
+ * 权限约定：超级管理员拥有全部权限，因此 admin 恒为 client 的超集——
+ * 需求方专属的确认类操作（confirmEstimate、accept、confirm）超管同样可代为执行
  */
 
 export type DemandStatus =
@@ -17,6 +20,7 @@ export type BillStatus = 'confirmed' | 'draft' | 'pending';
 export type DemandAction =
   | 'accept'
   | 'confirmEstimate'
+  | 'delete'
   | 'edit'
   | 'finish'
   | 'start'
@@ -56,35 +60,36 @@ export const DEMAND_STATUS: Record<DemandStatus, StatusMeta<DemandAction>> = {
   draft: {
     label: '草稿',
     type: 'info',
-    actions: { admin: ['edit', 'submitEstimate'], client: ['edit'] },
+    actions: { admin: ['edit', 'submitEstimate', 'delete'], client: ['edit'] },
   },
   pending_estimate: {
     label: '待确认人天',
     type: 'warning',
     actions: {
-      admin: ['edit', 'submitEstimate'],
+      // 代确认属兜底操作，排在超管自身的编辑与修改预估之后
+      admin: ['edit', 'submitEstimate', 'confirmEstimate', 'delete'],
       client: ['edit', 'confirmEstimate'],
     },
   },
   confirmed: {
     label: '已确认待开工',
     type: 'primary',
-    actions: { admin: ['start'], client: [] },
+    actions: { admin: ['start', 'delete'], client: [] },
   },
   in_progress: {
     label: '进行中',
     type: 'primary',
-    actions: { admin: ['finish'], client: [] },
+    actions: { admin: ['finish', 'delete'], client: [] },
   },
   pending_acceptance: {
     label: '完成待确认',
     type: 'warning',
-    actions: { admin: [], client: ['accept'] },
+    actions: { admin: ['accept', 'delete'], client: ['accept'] },
   },
   accepted: {
     label: '已确认',
     type: 'success',
-    actions: { admin: [], client: [] },
+    actions: { admin: ['delete'], client: [] },
   },
 };
 
@@ -97,7 +102,7 @@ export const BILL_STATUS: Record<BillStatus, StatusMeta<BillAction>> = {
   pending: {
     label: '待确认',
     type: 'warning',
-    actions: { admin: ['revoke'], client: ['confirm'] },
+    actions: { admin: ['revoke', 'confirm'], client: ['confirm'] },
   },
   confirmed: {
     label: '已确认',

@@ -1,3 +1,9 @@
+/* 级联层顺序：antd 的 css-in-js 样式经 StyleProvider layer 包进 @layer antd 后，
+ * 必须显式排在 utilities 之前，否则 .ant-card { margin: 0 } 这类组件样式会压过
+ * 写在组件上的 mb-4 / mt-4 等工具类（无层样式与靠后的层都优先于 utilities）。
+ * antd 仍排在 components 之后，避免 preflight 与 vben 组件类反过来破坏 antd 外观 */
+@layer theme, base, components, antd, utilities;
+
 @import 'tailwindcss';
 @import 'tw-animate-css';
 

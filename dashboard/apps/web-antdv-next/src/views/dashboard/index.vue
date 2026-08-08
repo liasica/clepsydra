@@ -60,6 +60,15 @@ onMounted(load);
 
 <template>
   <Page>
+    <Alert
+      v-if="isAdmin && todos && !todos.prev_bill_shared"
+      :closable="false"
+      :message="billingAlertText"
+      :type="todos.billing_due_today ? 'error' : 'warning'"
+      class="mb-4"
+      show-icon
+    />
+
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <Card
         class="cursor-pointer"
@@ -88,14 +97,5 @@ onMounted(load);
         <div class="mt-2 text-muted-foreground">待确认的账单</div>
       </Card>
     </div>
-
-    <Alert
-      v-if="isAdmin && todos && !todos.prev_bill_shared"
-      :closable="false"
-      :message="billingAlertText"
-      :type="todos.billing_due_today ? 'error' : 'warning'"
-      class="mt-4"
-      show-icon
-    />
   </Page>
 </template>

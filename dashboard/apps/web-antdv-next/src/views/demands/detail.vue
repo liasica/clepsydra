@@ -2,7 +2,7 @@
 import type { DemandAction } from '#/utils/clepsydra/dict';
 
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { confirm, Page, useVbenModal } from '@vben/common-ui';
 import { useUserStore } from '@vben/stores';
@@ -18,7 +18,12 @@ import {
   Tag,
 } from 'antdv-next';
 
-import { acceptDemand, confirmEstimate, fetchDemand } from '#/api/demand';
+import {
+  acceptDemand,
+  confirmEstimate,
+  deleteDemand,
+  fetchDemand,
+} from '#/api/demand';
 import { MarkdownViewer } from '#/components/markdown';
 import { formatDate, formatDateTime } from '#/utils/clepsydra/date';
 import { DEMAND_STATUS, tagColor } from '#/utils/clepsydra/dict';
@@ -39,6 +44,7 @@ import DemandStartDialog from './components/DemandStartDialog.vue';
 defineOptions({ name: 'DemandDetail' });
 
 const route = useRoute();
+const router = useRouter();
 const userStore = useUserStore();
 
 const demandId = Number(route.params.id);
@@ -63,7 +69,8 @@ const acceptWay = computed(() => {
   if (!demand.value?.accepted_at) return '—';
   if (demand.value.accept_locked) return '出账锁定自动确认';
   if (demand.value.accept_auto) return '逾期自动确认';
-  return '需求方确认';
+  // 需求方与超管都可确认，此处不区分具体角色
+  return '手动确认';
 });
 
 const [FormModal, formModalApi] = useVbenModal({
@@ -113,12 +120,39 @@ async function runDirect(name: string, action: () => Promise<unknown>) {
 }
 
 /**
+ * 删除需求
+ *
+ * 与 runDirect 的区别是成功后不能再刷新详情——记录已被软删除，重新加载只会拿到 404，
+ * 因此直接退回列表页
+ */
+async function runDelete(target: Api.Demand.Item) {
+  try {
+    await confirm(`确定删除需求「${target.title}」吗？`, '删除确认');
+  } catch {
+    // 用户取消
+    return;
+  }
+
+  try {
+    await deleteDemand(target.id);
+  } catch {
+    // 失败提示已由请求拦截器统一弹出
+    return;
+  }
+
+  showSuccess('已删除');
+  await router.push('/demands');
+}
+
+/**
  * 操作按钮元数据，键与 DEMAND_STATUS 的 actions 白名单一一对应
  * label 取函数是为了让「提交人天确认」在可重复提交的 pending_estimate 下换成修正文案
  */
 const ACTION_META: Record<
   DemandAction,
   {
+    /** 破坏性操作，按钮以危险色呈现 */
+    danger?: boolean;
     label: (target: Api.Demand.Item) => string;
     primary: boolean;
     run: (target: Api.Demand.Item) => void;
@@ -133,6 +167,12 @@ const ACTION_META: Record<
     label: () => '确认人天',
     primary: true,
     run: (target) => runDirect('确认人天', () => confirmEstimate(target.id)),
+  },
+  delete: {
+    danger: true,
+    label: () => '删除',
+    primary: false,
+    run: (target) => runDelete(target),
   },
   edit: {
     label: () => '编辑',
@@ -221,6 +261,7 @@ onMounted(load);
           <Button
             v-for="action in actions"
             :key="action"
+            :danger="ACTION_META[action].danger"
             :type="ACTION_META[action].primary ? 'primary' : 'default'"
             @click="ACTION_META[action].run(demand)"
           >
