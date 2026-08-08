@@ -85,26 +85,58 @@ func TestScanExpired(t *testing.T) {
 	}
 }
 
-func TestEnsurePrevBill(t *testing.T) {
-	client, _, _, runner := newEnv(t, "ensure")
+func TestBillDue(t *testing.T) {
+	cases := []struct {
+		now  time.Time
+		want bool
+	}{
+		{time.Date(2026, 8, 9, 23, 59, 0, 0, time.Local), false},  // 未到 10 日
+		{time.Date(2026, 8, 10, 1, 59, 0, 0, time.Local), false},  // 10 日未到 02:00
+		{time.Date(2026, 8, 10, 2, 0, 0, 0, time.Local), true},    // 出账时点整
+		{time.Date(2026, 8, 25, 8, 0, 0, 0, time.Local), true},    // 已过出账时点
+	}
+	for _, tc := range cases {
+		if got := billDue(tc.now); got != tc.want {
+			t.Errorf("billDue(%v) = %v, want %v", tc.now, got, tc.want)
+		}
+	}
+}
+
+func TestEnsurePrevBillGate(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:taskgate?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
 	ctx := context.Background()
+	_ = service.Seed(ctx, client, config.Admin{Username: "a", Password: "admin123"}, nil)
 
-	now := time.Date(2026, 8, 4, 0, 15, 0, 0, time.Local)
+	settingSvc := service.NewSetting(client)
+	audit := service.NewAudit(client)
+	demandSvc := service.NewDemand(client, settingSvc, audit)
+	billSvc := service.NewBill(client, settingSvc, demandSvc, audit)
+	r := New(client, settingSvc, demandSvc, billSvc, nil, zerolog.Nop())
 
-	// 首次执行生成上月账单
-	if err := runner.EnsurePrevBill(ctx, now); err != nil {
-		t.Fatalf("补生成失败: %v", err)
+	// 8 月 9 日：未到出账时点，不生成
+	if err := r.EnsurePrevBill(ctx, time.Date(2026, 8, 9, 0, 0, 0, 0, time.Local)); err != nil {
+		t.Fatalf("EnsurePrevBill 失败: %v", err)
 	}
-	b := client.Bill.Query().Where(bill.Period("2026-07")).OnlyX(ctx)
-	if b.Status.String() != "pending" {
-		t.Errorf("生成的账单应为待确认, got %s", b.Status)
+	if n := client.Bill.Query().CountX(ctx); n != 0 {
+		t.Errorf("未到出账时点账单数 = %d, want 0", n)
 	}
 
-	// 幂等：已存在则跳过，不重建
-	if err := runner.EnsurePrevBill(ctx, now); err != nil {
-		t.Fatalf("重复执行失败: %v", err)
+	// 8 月 10 日 02:00：生成 2026-07 账单
+	if err := r.EnsurePrevBill(ctx, time.Date(2026, 8, 10, 2, 0, 0, 0, time.Local)); err != nil {
+		t.Fatalf("EnsurePrevBill 失败: %v", err)
+	}
+	b := client.Bill.Query().Where(bill.PeriodEQ("2026-07")).OnlyX(ctx)
+	if b.Name != "自动生成：2026-07" || b.Status.String() != "pending" {
+		t.Errorf("自动账单 name=%s status=%s, want 自动生成：2026-07 / pending", b.Name, b.Status)
+	}
+
+	// 幂等：再次调用不重复生成
+	if err := r.EnsurePrevBill(ctx, time.Date(2026, 8, 11, 3, 0, 0, 0, time.Local)); err != nil {
+		t.Fatalf("EnsurePrevBill 幂等调用失败: %v", err)
 	}
 	if n := client.Bill.Query().CountX(ctx); n != 1 {
-		t.Errorf("账单数量 = %d, want 1", n)
+		t.Errorf("幂等调用后账单数 = %d, want 1", n)
 	}
 }

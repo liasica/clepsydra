@@ -42,7 +42,7 @@ func New(client *ent.Client, setting *service.Setting, demandSvc *service.Demand
 func (r *Runner) Start() {
 	ctx := context.Background()
 
-	// 启动自检：宕机漏跑的上月账单补生成
+	// 启动自检：已过出账时点且上月账单缺失时补生成
 	if err := r.EnsurePrevBill(ctx, time.Now()); err != nil {
 		r.log.Error().Err(err).Msg("启动补生成上月账单失败")
 	}
@@ -63,8 +63,8 @@ func (r *Runner) Start() {
 		}
 	})
 
-	// 每月 1 日 00:10 生成上月账单（内含出账前锁定）
-	_, _ = r.cron.AddFunc("10 0 1 * *", func() {
+	// 每月 10 日 02:00 生成上月账单（内含出账前锁定）
+	_, _ = r.cron.AddFunc("0 2 10 * *", func() {
 		if err := r.EnsurePrevBill(context.Background(), time.Now()); err != nil {
 			r.log.Error().Err(err).Msg("生成上月账单失败")
 		}
@@ -113,9 +113,21 @@ func (r *Runner) ScanExpired(ctx context.Context, now time.Time) error {
 	return nil
 }
 
-// EnsurePrevBill 确保上月账单已生成，不存在则生成（内含出账前锁定）
-// 连续跨多月宕机时仅补最近一个账期，更早月份需手动生成
+// billDue 判断当前时间是否已到当月出账时点（10 日 02:00）
+// 启动补生成沿用该闸门，避免服务在每月 10 日前重启时提前出账
+func billDue(now time.Time) bool {
+	due := time.Date(now.Year(), now.Month(), 10, 2, 0, 0, 0, time.Local)
+
+	return !now.Before(due)
+}
+
+// EnsurePrevBill 确保上月账单已生成，未到当月出账时点或已存在时跳过
+// 连续跨多月宕机时仅补最近一个账期，更早月份需经按账期接口手动补跑
 func (r *Runner) EnsurePrevBill(ctx context.Context, now time.Time) error {
+	if !billDue(now) {
+		return nil
+	}
+
 	period := service.PrevPeriod(now)
 
 	exists, err := r.client.Bill.Query().Where(bill.Period(period)).Exist(ctx)
