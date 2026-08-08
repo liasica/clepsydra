@@ -792,7 +792,7 @@ paths:
       tags: [Bills]
       operationId: billsGenerate
       summary: 生成月度账单
-      description: 生成指定账期的账单草稿，出账前自动锁定确认账期内待验收需求，可对 draft 状态账单重复执行（仅超级管理员）
+      description: 生成指定账期的自动账单，同账期已存在则 400，出账前自动锁定确认账期内待验收需求（仅超级管理员）
       security:
         - bearerAuth: []
       requestBody:
@@ -819,6 +819,201 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills/manual:
+    post:
+      tags: [Bills]
+      operationId: billsCreateManual
+      summary: 手动生成账单
+      description: 输入账单名称并选择需求，已验收需求进计费行，未完结需求进展示行，生成即进入待确认状态（仅超级管理员）
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, demand_ids]
+              properties:
+                name:
+                  type: string
+                  description: 账单名称，不能为空
+                demand_ids:
+                  type: array
+                  description: 需求 ID 列表，不能为空
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: 生成成功，返回账单详情
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Bill'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills/selectable-demands:
+    get:
+      tags: [Bills]
+      operationId: billsSelectableDemands
+      summary: 可加入账单的需求列表
+      description: billable 为已验收且未被计费的需求，加入后为计费行；display 为已确认待开工/进行中的需求，加入后为展示行；exclude_bill 排除已在该账单中的需求（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: exclude_bill
+          in: query
+          required: false
+          description: 排除已在该账单中的需求，缺省或非法时按 0 处理，不排除
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          billable:
+                            type: array
+                            description: 已验收且未被计费的需求
+                            items:
+                              $ref: '#/components/schemas/Demand'
+                          display:
+                            type: array
+                            description: 已确认待开工/进行中的需求
+                            items:
+                              $ref: '#/components/schemas/Demand'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills/{id}/items:
+    post:
+      tags: [Bills]
+      operationId: billsAddItem
+      summary: 向账单添加需求明细
+      description: 已支付账单拒绝；同账单同需求至多一行；已被其他账单计费的需求拒绝（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [demand_id]
+              properties:
+                demand_id:
+                  type: integer
+                  description: 需求 ID
+      responses:
+        '200':
+          description: 添加成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills/{id}/items/{itemId}:
+    delete:
+      tags: [Bills]
+      operationId: billsRemoveItem
+      summary: 从账单移除明细
+      description: 已支付账单拒绝，计费行与展示行均可移除（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillID'
+        - name: itemId
+          in: path
+          required: true
+          description: 账单明细 ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 移除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/bills/{id}/pay:
+    post:
+      tags: [Bills]
+      operationId: billsPay
+      summary: 标记账单已支付
+      description: 仅待支付状态允许，支付后账单完全锁定（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillID'
+      responses:
+        '200':
+          description: 标记成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -853,62 +1048,6 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/InvalidTransition'
-        '500':
-          $ref: '#/components/responses/ServerError'
-
-  /api/bills/{id}/share:
-    post:
-      tags: [Bills]
-      operationId: billsShare
-      summary: 分享账单
-      description: 分享账单进入待确认状态，计算需求方确认截止时间，状态由 draft 流转为 pending（仅超级管理员）
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/BillID'
-      responses:
-        '200':
-          description: 分享成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/InvalidTransition'
-        '500':
-          $ref: '#/components/responses/ServerError'
-
-  /api/bills/{id}/revoke:
-    post:
-      tags: [Bills]
-      operationId: billsRevoke
-      summary: 撤回账单
-      description: 撤回已分享未确认的账单回到草稿状态，状态由 pending 流转为 draft（仅超级管理员）
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/BillID'
-      responses:
-        '200':
-          description: 撤回成功
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/InvalidTransition'
         '500':
@@ -1354,39 +1493,38 @@ components:
 
     Bill:
       type: object
-      description: 月度账单，period 形如 2026-07，全局唯一
+      description: 账单，自动账单按账期（period）幂等生成，period 形如 2026-07；手动账单无账期
       properties:
         id:
           type: integer
           description: 账单 ID
-        period:
+        name:
           type: string
-          description: 账期，格式 YYYY-MM
+          description: 账单名称，自动账单为「自动生成：YYYY-MM」，手动账单为创建时填写的名称
+        period:
+          type: ["string", "null"]
+          description: 账期，格式 YYYY-MM，手动账单为空
           example: "2026-07"
         status:
           type: string
-          enum: [draft, pending, confirmed]
+          enum: [pending, unpaid, paid]
           description: 账单状态
         daily_rate:
           type: integer
           description: 生成时快照的单价，单位元
         base_fee:
           type: integer
-          description: 生成时快照的基础维护费，单位元
+          description: 生成时快照的基础维护费，单位元，手动账单为 0
         total_half_days:
           type: integer
           description: 计费需求的人天合计，单位半天数
         total_amount:
           type: integer
           description: 账单总金额，单位元，等于基础维护费加各计费行金额
-        shared_at:
-          type: ["string", "null"]
-          format: date-time
-          description: 分享时间，未分享为空
         confirm_deadline:
           type: ["string", "null"]
           format: date-time
-          description: 需求方确认截止时间，未分享为空
+          description: 需求方确认截止时间，生成时计算
         confirmed_at:
           type: ["string", "null"]
           format: date-time
@@ -1397,6 +1535,13 @@ components:
         confirm_auto:
           type: boolean
           description: 是否为逾期自动确认
+        paid_at:
+          type: ["string", "null"]
+          format: date-time
+          description: 标记支付时间，未支付为空
+        paid_by:
+          type: ["integer", "null"]
+          description: 标记支付人用户 ID，未支付为空
         created_at:
           type: string
           format: date-time
@@ -1480,9 +1625,9 @@ components:
         billing_due_today:
           type: boolean
           description: 今天是否为出账截止日
-        prev_bill_shared:
+        prev_bill_generated:
           type: boolean
-          description: 上月账单是否已分享或确认
+          description: 上月账单是否已生成
 
     AuditLog:
       type: object

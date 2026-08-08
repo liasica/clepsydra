@@ -56,6 +56,11 @@ type BillHandler interface {
 	Generate(c echo.Context) error
 	ToggleWaive(c echo.Context) error
 	Confirm(c echo.Context) error
+	CreateManual(c echo.Context) error
+	SelectableDemands(c echo.Context) error
+	AddItem(c echo.Context) error
+	RemoveItem(c echo.Context) error
+	Pay(c echo.Context) error
 }
 
 // DashboardHandler 工作台接口方法集
@@ -131,6 +136,11 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	adminGroup.POST("/demands/:id/start", h.Demand.Start)
 	adminGroup.POST("/demands/:id/finish", h.Demand.Finish)
 	adminGroup.POST("/bills/generate", h.Bill.Generate)
+	adminGroup.POST("/bills/manual", h.Bill.CreateManual)
+	adminGroup.GET("/bills/selectable-demands", h.Bill.SelectableDemands)
+	adminGroup.POST("/bills/:id/items", h.Bill.AddItem)
+	adminGroup.DELETE("/bills/:id/items/:itemId", h.Bill.RemoveItem)
+	adminGroup.POST("/bills/:id/pay", h.Bill.Pay)
 	adminGroup.POST("/bills/:id/items/:itemId/waive", h.Bill.ToggleWaive)
 	adminGroup.GET("/audit-logs", h.AuditLog.List)
 

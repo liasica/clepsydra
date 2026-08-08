@@ -186,3 +186,128 @@ func TestBillLifecycleHandlers(t *testing.T) {
 		t.Error("人工确认 ConfirmAuto 应为 false")
 	}
 }
+
+// TestBillManualAndItemsHandlers 覆盖手动生成、可选需求、加/移项、标记支付接口
+func TestBillManualAndItemsHandlers(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:hbillmanual?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	_ = service.Seed(ctx, client, config.Admin{Username: "a", Password: "admin123"}, nil)
+
+	settingSvc := service.NewSetting(client)
+	audit := service.NewAudit(client)
+	demandSvc := service.NewDemand(client, settingSvc, audit)
+	billSvc := service.NewBill(client, settingSvc, demandSvc, audit)
+	h := NewBill(billSvc)
+	e := echo.New()
+
+	// 准备两个已验收需求
+	act := service.Actor{ID: 1, Name: "管理员"}
+	mk := func(title string, halfDays int) int {
+		d, _ := demandSvc.Create(ctx, act, title, "")
+		_ = demandSvc.SubmitEstimate(ctx, act, d.ID, halfDays, nil)
+		_ = demandSvc.ConfirmEstimate(ctx, act, d.ID)
+		start := time.Date(2026, 7, 10, 0, 0, 0, 0, time.Local)
+		end := time.Date(2026, 7, 15, 0, 0, 0, 0, time.Local)
+		_ = demandSvc.Start(ctx, act, d.ID, start)
+		_ = demandSvc.Finish(ctx, act, d.ID, start, end, halfDays)
+		_ = demandSvc.Accept(ctx, act, d.ID, false, false)
+		return d.ID
+	}
+	id1 := mk("结算需求一", 2)
+	id2 := mk("结算需求二", 4)
+
+	// SelectableDemands：两个需求都可计费
+	c, rec := newDemandTestContext(e, http.MethodGet, "/api/bills/selectable-demands", "")
+	if err := h.SelectableDemands(c); err != nil {
+		t.Fatalf("SelectableDemands 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"billable"`) {
+		t.Fatalf("SelectableDemands 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// CreateManual：空名称 400
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/manual", `{"name":"  ","demand_ids":[`+strconv.Itoa(id1)+`]}`)
+	_ = h.CreateManual(c)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("空名称应返回 400, got %d", rec.Code)
+	}
+
+	// CreateManual：正常创建
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/manual", `{"name":"七月专项结算","demand_ids":[`+strconv.Itoa(id1)+`]}`)
+	if err := h.CreateManual(c); err != nil {
+		t.Fatalf("CreateManual 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "七月专项结算") {
+		t.Fatalf("CreateManual 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+	var created struct {
+		Data struct {
+			ID     int     `json:"id"`
+			Period *string `json:"period"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
+		t.Fatalf("CreateManual 响应解析失败: %v", err)
+	}
+	if created.Data.Period != nil {
+		t.Errorf("手动账单 period 应为 null, got %v", *created.Data.Period)
+	}
+	billIDStr := strconv.Itoa(created.Data.ID)
+
+	// AddItem：加入第二个需求
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/items", `{"demand_id":`+strconv.Itoa(id2)+`}`)
+	c.SetParamNames("id")
+	c.SetParamValues(billIDStr)
+	if err := h.AddItem(c); err != nil {
+		t.Fatalf("AddItem 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("AddItem 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// RemoveItem：移除刚加入的明细
+	full, _ := billSvc.Get(ctx, created.Data.ID)
+	var itemID int
+	for _, it := range full.Edges.Items {
+		if it.DemandID == id2 {
+			itemID = it.ID
+		}
+	}
+	itemIDStr := strconv.Itoa(itemID)
+	c, rec = newDemandTestContext(e, http.MethodDelete, "/api/bills/"+billIDStr+"/items/"+itemIDStr, "")
+	c.SetParamNames("id", "itemId")
+	c.SetParamValues(billIDStr, itemIDStr)
+	if err := h.RemoveItem(c); err != nil {
+		t.Fatalf("RemoveItem 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("RemoveItem 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	// Pay：未确认时 409/422 语义（非 200），确认后成功
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/pay", "")
+	c.SetParamNames("id")
+	c.SetParamValues(billIDStr)
+	_ = h.Pay(c)
+	if rec.Code == http.StatusOK {
+		t.Error("待确认账单标记支付不应成功")
+	}
+
+	_ = billSvc.Confirm(ctx, act, created.Data.ID, false)
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/pay", "")
+	c.SetParamNames("id")
+	c.SetParamValues(billIDStr)
+	if err := h.Pay(c); err != nil {
+		t.Fatalf("Pay 失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Pay 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+
+	final, _ := billSvc.Get(ctx, created.Data.ID)
+	if final.Status.String() != "paid" {
+		t.Errorf("最终状态 = %s, want paid", final.Status)
+	}
+}

@@ -117,3 +117,102 @@ func (h *Bill) Confirm(c echo.Context) error {
 
 	return api.OK(c, nil)
 }
+
+// manualRequest 手动生成账单请求体
+type manualRequest struct {
+	Name      string `json:"name"`
+	DemandIDs []int  `json:"demand_ids"`
+}
+
+// addItemRequest 添加账单明细请求体
+type addItemRequest struct {
+	DemandID int `json:"demand_id"`
+}
+
+// CreateManual POST /api/bills/manual
+func (h *Bill) CreateManual(c echo.Context) error {
+	var req manualRequest
+	if err := c.Bind(&req); err != nil {
+		return api.Fail(c, service.ErrBadRequest("参数错误"))
+	}
+
+	b, err := h.svc.CreateManual(c.Request().Context(), actor(c), req.Name, req.DemandIDs)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	full, err := h.svc.Get(c.Request().Context(), b.ID)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, newBillDetailDTO(full))
+}
+
+// SelectableDemands GET /api/bills/selectable-demands?exclude_bill=<id>
+// exclude_bill 缺省或非法时按 0 处理，不做排除
+func (h *Bill) SelectableDemands(c echo.Context) error {
+	excludeBill, _ := strconv.Atoi(c.QueryParam("exclude_bill"))
+
+	sel, err := h.svc.SelectableDemands(c.Request().Context(), excludeBill)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, map[string]any{
+		"billable": sel.Billable,
+		"display":  sel.Display,
+	})
+}
+
+// AddItem POST /api/bills/:id/items
+func (h *Bill) AddItem(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	var req addItemRequest
+	if err = c.Bind(&req); err != nil {
+		return api.Fail(c, service.ErrBadRequest("参数错误"))
+	}
+
+	if err = h.svc.AddItem(c.Request().Context(), actor(c), id, req.DemandID); err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, nil)
+}
+
+// RemoveItem DELETE /api/bills/:id/items/:itemId
+func (h *Bill) RemoveItem(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	itemID, err := parseItemID(c)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	if err = h.svc.RemoveItem(c.Request().Context(), actor(c), id, itemID); err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, nil)
+}
+
+// Pay POST /api/bills/:id/pay
+func (h *Bill) Pay(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	if err = h.svc.Pay(c.Request().Context(), actor(c), id); err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, nil)
+}
