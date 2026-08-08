@@ -633,3 +633,64 @@ func (s *Bill) RemoveItem(ctx context.Context, actor Actor, billID, itemID int) 
 
 	return nil
 }
+
+// SelectableDemands 可加入账单的需求，按加入后的行类型分组
+type SelectableDemands struct {
+	Billable []*ent.Demand // 已验收且未被计费，加入后为计费行
+	Display  []*ent.Demand // 已确认待开工/进行中，加入后为展示行
+}
+
+// SelectableDemands 查询可加入账单的需求，excludeBillID 大于 0 时排除已在该账单中的需求
+func (s *Bill) SelectableDemands(ctx context.Context, excludeBillID int) (*SelectableDemands, error) {
+	billed, err := s.billedDemandIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 已在指定账单中的需求（计费行与展示行都排除，同账单同需求至多一行）
+	inBill := make(map[int]bool)
+	if excludeBillID > 0 {
+		var rows []int
+		rows, err = s.client.BillItem.Query().
+			Where(billitem.HasBillWith(bill.ID(excludeBillID))).
+			Select(billitem.FieldDemandID).
+			Ints(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, id := range rows {
+			inBill[id] = true
+		}
+	}
+
+	var acceptedRows []*ent.Demand
+	acceptedRows, err = s.client.Demand.Query().
+		Where(demand.StatusEQ(demand.StatusAccepted)).
+		Order(ent.Asc(demand.FieldID)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var displayRows []*ent.Demand
+	displayRows, err = s.client.Demand.Query().
+		Where(demand.StatusIn(demand.StatusConfirmed, demand.StatusInProgress)).
+		Order(ent.Asc(demand.FieldID)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	sel := &SelectableDemands{Billable: []*ent.Demand{}, Display: []*ent.Demand{}}
+	for _, d := range acceptedRows {
+		if billed[d.ID] || inBill[d.ID] {
+			continue
+		}
+		sel.Billable = append(sel.Billable, d)
+	}
+	for _, d := range displayRows {
+		if inBill[d.ID] {
+			continue
+		}
+		sel.Display = append(sel.Display, d)
+	}
+
+	return sel, nil
+}

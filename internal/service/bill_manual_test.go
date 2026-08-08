@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"clepsydra/internal/ent"
 	"clepsydra/internal/ent/billitem"
 )
 
@@ -89,4 +90,57 @@ func TestBillCreateManualValidation(t *testing.T) {
 	if _, err := billSvc.CreateManual(ctx, admin, "第二次结算", []int{id}); err == nil {
 		t.Error("已计费需求应拒绝再次计费")
 	}
+}
+
+func TestBillSelectableDemands(t *testing.T) {
+	_, demandSvc, billSvc := newBillEnv(t, "bselectable")
+	ctx := context.Background()
+
+	// 已验收未计费 → billable 组
+	idFree := prepareAccepted(t, demandSvc, "未结算需求", 2)
+	// 已验收已计费 → 不出现
+	idBilled := prepareAccepted(t, demandSvc, "已结算需求", 2)
+	b, _ := billSvc.CreateManual(ctx, admin, "结算单", []int{idBilled})
+	// 进行中 → display 组
+	d3, _ := demandSvc.Create(ctx, admin, "进行中需求", "")
+	_ = demandSvc.SubmitEstimate(ctx, admin, d3.ID, 8, nil)
+	_ = demandSvc.ConfirmEstimate(ctx, clientActor, d3.ID)
+	_ = demandSvc.Start(ctx, admin, d3.ID, time.Date(2026, 7, 25, 0, 0, 0, 0, time.Local))
+	// 草稿 → 不出现
+	_, _ = demandSvc.Create(ctx, admin, "草稿需求", "")
+
+	sel, err := billSvc.SelectableDemands(ctx, 0)
+	if err != nil {
+		t.Fatalf("查询可选需求失败: %v", err)
+	}
+	if len(sel.Billable) != 1 || sel.Billable[0].ID != idFree {
+		t.Errorf("billable 组 = %v, want 仅未结算需求 %d", ids(sel.Billable), idFree)
+	}
+	if len(sel.Display) != 1 || sel.Display[0].ID != d3.ID {
+		t.Errorf("display 组 = %v, want 仅进行中需求 %d", ids(sel.Display), d3.ID)
+	}
+
+	// excludeBillID：排除已在该账单中的需求（把进行中需求作为展示行加入账单后不再可选）
+	if err = billSvc.AddItem(ctx, admin, b.ID, d3.ID); err != nil {
+		t.Fatalf("添加展示行失败: %v", err)
+	}
+	sel, _ = billSvc.SelectableDemands(ctx, b.ID)
+	if len(sel.Display) != 0 {
+		t.Errorf("排除账单后 display 组 = %v, want 空", ids(sel.Display))
+	}
+	// 不传 excludeBillID 时展示行需求仍可选（展示行不受计费防重限制）
+	sel, _ = billSvc.SelectableDemands(ctx, 0)
+	if len(sel.Display) != 1 {
+		t.Errorf("无排除时 display 组 = %v, want 1 项", ids(sel.Display))
+	}
+}
+
+// ids 提取需求 ID 便于断言输出
+func ids(demands []*ent.Demand) []int {
+	out := make([]int, 0, len(demands))
+	for _, d := range demands {
+		out = append(out, d.ID)
+	}
+
+	return out
 }
