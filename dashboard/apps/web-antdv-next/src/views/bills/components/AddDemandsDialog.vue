@@ -54,12 +54,13 @@ async function submit() {
     showSuccess('需求已添加');
     await modalApi.close();
     emit('success');
-  } catch (error) {
+  } catch {
     // 部分成功时也要让父级刷新；错误提示已由请求拦截器统一弹出，弹窗保持打开供用户重试或取消
+    // 选择器同步刷新，避免残留的已添加项让重试撞上「该需求已在账单中」
     if (addedCount > 0) {
       emit('success');
     }
-    throw error;
+    pickerRef.value?.reload();
   } finally {
     modalApi.unlock();
   }
