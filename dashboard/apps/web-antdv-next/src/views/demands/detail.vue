@@ -203,72 +203,78 @@ onMounted(load);
 <template>
   <Page>
     <Spin :spinning="loading">
-      <Card v-if="demand && statusMeta">
-        <template #title>
-          <span class="text-base font-semibold">
-            #{{ demand.id }} {{ demand.title }}
-          </span>
-        </template>
-        <template #extra>
-          <Tag :color="tagColor(statusMeta.type)">{{ statusMeta.label }}</Tag>
-        </template>
+      <template v-if="demand && statusMeta">
+        <Card>
+          <template #title>
+            <span class="text-base font-semibold">
+              #{{ demand.id }} {{ demand.title }}
+            </span>
+          </template>
+          <template #extra>
+            <Tag :color="tagColor(statusMeta.type)">{{ statusMeta.label }}</Tag>
+          </template>
 
-        <Alert
-          v-if="
-            demand.status === 'pending_acceptance' && demand.accept_deadline
-          "
-          :message="`确认截止时间：${formatDateTime(demand.accept_deadline)}，逾期将自动确认`"
-          class="mb-4"
-          show-icon
-          type="warning"
-        />
+          <Alert
+            v-if="
+              demand.status === 'pending_acceptance' && demand.accept_deadline
+            "
+            :message="`确认截止时间：${formatDateTime(demand.accept_deadline)}，逾期将自动确认`"
+            class="mb-4"
+            show-icon
+            type="warning"
+          />
 
-        <Descriptions :column="2" bordered size="small">
-          <DescriptionsItem :span="2" label="描述">
-            <MarkdownViewer :content="demand.description" />
-          </DescriptionsItem>
-          <DescriptionsItem label="预估人天">
-            {{ formatManday(demand.estimated_half_days) }}
-          </DescriptionsItem>
-          <DescriptionsItem label="人天确认时间">
-            {{ formatDateTime(demand.estimate_confirmed_at) }}
-          </DescriptionsItem>
-          <DescriptionsItem label="预计开工">
-            {{ formatDate(demand.planned_start_date) }}
-          </DescriptionsItem>
-          <DescriptionsItem label="实际开工">
-            {{ formatDate(demand.actual_start_date) }}
-          </DescriptionsItem>
-          <DescriptionsItem label="实际完成">
-            {{ formatDate(demand.actual_end_date) }}
-          </DescriptionsItem>
-          <DescriptionsItem label="实际人天">
-            {{ formatManday(demand.actual_half_days) }}
-          </DescriptionsItem>
-          <DescriptionsItem label="验收时间">
-            {{ formatDateTime(demand.accepted_at) }}
-          </DescriptionsItem>
-          <DescriptionsItem label="验收方式">{{ acceptWay }}</DescriptionsItem>
-          <DescriptionsItem label="创建时间">
-            {{ formatDateTime(demand.created_at) }}
-          </DescriptionsItem>
-          <DescriptionsItem label="更新时间">
-            {{ formatDateTime(demand.updated_at) }}
-          </DescriptionsItem>
-        </Descriptions>
+          <Descriptions :column="2" bordered size="small">
+            <DescriptionsItem label="预估人天">
+              {{ formatManday(demand.estimated_half_days) }}
+            </DescriptionsItem>
+            <DescriptionsItem label="人天确认时间">
+              {{ formatDateTime(demand.estimate_confirmed_at) }}
+            </DescriptionsItem>
+            <DescriptionsItem label="预计开工">
+              {{ formatDate(demand.planned_start_date) }}
+            </DescriptionsItem>
+            <DescriptionsItem label="实际开工">
+              {{ formatDate(demand.actual_start_date) }}
+            </DescriptionsItem>
+            <DescriptionsItem label="实际完成">
+              {{ formatDate(demand.actual_end_date) }}
+            </DescriptionsItem>
+            <DescriptionsItem label="实际人天">
+              {{ formatManday(demand.actual_half_days) }}
+            </DescriptionsItem>
+            <DescriptionsItem label="验收时间">
+              {{ formatDateTime(demand.accepted_at) }}
+            </DescriptionsItem>
+            <DescriptionsItem label="验收方式">
+              {{ acceptWay }}
+            </DescriptionsItem>
+            <DescriptionsItem label="创建时间">
+              {{ formatDateTime(demand.created_at) }}
+            </DescriptionsItem>
+            <DescriptionsItem label="更新时间">
+              {{ formatDateTime(demand.updated_at) }}
+            </DescriptionsItem>
+          </Descriptions>
 
-        <Space v-if="actions.length > 0" class="mt-4">
-          <Button
-            v-for="action in actions"
-            :key="action"
-            :danger="ACTION_META[action].danger"
-            :type="ACTION_META[action].primary ? 'primary' : 'default'"
-            @click="ACTION_META[action].run(demand)"
-          >
-            {{ ACTION_META[action].label(demand) }}
-          </Button>
-        </Space>
-      </Card>
+          <Space v-if="actions.length > 0" class="mt-4">
+            <Button
+              v-for="action in actions"
+              :key="action"
+              :danger="ACTION_META[action].danger"
+              :type="ACTION_META[action].primary ? 'primary' : 'default'"
+              @click="ACTION_META[action].run(demand)"
+            >
+              {{ ACTION_META[action].label(demand) }}
+            </Button>
+          </Space>
+        </Card>
+
+        <!-- 描述是大块富文本正文，独立成卡获得整卡宽度，空内容由 MarkdownViewer 的占位文案兜底 -->
+        <Card class="mt-4" title="需求描述">
+          <MarkdownViewer :content="demand.description" />
+        </Card>
+      </template>
     </Spin>
 
     <FormModal @conflict="load" @success="load" />
