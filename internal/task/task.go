@@ -140,7 +140,7 @@ func (r *Runner) EnsurePrevBill(ctx context.Context, now time.Time) error {
 
 	_, err = r.bill.Generate(ctx, service.SystemActor, period)
 	if err == nil {
-		r.log.Info().Str("period", period).Msg("已生成上月账单草稿")
+		r.log.Info().Str("period", period).Msg("已生成上月账单")
 	}
 
 	return err
