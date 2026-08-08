@@ -385,3 +385,111 @@ func (s *Bill) Pay(ctx context.Context, actor Actor, id int) error {
 
 	return nil
 }
+
+// classifyDemand 判定需求进入账单的行类型
+// 已验收且未被计费 → 计费行；已确认待开工/进行中 → 展示行；其余状态拒绝
+func classifyDemand(d *ent.Demand, billed map[int]bool) (bool, error) {
+	switch d.Status {
+	case demand.StatusAccepted:
+		if billed[d.ID] {
+			return false, ErrBadRequest(fmt.Sprintf("需求 #%d 已被其他账单计费", d.ID))
+		}
+
+		return true, nil
+	case demand.StatusConfirmed, demand.StatusInProgress:
+		return false, nil
+	default:
+		return false, ErrBadRequest(fmt.Sprintf("需求 #%d 当前状态不可加入账单", d.ID))
+	}
+}
+
+// CreateManual 手动生成账单：已验收需求进计费行，未完结需求进展示行
+// 手动账单无账期、不含基础维护费，生成即进入待确认状态
+func (s *Bill) CreateManual(ctx context.Context, actor Actor, name string, demandIDs []int) (*ent.Bill, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, ErrBadRequest("账单名称不能为空")
+	}
+	if len(demandIDs) == 0 {
+		return nil, ErrBadRequest("至少选择一个需求")
+	}
+
+	demands, err := s.client.Demand.Query().Where(demand.IDIn(demandIDs...)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(demands) != len(demandIDs) {
+		return nil, ErrBadRequest("存在无效的需求")
+	}
+
+	var billed map[int]bool
+	billed, err = s.billedDemandIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var rate int
+	rate, err = s.setting.Int(ctx, SettingDailyRate)
+	if err != nil {
+		return nil, err
+	}
+	var deadline time.Time
+	deadline, err = s.confirmDeadline(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 先归类并汇总，全部合法后再落库，避免半套数据
+	type row struct {
+		d        *ent.Demand
+		halfDays int
+		amount   int
+		billable bool
+	}
+	rows := make([]row, 0, len(demands))
+	totalHalfDays, totalAmount := 0, 0
+	for _, d := range demands {
+		var billable bool
+		billable, err = classifyDemand(d, billed)
+		if err != nil {
+			return nil, err
+		}
+		if !billable {
+			rows = append(rows, row{d: d, halfDays: d.EstimatedHalfDays})
+			continue
+		}
+		halfDays := 0
+		if d.ActualHalfDays != nil {
+			halfDays = *d.ActualHalfDays
+		}
+		amount := halfDays * rate / 2
+		totalHalfDays += halfDays
+		totalAmount += amount
+		rows = append(rows, row{d: d, halfDays: halfDays, amount: amount, billable: true})
+	}
+
+	var b *ent.Bill
+	b, err = s.client.Bill.Create().
+		SetName(name).
+		SetDailyRate(rate).
+		SetBaseFee(0).
+		SetTotalHalfDays(totalHalfDays).
+		SetTotalAmount(totalAmount).
+		SetConfirmDeadline(deadline).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range rows {
+		if err = s.createItem(ctx, b, r.d, r.halfDays, r.amount, r.billable); err != nil {
+			return nil, err
+		}
+	}
+
+	s.audit.Record(ctx, actor, "bill.manual_generate", "bill", b.ID, map[string]any{
+		"name": name, "demand_ids": demandIDs, "total_amount": totalAmount,
+	})
+
+	return b, nil
+}
