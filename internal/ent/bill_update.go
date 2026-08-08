@@ -29,6 +29,20 @@ func (_u *BillUpdate) Where(ps ...predicate.Bill) *BillUpdate {
 	return _u
 }
 
+// SetName sets the "name" field.
+func (_u *BillUpdate) SetName(v string) *BillUpdate {
+	_u.mutation.SetName(v)
+	return _u
+}
+
+// SetNillableName sets the "name" field if the given value is not nil.
+func (_u *BillUpdate) SetNillableName(v *string) *BillUpdate {
+	if v != nil {
+		_u.SetName(*v)
+	}
+	return _u
+}
+
 // SetPeriod sets the "period" field.
 func (_u *BillUpdate) SetPeriod(v string) *BillUpdate {
 	_u.mutation.SetPeriod(v)
@@ -40,6 +54,12 @@ func (_u *BillUpdate) SetNillablePeriod(v *string) *BillUpdate {
 	if v != nil {
 		_u.SetPeriod(*v)
 	}
+	return _u
+}
+
+// ClearPeriod clears the value of the "period" field.
+func (_u *BillUpdate) ClearPeriod() *BillUpdate {
+	_u.mutation.ClearPeriod()
 	return _u
 }
 
@@ -141,26 +161,6 @@ func (_u *BillUpdate) AddTotalAmount(v int) *BillUpdate {
 	return _u
 }
 
-// SetSharedAt sets the "shared_at" field.
-func (_u *BillUpdate) SetSharedAt(v time.Time) *BillUpdate {
-	_u.mutation.SetSharedAt(v)
-	return _u
-}
-
-// SetNillableSharedAt sets the "shared_at" field if the given value is not nil.
-func (_u *BillUpdate) SetNillableSharedAt(v *time.Time) *BillUpdate {
-	if v != nil {
-		_u.SetSharedAt(*v)
-	}
-	return _u
-}
-
-// ClearSharedAt clears the value of the "shared_at" field.
-func (_u *BillUpdate) ClearSharedAt() *BillUpdate {
-	_u.mutation.ClearSharedAt()
-	return _u
-}
-
 // SetConfirmDeadline sets the "confirm_deadline" field.
 func (_u *BillUpdate) SetConfirmDeadline(v time.Time) *BillUpdate {
 	_u.mutation.SetConfirmDeadline(v)
@@ -239,6 +239,53 @@ func (_u *BillUpdate) SetNillableConfirmAuto(v *bool) *BillUpdate {
 	if v != nil {
 		_u.SetConfirmAuto(*v)
 	}
+	return _u
+}
+
+// SetPaidAt sets the "paid_at" field.
+func (_u *BillUpdate) SetPaidAt(v time.Time) *BillUpdate {
+	_u.mutation.SetPaidAt(v)
+	return _u
+}
+
+// SetNillablePaidAt sets the "paid_at" field if the given value is not nil.
+func (_u *BillUpdate) SetNillablePaidAt(v *time.Time) *BillUpdate {
+	if v != nil {
+		_u.SetPaidAt(*v)
+	}
+	return _u
+}
+
+// ClearPaidAt clears the value of the "paid_at" field.
+func (_u *BillUpdate) ClearPaidAt() *BillUpdate {
+	_u.mutation.ClearPaidAt()
+	return _u
+}
+
+// SetPaidBy sets the "paid_by" field.
+func (_u *BillUpdate) SetPaidBy(v int) *BillUpdate {
+	_u.mutation.ResetPaidBy()
+	_u.mutation.SetPaidBy(v)
+	return _u
+}
+
+// SetNillablePaidBy sets the "paid_by" field if the given value is not nil.
+func (_u *BillUpdate) SetNillablePaidBy(v *int) *BillUpdate {
+	if v != nil {
+		_u.SetPaidBy(*v)
+	}
+	return _u
+}
+
+// AddPaidBy adds value to the "paid_by" field.
+func (_u *BillUpdate) AddPaidBy(v int) *BillUpdate {
+	_u.mutation.AddPaidBy(v)
+	return _u
+}
+
+// ClearPaidBy clears the value of the "paid_by" field.
+func (_u *BillUpdate) ClearPaidBy() *BillUpdate {
+	_u.mutation.ClearPaidBy()
 	return _u
 }
 
@@ -347,8 +394,14 @@ func (_u *BillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
+	if value, ok := _u.mutation.Name(); ok {
+		_spec.SetField(bill.FieldName, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.Period(); ok {
 		_spec.SetField(bill.FieldPeriod, field.TypeString, value)
+	}
+	if _u.mutation.PeriodCleared() {
+		_spec.ClearField(bill.FieldPeriod, field.TypeString)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(bill.FieldStatus, field.TypeEnum, value)
@@ -377,12 +430,6 @@ func (_u *BillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedTotalAmount(); ok {
 		_spec.AddField(bill.FieldTotalAmount, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.SharedAt(); ok {
-		_spec.SetField(bill.FieldSharedAt, field.TypeTime, value)
-	}
-	if _u.mutation.SharedAtCleared() {
-		_spec.ClearField(bill.FieldSharedAt, field.TypeTime)
-	}
 	if value, ok := _u.mutation.ConfirmDeadline(); ok {
 		_spec.SetField(bill.FieldConfirmDeadline, field.TypeTime, value)
 	}
@@ -406,6 +453,21 @@ func (_u *BillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.ConfirmAuto(); ok {
 		_spec.SetField(bill.FieldConfirmAuto, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.PaidAt(); ok {
+		_spec.SetField(bill.FieldPaidAt, field.TypeTime, value)
+	}
+	if _u.mutation.PaidAtCleared() {
+		_spec.ClearField(bill.FieldPaidAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.PaidBy(); ok {
+		_spec.SetField(bill.FieldPaidBy, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedPaidBy(); ok {
+		_spec.AddField(bill.FieldPaidBy, field.TypeInt, value)
+	}
+	if _u.mutation.PaidByCleared() {
+		_spec.ClearField(bill.FieldPaidBy, field.TypeInt)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(bill.FieldUpdatedAt, field.TypeTime, value)
@@ -475,6 +537,20 @@ type BillUpdateOne struct {
 	mutation *BillMutation
 }
 
+// SetName sets the "name" field.
+func (_u *BillUpdateOne) SetName(v string) *BillUpdateOne {
+	_u.mutation.SetName(v)
+	return _u
+}
+
+// SetNillableName sets the "name" field if the given value is not nil.
+func (_u *BillUpdateOne) SetNillableName(v *string) *BillUpdateOne {
+	if v != nil {
+		_u.SetName(*v)
+	}
+	return _u
+}
+
 // SetPeriod sets the "period" field.
 func (_u *BillUpdateOne) SetPeriod(v string) *BillUpdateOne {
 	_u.mutation.SetPeriod(v)
@@ -486,6 +562,12 @@ func (_u *BillUpdateOne) SetNillablePeriod(v *string) *BillUpdateOne {
 	if v != nil {
 		_u.SetPeriod(*v)
 	}
+	return _u
+}
+
+// ClearPeriod clears the value of the "period" field.
+func (_u *BillUpdateOne) ClearPeriod() *BillUpdateOne {
+	_u.mutation.ClearPeriod()
 	return _u
 }
 
@@ -587,26 +669,6 @@ func (_u *BillUpdateOne) AddTotalAmount(v int) *BillUpdateOne {
 	return _u
 }
 
-// SetSharedAt sets the "shared_at" field.
-func (_u *BillUpdateOne) SetSharedAt(v time.Time) *BillUpdateOne {
-	_u.mutation.SetSharedAt(v)
-	return _u
-}
-
-// SetNillableSharedAt sets the "shared_at" field if the given value is not nil.
-func (_u *BillUpdateOne) SetNillableSharedAt(v *time.Time) *BillUpdateOne {
-	if v != nil {
-		_u.SetSharedAt(*v)
-	}
-	return _u
-}
-
-// ClearSharedAt clears the value of the "shared_at" field.
-func (_u *BillUpdateOne) ClearSharedAt() *BillUpdateOne {
-	_u.mutation.ClearSharedAt()
-	return _u
-}
-
 // SetConfirmDeadline sets the "confirm_deadline" field.
 func (_u *BillUpdateOne) SetConfirmDeadline(v time.Time) *BillUpdateOne {
 	_u.mutation.SetConfirmDeadline(v)
@@ -685,6 +747,53 @@ func (_u *BillUpdateOne) SetNillableConfirmAuto(v *bool) *BillUpdateOne {
 	if v != nil {
 		_u.SetConfirmAuto(*v)
 	}
+	return _u
+}
+
+// SetPaidAt sets the "paid_at" field.
+func (_u *BillUpdateOne) SetPaidAt(v time.Time) *BillUpdateOne {
+	_u.mutation.SetPaidAt(v)
+	return _u
+}
+
+// SetNillablePaidAt sets the "paid_at" field if the given value is not nil.
+func (_u *BillUpdateOne) SetNillablePaidAt(v *time.Time) *BillUpdateOne {
+	if v != nil {
+		_u.SetPaidAt(*v)
+	}
+	return _u
+}
+
+// ClearPaidAt clears the value of the "paid_at" field.
+func (_u *BillUpdateOne) ClearPaidAt() *BillUpdateOne {
+	_u.mutation.ClearPaidAt()
+	return _u
+}
+
+// SetPaidBy sets the "paid_by" field.
+func (_u *BillUpdateOne) SetPaidBy(v int) *BillUpdateOne {
+	_u.mutation.ResetPaidBy()
+	_u.mutation.SetPaidBy(v)
+	return _u
+}
+
+// SetNillablePaidBy sets the "paid_by" field if the given value is not nil.
+func (_u *BillUpdateOne) SetNillablePaidBy(v *int) *BillUpdateOne {
+	if v != nil {
+		_u.SetPaidBy(*v)
+	}
+	return _u
+}
+
+// AddPaidBy adds value to the "paid_by" field.
+func (_u *BillUpdateOne) AddPaidBy(v int) *BillUpdateOne {
+	_u.mutation.AddPaidBy(v)
+	return _u
+}
+
+// ClearPaidBy clears the value of the "paid_by" field.
+func (_u *BillUpdateOne) ClearPaidBy() *BillUpdateOne {
+	_u.mutation.ClearPaidBy()
 	return _u
 }
 
@@ -823,8 +932,14 @@ func (_u *BillUpdateOne) sqlSave(ctx context.Context) (_node *Bill, err error) {
 			}
 		}
 	}
+	if value, ok := _u.mutation.Name(); ok {
+		_spec.SetField(bill.FieldName, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.Period(); ok {
 		_spec.SetField(bill.FieldPeriod, field.TypeString, value)
+	}
+	if _u.mutation.PeriodCleared() {
+		_spec.ClearField(bill.FieldPeriod, field.TypeString)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(bill.FieldStatus, field.TypeEnum, value)
@@ -853,12 +968,6 @@ func (_u *BillUpdateOne) sqlSave(ctx context.Context) (_node *Bill, err error) {
 	if value, ok := _u.mutation.AddedTotalAmount(); ok {
 		_spec.AddField(bill.FieldTotalAmount, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.SharedAt(); ok {
-		_spec.SetField(bill.FieldSharedAt, field.TypeTime, value)
-	}
-	if _u.mutation.SharedAtCleared() {
-		_spec.ClearField(bill.FieldSharedAt, field.TypeTime)
-	}
 	if value, ok := _u.mutation.ConfirmDeadline(); ok {
 		_spec.SetField(bill.FieldConfirmDeadline, field.TypeTime, value)
 	}
@@ -882,6 +991,21 @@ func (_u *BillUpdateOne) sqlSave(ctx context.Context) (_node *Bill, err error) {
 	}
 	if value, ok := _u.mutation.ConfirmAuto(); ok {
 		_spec.SetField(bill.FieldConfirmAuto, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.PaidAt(); ok {
+		_spec.SetField(bill.FieldPaidAt, field.TypeTime, value)
+	}
+	if _u.mutation.PaidAtCleared() {
+		_spec.ClearField(bill.FieldPaidAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.PaidBy(); ok {
+		_spec.SetField(bill.FieldPaidBy, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedPaidBy(); ok {
+		_spec.AddField(bill.FieldPaidBy, field.TypeInt, value)
+	}
+	if _u.mutation.PaidByCleared() {
+		_spec.ClearField(bill.FieldPaidBy, field.TypeInt)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(bill.FieldUpdatedAt, field.TypeTime, value)

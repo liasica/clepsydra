@@ -21,9 +21,23 @@ type BillCreate struct {
 	hooks    []Hook
 }
 
+// SetName sets the "name" field.
+func (_c *BillCreate) SetName(v string) *BillCreate {
+	_c.mutation.SetName(v)
+	return _c
+}
+
 // SetPeriod sets the "period" field.
 func (_c *BillCreate) SetPeriod(v string) *BillCreate {
 	_c.mutation.SetPeriod(v)
+	return _c
+}
+
+// SetNillablePeriod sets the "period" field if the given value is not nil.
+func (_c *BillCreate) SetNillablePeriod(v *string) *BillCreate {
+	if v != nil {
+		_c.SetPeriod(*v)
+	}
 	return _c
 }
 
@@ -62,20 +76,6 @@ func (_c *BillCreate) SetTotalHalfDays(v int) *BillCreate {
 // SetTotalAmount sets the "total_amount" field.
 func (_c *BillCreate) SetTotalAmount(v int) *BillCreate {
 	_c.mutation.SetTotalAmount(v)
-	return _c
-}
-
-// SetSharedAt sets the "shared_at" field.
-func (_c *BillCreate) SetSharedAt(v time.Time) *BillCreate {
-	_c.mutation.SetSharedAt(v)
-	return _c
-}
-
-// SetNillableSharedAt sets the "shared_at" field if the given value is not nil.
-func (_c *BillCreate) SetNillableSharedAt(v *time.Time) *BillCreate {
-	if v != nil {
-		_c.SetSharedAt(*v)
-	}
 	return _c
 }
 
@@ -131,6 +131,34 @@ func (_c *BillCreate) SetConfirmAuto(v bool) *BillCreate {
 func (_c *BillCreate) SetNillableConfirmAuto(v *bool) *BillCreate {
 	if v != nil {
 		_c.SetConfirmAuto(*v)
+	}
+	return _c
+}
+
+// SetPaidAt sets the "paid_at" field.
+func (_c *BillCreate) SetPaidAt(v time.Time) *BillCreate {
+	_c.mutation.SetPaidAt(v)
+	return _c
+}
+
+// SetNillablePaidAt sets the "paid_at" field if the given value is not nil.
+func (_c *BillCreate) SetNillablePaidAt(v *time.Time) *BillCreate {
+	if v != nil {
+		_c.SetPaidAt(*v)
+	}
+	return _c
+}
+
+// SetPaidBy sets the "paid_by" field.
+func (_c *BillCreate) SetPaidBy(v int) *BillCreate {
+	_c.mutation.SetPaidBy(v)
+	return _c
+}
+
+// SetNillablePaidBy sets the "paid_by" field if the given value is not nil.
+func (_c *BillCreate) SetNillablePaidBy(v *int) *BillCreate {
+	if v != nil {
+		_c.SetPaidBy(*v)
 	}
 	return _c
 }
@@ -233,8 +261,8 @@ func (_c *BillCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *BillCreate) check() error {
-	if _, ok := _c.mutation.Period(); !ok {
-		return &ValidationError{Name: "period", err: errors.New(`ent: missing required field "Bill.period"`)}
+	if _, ok := _c.mutation.Name(); !ok {
+		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Bill.name"`)}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Bill.status"`)}
@@ -291,9 +319,13 @@ func (_c *BillCreate) createSpec() (*Bill, *sqlgraph.CreateSpec) {
 		_node = &Bill{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(bill.Table, sqlgraph.NewFieldSpec(bill.FieldID, field.TypeInt))
 	)
+	if value, ok := _c.mutation.Name(); ok {
+		_spec.SetField(bill.FieldName, field.TypeString, value)
+		_node.Name = value
+	}
 	if value, ok := _c.mutation.Period(); ok {
 		_spec.SetField(bill.FieldPeriod, field.TypeString, value)
-		_node.Period = value
+		_node.Period = &value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(bill.FieldStatus, field.TypeEnum, value)
@@ -315,10 +347,6 @@ func (_c *BillCreate) createSpec() (*Bill, *sqlgraph.CreateSpec) {
 		_spec.SetField(bill.FieldTotalAmount, field.TypeInt, value)
 		_node.TotalAmount = value
 	}
-	if value, ok := _c.mutation.SharedAt(); ok {
-		_spec.SetField(bill.FieldSharedAt, field.TypeTime, value)
-		_node.SharedAt = &value
-	}
 	if value, ok := _c.mutation.ConfirmDeadline(); ok {
 		_spec.SetField(bill.FieldConfirmDeadline, field.TypeTime, value)
 		_node.ConfirmDeadline = &value
@@ -334,6 +362,14 @@ func (_c *BillCreate) createSpec() (*Bill, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ConfirmAuto(); ok {
 		_spec.SetField(bill.FieldConfirmAuto, field.TypeBool, value)
 		_node.ConfirmAuto = value
+	}
+	if value, ok := _c.mutation.PaidAt(); ok {
+		_spec.SetField(bill.FieldPaidAt, field.TypeTime, value)
+		_node.PaidAt = &value
+	}
+	if value, ok := _c.mutation.PaidBy(); ok {
+		_spec.SetField(bill.FieldPaidBy, field.TypeInt, value)
+		_node.PaidBy = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(bill.FieldCreatedAt, field.TypeTime, value)

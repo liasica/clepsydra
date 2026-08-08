@@ -55,6 +55,11 @@ func IDLTE(id int) predicate.Bill {
 	return predicate.Bill(sql.FieldLTE(FieldID, id))
 }
 
+// Name applies equality check predicate on the "name" field. It's identical to NameEQ.
+func Name(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldEQ(FieldName, v))
+}
+
 // Period applies equality check predicate on the "period" field. It's identical to PeriodEQ.
 func Period(v string) predicate.Bill {
 	return predicate.Bill(sql.FieldEQ(FieldPeriod, v))
@@ -80,11 +85,6 @@ func TotalAmount(v int) predicate.Bill {
 	return predicate.Bill(sql.FieldEQ(FieldTotalAmount, v))
 }
 
-// SharedAt applies equality check predicate on the "shared_at" field. It's identical to SharedAtEQ.
-func SharedAt(v time.Time) predicate.Bill {
-	return predicate.Bill(sql.FieldEQ(FieldSharedAt, v))
-}
-
 // ConfirmDeadline applies equality check predicate on the "confirm_deadline" field. It's identical to ConfirmDeadlineEQ.
 func ConfirmDeadline(v time.Time) predicate.Bill {
 	return predicate.Bill(sql.FieldEQ(FieldConfirmDeadline, v))
@@ -105,6 +105,16 @@ func ConfirmAuto(v bool) predicate.Bill {
 	return predicate.Bill(sql.FieldEQ(FieldConfirmAuto, v))
 }
 
+// PaidAt applies equality check predicate on the "paid_at" field. It's identical to PaidAtEQ.
+func PaidAt(v time.Time) predicate.Bill {
+	return predicate.Bill(sql.FieldEQ(FieldPaidAt, v))
+}
+
+// PaidBy applies equality check predicate on the "paid_by" field. It's identical to PaidByEQ.
+func PaidBy(v int) predicate.Bill {
+	return predicate.Bill(sql.FieldEQ(FieldPaidBy, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Bill {
 	return predicate.Bill(sql.FieldEQ(FieldCreatedAt, v))
@@ -113,6 +123,71 @@ func CreatedAt(v time.Time) predicate.Bill {
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.Bill {
 	return predicate.Bill(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// NameEQ applies the EQ predicate on the "name" field.
+func NameEQ(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldEQ(FieldName, v))
+}
+
+// NameNEQ applies the NEQ predicate on the "name" field.
+func NameNEQ(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldNEQ(FieldName, v))
+}
+
+// NameIn applies the In predicate on the "name" field.
+func NameIn(vs ...string) predicate.Bill {
+	return predicate.Bill(sql.FieldIn(FieldName, vs...))
+}
+
+// NameNotIn applies the NotIn predicate on the "name" field.
+func NameNotIn(vs ...string) predicate.Bill {
+	return predicate.Bill(sql.FieldNotIn(FieldName, vs...))
+}
+
+// NameGT applies the GT predicate on the "name" field.
+func NameGT(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldGT(FieldName, v))
+}
+
+// NameGTE applies the GTE predicate on the "name" field.
+func NameGTE(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldGTE(FieldName, v))
+}
+
+// NameLT applies the LT predicate on the "name" field.
+func NameLT(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldLT(FieldName, v))
+}
+
+// NameLTE applies the LTE predicate on the "name" field.
+func NameLTE(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldLTE(FieldName, v))
+}
+
+// NameContains applies the Contains predicate on the "name" field.
+func NameContains(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldContains(FieldName, v))
+}
+
+// NameHasPrefix applies the HasPrefix predicate on the "name" field.
+func NameHasPrefix(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldHasPrefix(FieldName, v))
+}
+
+// NameHasSuffix applies the HasSuffix predicate on the "name" field.
+func NameHasSuffix(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldHasSuffix(FieldName, v))
+}
+
+// NameEqualFold applies the EqualFold predicate on the "name" field.
+func NameEqualFold(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldEqualFold(FieldName, v))
+}
+
+// NameContainsFold applies the ContainsFold predicate on the "name" field.
+func NameContainsFold(v string) predicate.Bill {
+	return predicate.Bill(sql.FieldContainsFold(FieldName, v))
 }
 
 // PeriodEQ applies the EQ predicate on the "period" field.
@@ -168,6 +243,16 @@ func PeriodHasPrefix(v string) predicate.Bill {
 // PeriodHasSuffix applies the HasSuffix predicate on the "period" field.
 func PeriodHasSuffix(v string) predicate.Bill {
 	return predicate.Bill(sql.FieldHasSuffix(FieldPeriod, v))
+}
+
+// PeriodIsNil applies the IsNil predicate on the "period" field.
+func PeriodIsNil() predicate.Bill {
+	return predicate.Bill(sql.FieldIsNull(FieldPeriod))
+}
+
+// PeriodNotNil applies the NotNil predicate on the "period" field.
+func PeriodNotNil() predicate.Bill {
+	return predicate.Bill(sql.FieldNotNull(FieldPeriod))
 }
 
 // PeriodEqualFold applies the EqualFold predicate on the "period" field.
@@ -360,56 +445,6 @@ func TotalAmountLTE(v int) predicate.Bill {
 	return predicate.Bill(sql.FieldLTE(FieldTotalAmount, v))
 }
 
-// SharedAtEQ applies the EQ predicate on the "shared_at" field.
-func SharedAtEQ(v time.Time) predicate.Bill {
-	return predicate.Bill(sql.FieldEQ(FieldSharedAt, v))
-}
-
-// SharedAtNEQ applies the NEQ predicate on the "shared_at" field.
-func SharedAtNEQ(v time.Time) predicate.Bill {
-	return predicate.Bill(sql.FieldNEQ(FieldSharedAt, v))
-}
-
-// SharedAtIn applies the In predicate on the "shared_at" field.
-func SharedAtIn(vs ...time.Time) predicate.Bill {
-	return predicate.Bill(sql.FieldIn(FieldSharedAt, vs...))
-}
-
-// SharedAtNotIn applies the NotIn predicate on the "shared_at" field.
-func SharedAtNotIn(vs ...time.Time) predicate.Bill {
-	return predicate.Bill(sql.FieldNotIn(FieldSharedAt, vs...))
-}
-
-// SharedAtGT applies the GT predicate on the "shared_at" field.
-func SharedAtGT(v time.Time) predicate.Bill {
-	return predicate.Bill(sql.FieldGT(FieldSharedAt, v))
-}
-
-// SharedAtGTE applies the GTE predicate on the "shared_at" field.
-func SharedAtGTE(v time.Time) predicate.Bill {
-	return predicate.Bill(sql.FieldGTE(FieldSharedAt, v))
-}
-
-// SharedAtLT applies the LT predicate on the "shared_at" field.
-func SharedAtLT(v time.Time) predicate.Bill {
-	return predicate.Bill(sql.FieldLT(FieldSharedAt, v))
-}
-
-// SharedAtLTE applies the LTE predicate on the "shared_at" field.
-func SharedAtLTE(v time.Time) predicate.Bill {
-	return predicate.Bill(sql.FieldLTE(FieldSharedAt, v))
-}
-
-// SharedAtIsNil applies the IsNil predicate on the "shared_at" field.
-func SharedAtIsNil() predicate.Bill {
-	return predicate.Bill(sql.FieldIsNull(FieldSharedAt))
-}
-
-// SharedAtNotNil applies the NotNil predicate on the "shared_at" field.
-func SharedAtNotNil() predicate.Bill {
-	return predicate.Bill(sql.FieldNotNull(FieldSharedAt))
-}
-
 // ConfirmDeadlineEQ applies the EQ predicate on the "confirm_deadline" field.
 func ConfirmDeadlineEQ(v time.Time) predicate.Bill {
 	return predicate.Bill(sql.FieldEQ(FieldConfirmDeadline, v))
@@ -568,6 +603,106 @@ func ConfirmAutoEQ(v bool) predicate.Bill {
 // ConfirmAutoNEQ applies the NEQ predicate on the "confirm_auto" field.
 func ConfirmAutoNEQ(v bool) predicate.Bill {
 	return predicate.Bill(sql.FieldNEQ(FieldConfirmAuto, v))
+}
+
+// PaidAtEQ applies the EQ predicate on the "paid_at" field.
+func PaidAtEQ(v time.Time) predicate.Bill {
+	return predicate.Bill(sql.FieldEQ(FieldPaidAt, v))
+}
+
+// PaidAtNEQ applies the NEQ predicate on the "paid_at" field.
+func PaidAtNEQ(v time.Time) predicate.Bill {
+	return predicate.Bill(sql.FieldNEQ(FieldPaidAt, v))
+}
+
+// PaidAtIn applies the In predicate on the "paid_at" field.
+func PaidAtIn(vs ...time.Time) predicate.Bill {
+	return predicate.Bill(sql.FieldIn(FieldPaidAt, vs...))
+}
+
+// PaidAtNotIn applies the NotIn predicate on the "paid_at" field.
+func PaidAtNotIn(vs ...time.Time) predicate.Bill {
+	return predicate.Bill(sql.FieldNotIn(FieldPaidAt, vs...))
+}
+
+// PaidAtGT applies the GT predicate on the "paid_at" field.
+func PaidAtGT(v time.Time) predicate.Bill {
+	return predicate.Bill(sql.FieldGT(FieldPaidAt, v))
+}
+
+// PaidAtGTE applies the GTE predicate on the "paid_at" field.
+func PaidAtGTE(v time.Time) predicate.Bill {
+	return predicate.Bill(sql.FieldGTE(FieldPaidAt, v))
+}
+
+// PaidAtLT applies the LT predicate on the "paid_at" field.
+func PaidAtLT(v time.Time) predicate.Bill {
+	return predicate.Bill(sql.FieldLT(FieldPaidAt, v))
+}
+
+// PaidAtLTE applies the LTE predicate on the "paid_at" field.
+func PaidAtLTE(v time.Time) predicate.Bill {
+	return predicate.Bill(sql.FieldLTE(FieldPaidAt, v))
+}
+
+// PaidAtIsNil applies the IsNil predicate on the "paid_at" field.
+func PaidAtIsNil() predicate.Bill {
+	return predicate.Bill(sql.FieldIsNull(FieldPaidAt))
+}
+
+// PaidAtNotNil applies the NotNil predicate on the "paid_at" field.
+func PaidAtNotNil() predicate.Bill {
+	return predicate.Bill(sql.FieldNotNull(FieldPaidAt))
+}
+
+// PaidByEQ applies the EQ predicate on the "paid_by" field.
+func PaidByEQ(v int) predicate.Bill {
+	return predicate.Bill(sql.FieldEQ(FieldPaidBy, v))
+}
+
+// PaidByNEQ applies the NEQ predicate on the "paid_by" field.
+func PaidByNEQ(v int) predicate.Bill {
+	return predicate.Bill(sql.FieldNEQ(FieldPaidBy, v))
+}
+
+// PaidByIn applies the In predicate on the "paid_by" field.
+func PaidByIn(vs ...int) predicate.Bill {
+	return predicate.Bill(sql.FieldIn(FieldPaidBy, vs...))
+}
+
+// PaidByNotIn applies the NotIn predicate on the "paid_by" field.
+func PaidByNotIn(vs ...int) predicate.Bill {
+	return predicate.Bill(sql.FieldNotIn(FieldPaidBy, vs...))
+}
+
+// PaidByGT applies the GT predicate on the "paid_by" field.
+func PaidByGT(v int) predicate.Bill {
+	return predicate.Bill(sql.FieldGT(FieldPaidBy, v))
+}
+
+// PaidByGTE applies the GTE predicate on the "paid_by" field.
+func PaidByGTE(v int) predicate.Bill {
+	return predicate.Bill(sql.FieldGTE(FieldPaidBy, v))
+}
+
+// PaidByLT applies the LT predicate on the "paid_by" field.
+func PaidByLT(v int) predicate.Bill {
+	return predicate.Bill(sql.FieldLT(FieldPaidBy, v))
+}
+
+// PaidByLTE applies the LTE predicate on the "paid_by" field.
+func PaidByLTE(v int) predicate.Bill {
+	return predicate.Bill(sql.FieldLTE(FieldPaidBy, v))
+}
+
+// PaidByIsNil applies the IsNil predicate on the "paid_by" field.
+func PaidByIsNil() predicate.Bill {
+	return predicate.Bill(sql.FieldIsNull(FieldPaidBy))
+}
+
+// PaidByNotNil applies the NotNil predicate on the "paid_by" field.
+func PaidByNotNil() predicate.Bill {
+	return predicate.Bill(sql.FieldNotNull(FieldPaidBy))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

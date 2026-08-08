@@ -8,24 +8,26 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-// Bill 月度账单，period 形如 2026-07，全局唯一
+// Bill 账单，自动账单按账期（period）幂等生成，手动账单无账期
 type Bill struct {
 	ent.Schema
 }
 
 func (Bill) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("period").Unique(),
-		field.Enum("status").Values("draft", "pending", "confirmed").Default("draft"),
+		field.String("name"), // 账单名称，自动账单为「自动生成：YYYY-MM」
+		field.String("period").Optional().Nillable().Unique(), // 自动账单账期 YYYY-MM，手动账单为空；唯一约束保证自动生成幂等
+		field.Enum("status").Values("pending", "unpaid", "paid").Default("pending"),
 		field.Int("daily_rate"), // 生成时快照，单位元
-		field.Int("base_fee"),   // 生成时快照，单位元
+		field.Int("base_fee"),   // 生成时快照，单位元，手动账单为 0
 		field.Int("total_half_days"),
 		field.Int("total_amount"), // 单位元
-		field.Time("shared_at").Optional().Nillable(),
 		field.Time("confirm_deadline").Optional().Nillable(),
 		field.Time("confirmed_at").Optional().Nillable(),
 		field.Int("confirmed_by").Optional().Nillable(),
 		field.Bool("confirm_auto").Default(false),
+		field.Time("paid_at").Optional().Nillable(),
+		field.Int("paid_by").Optional().Nillable(),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}

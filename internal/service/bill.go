@@ -46,7 +46,7 @@ func periodRange(period string) (time.Time, time.Time, error) {
 
 // List 查询全部账单
 func (s *Bill) List(ctx context.Context) ([]*ent.Bill, error) {
-	return s.client.Bill.Query().Order(ent.Desc(bill.FieldPeriod)).All(ctx)
+	return s.client.Bill.Query().Order(ent.Desc(bill.FieldCreatedAt)).All(ctx)
 }
 
 // Get 查询账单及明细
@@ -59,29 +59,21 @@ func (s *Bill) Get(ctx context.Context, id int) (*ent.Bill, error) {
 	return b, err
 }
 
-// Generate 生成指定账期的账单草稿，可对 draft 状态重复执行
+// Generate 生成指定账期的自动账单，同账期账单已存在则拒绝
+// 生成即进入待确认状态，需求方立即可见并开始逾期自动确认计时
 func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.Bill, error) {
 	start, end, err := periodRange(period)
 	if err != nil {
 		return nil, err
 	}
 
-	// 同账期已有账单：非草稿拒绝，草稿删除重建
-	var existing *ent.Bill
-	existing, err = s.client.Bill.Query().Where(bill.Period(period)).Only(ctx)
-	if err != nil && !ent.IsNotFound(err) {
+	var exists bool
+	exists, err = s.client.Bill.Query().Where(bill.PeriodEQ(period)).Exist(ctx)
+	if err != nil {
 		return nil, err
 	}
-	if existing != nil {
-		if existing.Status != bill.StatusDraft {
-			return nil, ErrBadRequest("账单已分享或已确认，不可重新生成")
-		}
-		if _, err = s.client.BillItem.Delete().Where(billitem.HasBillWith(bill.ID(existing.ID))).Exec(ctx); err != nil {
-			return nil, err
-		}
-		if err = s.client.Bill.DeleteOneID(existing.ID).Exec(ctx); err != nil {
-			return nil, err
-		}
+	if exists {
+		return nil, ErrBadRequest("该账期账单已存在")
 	}
 
 	// 出账前锁定：账期内完成且仍待确认的需求全部自动确认
@@ -121,7 +113,14 @@ func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.B
 		includeSet[strings.TrimSpace(st)] = true
 	}
 
-	// 计费行：账期内完成且已确认的需求
+	// 确认截止时间在生成时计算，原分享动作已移除
+	var deadline time.Time
+	deadline, err = s.confirmDeadline(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// 计费行：账期内完成且已验收的需求
 	var accepted []*ent.Demand
 	accepted, err = s.client.Demand.Query().Where(
 		demand.StatusEQ(demand.StatusAccepted),
@@ -157,11 +156,13 @@ func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.B
 
 	var b *ent.Bill
 	b, err = s.client.Bill.Create().
+		SetName("自动生成：" + period).
 		SetPeriod(period).
 		SetDailyRate(rate).
 		SetBaseFee(baseFee).
 		SetTotalHalfDays(totalHalfDays).
 		SetTotalAmount(totalAmount).
+		SetConfirmDeadline(deadline).
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -187,6 +188,26 @@ func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.B
 	})
 
 	return b, nil
+}
+
+// confirmDeadline 按设置中心的确认窗口计算从当前时刻起的确认截止时间
+func (s *Bill) confirmDeadline(ctx context.Context) (time.Time, error) {
+	window, err := s.setting.Int(ctx, SettingBillConfirmWindow)
+	if err != nil {
+		return time.Time{}, err
+	}
+	var unit string
+	unit, err = s.setting.Str(ctx, SettingWindowUnit)
+	if err != nil {
+		return time.Time{}, err
+	}
+	var cal *workday.Calendar
+	cal, err = s.setting.Calendar(ctx)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return cal.Deadline(time.Now(), window, workday.Unit(unit)), nil
 }
 
 // createItem 写入一条账单明细
@@ -217,16 +238,16 @@ func rollback(tx *ent.Tx, err error) error {
 	return err
 }
 
-// ToggleWaive 翻转明细减免状态并重算账单总额，仅草稿账单允许
-// 明细更新与总额更新包在同一事务内：账单状态在此期间被并发流转（如分享）时，总额的条件更新会影响 0 行，
+// ToggleWaive 翻转明细减免状态并重算账单总额，已支付账单拒绝
+// 明细更新与总额更新包在同一事务内：账单状态在此期间被并发流转（如标记已支付）时，总额的条件更新会影响 0 行，
 // 触发整体回滚，避免明细已改但总额未同步的半套数据
 func (s *Bill) ToggleWaive(ctx context.Context, actor Actor, billID, itemID int) error {
 	b, err := s.Get(ctx, billID)
 	if err != nil {
 		return err
 	}
-	if b.Status != bill.StatusDraft {
-		return ErrBadRequest("仅草稿账单可调整减免")
+	if b.Status == bill.StatusPaid {
+		return ErrBadRequest("已支付账单不可调整减免")
 	}
 
 	var item *ent.BillItem
@@ -273,10 +294,10 @@ func (s *Bill) ToggleWaive(ctx context.Context, actor Actor, billID, itemID int)
 		total += it.Amount
 	}
 
-	// 条件更新：账单状态已不是 draft 说明期间被并发流转，回滚整个事务
+	// 事务内条件更新（原 StatusEQ(bill.StatusDraft)），并发流转到已支付时回滚
 	var n int
 	n, err = tx.Bill.Update().
-		Where(bill.ID(billID), bill.StatusEQ(bill.StatusDraft)).
+		Where(bill.ID(billID), bill.StatusNEQ(bill.StatusPaid)).
 		SetTotalAmount(total).
 		Save(ctx)
 	if err != nil {
@@ -297,72 +318,11 @@ func (s *Bill) ToggleWaive(ctx context.Context, actor Actor, billID, itemID int)
 	return nil
 }
 
-// Share 分享账单进入待确认状态，计算确认截止时间
-func (s *Bill) Share(ctx context.Context, actor Actor, id int) error {
-	window, err := s.setting.Int(ctx, SettingBillConfirmWindow)
-	if err != nil {
-		return err
-	}
-	var unit string
-	unit, err = s.setting.Str(ctx, SettingWindowUnit)
-	if err != nil {
-		return err
-	}
-	var cal *workday.Calendar
-	cal, err = s.setting.Calendar(ctx)
-	if err != nil {
-		return err
-	}
-
-	now := time.Now()
-	deadline := cal.Deadline(now, window, workday.Unit(unit))
-
-	var n int
-	n, err = s.client.Bill.Update().
-		Where(bill.ID(id), bill.StatusEQ(bill.StatusDraft)).
-		SetStatus(bill.StatusPending).
-		SetSharedAt(now).
-		SetConfirmDeadline(deadline).
-		Save(ctx)
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return ErrInvalidTransition
-	}
-
-	s.audit.Record(ctx, actor, "bill.share", "bill", id, map[string]any{
-		"confirm_deadline": deadline.Format(time.RFC3339),
-	})
-
-	return nil
-}
-
-// Revoke 撤回已分享未确认的账单回到草稿
-func (s *Bill) Revoke(ctx context.Context, actor Actor, id int) error {
-	n, err := s.client.Bill.Update().
-		Where(bill.ID(id), bill.StatusEQ(bill.StatusPending)).
-		SetStatus(bill.StatusDraft).
-		ClearSharedAt().
-		ClearConfirmDeadline().
-		Save(ctx)
-	if err != nil {
-		return err
-	}
-	if n == 0 {
-		return ErrInvalidTransition
-	}
-
-	s.audit.Record(ctx, actor, "bill.revoke", "bill", id, nil)
-
-	return nil
-}
-
-// Confirm 确认账单，auto 表示逾期自动确认
+// Confirm 确认账单并直接进入待支付，auto 表示逾期自动确认
 func (s *Bill) Confirm(ctx context.Context, actor Actor, id int, auto bool) error {
 	n, err := s.client.Bill.Update().
 		Where(bill.ID(id), bill.StatusEQ(bill.StatusPending)).
-		SetStatus(bill.StatusConfirmed).
+		SetStatus(bill.StatusUnpaid).
 		SetConfirmedAt(time.Now()).
 		SetConfirmedBy(actor.ID).
 		SetConfirmAuto(auto).

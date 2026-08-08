@@ -15,6 +15,8 @@ const (
 	Label = "bill"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldName holds the string denoting the name field in the database.
+	FieldName = "name"
 	// FieldPeriod holds the string denoting the period field in the database.
 	FieldPeriod = "period"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -27,8 +29,6 @@ const (
 	FieldTotalHalfDays = "total_half_days"
 	// FieldTotalAmount holds the string denoting the total_amount field in the database.
 	FieldTotalAmount = "total_amount"
-	// FieldSharedAt holds the string denoting the shared_at field in the database.
-	FieldSharedAt = "shared_at"
 	// FieldConfirmDeadline holds the string denoting the confirm_deadline field in the database.
 	FieldConfirmDeadline = "confirm_deadline"
 	// FieldConfirmedAt holds the string denoting the confirmed_at field in the database.
@@ -37,6 +37,10 @@ const (
 	FieldConfirmedBy = "confirmed_by"
 	// FieldConfirmAuto holds the string denoting the confirm_auto field in the database.
 	FieldConfirmAuto = "confirm_auto"
+	// FieldPaidAt holds the string denoting the paid_at field in the database.
+	FieldPaidAt = "paid_at"
+	// FieldPaidBy holds the string denoting the paid_by field in the database.
+	FieldPaidBy = "paid_by"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -57,17 +61,19 @@ const (
 // Columns holds all SQL columns for bill fields.
 var Columns = []string{
 	FieldID,
+	FieldName,
 	FieldPeriod,
 	FieldStatus,
 	FieldDailyRate,
 	FieldBaseFee,
 	FieldTotalHalfDays,
 	FieldTotalAmount,
-	FieldSharedAt,
 	FieldConfirmDeadline,
 	FieldConfirmedAt,
 	FieldConfirmedBy,
 	FieldConfirmAuto,
+	FieldPaidAt,
+	FieldPaidBy,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -96,14 +102,14 @@ var (
 // Status defines the type for the "status" enum field.
 type Status string
 
-// StatusDraft is the default value of the Status enum.
-const DefaultStatus = StatusDraft
+// StatusPending is the default value of the Status enum.
+const DefaultStatus = StatusPending
 
 // Status values.
 const (
-	StatusDraft     Status = "draft"
-	StatusPending   Status = "pending"
-	StatusConfirmed Status = "confirmed"
+	StatusPending Status = "pending"
+	StatusUnpaid  Status = "unpaid"
+	StatusPaid    Status = "paid"
 )
 
 func (s Status) String() string {
@@ -113,7 +119,7 @@ func (s Status) String() string {
 // StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
 func StatusValidator(s Status) error {
 	switch s {
-	case StatusDraft, StatusPending, StatusConfirmed:
+	case StatusPending, StatusUnpaid, StatusPaid:
 		return nil
 	default:
 		return fmt.Errorf("bill: invalid enum value for status field: %q", s)
@@ -126,6 +132,11 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByName orders the results by the name field.
+func ByName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldName, opts...).ToFunc()
 }
 
 // ByPeriod orders the results by the period field.
@@ -158,11 +169,6 @@ func ByTotalAmount(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTotalAmount, opts...).ToFunc()
 }
 
-// BySharedAt orders the results by the shared_at field.
-func BySharedAt(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSharedAt, opts...).ToFunc()
-}
-
 // ByConfirmDeadline orders the results by the confirm_deadline field.
 func ByConfirmDeadline(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldConfirmDeadline, opts...).ToFunc()
@@ -181,6 +187,16 @@ func ByConfirmedBy(opts ...sql.OrderTermOption) OrderOption {
 // ByConfirmAuto orders the results by the confirm_auto field.
 func ByConfirmAuto(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldConfirmAuto, opts...).ToFunc()
+}
+
+// ByPaidAt orders the results by the paid_at field.
+func ByPaidAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPaidAt, opts...).ToFunc()
+}
+
+// ByPaidBy orders the results by the paid_by field.
+func ByPaidBy(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPaidBy, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

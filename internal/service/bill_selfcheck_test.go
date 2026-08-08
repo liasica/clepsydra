@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"clepsydra/internal/ent"
 	"clepsydra/internal/ent/billitem"
 )
 
@@ -107,51 +106,6 @@ func TestBillGenerateLockOnlyWithinPeriod(t *testing.T) {
 	}
 }
 
-// TestBillSharePendingRejected 已分享的账单不可重复分享
-func TestBillSharePendingRejected(t *testing.T) {
-	_, demandSvc, billSvc := newBillEnv(t, "bsharetwice")
-	ctx := context.Background()
-
-	id := prepareDemand(t, demandSvc, "需求", 2)
-	_ = demandSvc.Accept(ctx, clientActor, id, false, false)
-	bill, _ := billSvc.Generate(ctx, admin, "2026-07")
-
-	if err := billSvc.Share(ctx, admin, bill.ID); err != nil {
-		t.Fatalf("首次分享失败: %v", err)
-	}
-	if err := billSvc.Share(ctx, admin, bill.ID); err == nil {
-		t.Error("重复分享应拒绝")
-	}
-}
-
-// TestBillConfirmDraftRejected 未分享的草稿账单不可直接确认
-func TestBillConfirmDraftRejected(t *testing.T) {
-	_, demandSvc, billSvc := newBillEnv(t, "bconfirmdraft")
-	ctx := context.Background()
-
-	id := prepareDemand(t, demandSvc, "需求", 2)
-	_ = demandSvc.Accept(ctx, clientActor, id, false, false)
-	bill, _ := billSvc.Generate(ctx, admin, "2026-07")
-
-	if err := billSvc.Confirm(ctx, clientActor, bill.ID, false); err == nil {
-		t.Error("草稿账单直接确认应拒绝")
-	}
-}
-
-// TestBillRevokeDraftRejected 未分享的草稿账单不可撤回
-func TestBillRevokeDraftRejected(t *testing.T) {
-	_, demandSvc, billSvc := newBillEnv(t, "brevokedraft")
-	ctx := context.Background()
-
-	id := prepareDemand(t, demandSvc, "需求", 2)
-	_ = demandSvc.Accept(ctx, clientActor, id, false, false)
-	bill, _ := billSvc.Generate(ctx, admin, "2026-07")
-
-	if err := billSvc.Revoke(ctx, admin, bill.ID); err == nil {
-		t.Error("草稿账单撤回应拒绝")
-	}
-}
-
 // TestBillGetNotFound 查询不存在的账单应返回 ErrNotFound
 func TestBillGetNotFound(t *testing.T) {
 	_, _, billSvc := newBillEnv(t, "bnotfound")
@@ -188,43 +142,25 @@ func TestBillGenerateOddHalfDaysPrecision(t *testing.T) {
 	}
 }
 
-// TestBillGenerateRegenerateClearsOldItems 草稿重新生成后旧明细应被彻底清理，不残留
-func TestBillGenerateRegenerateClearsOldItems(t *testing.T) {
-	client, demandSvc, billSvc := newBillEnv(t, "bregenclean")
+// TestBillGenerateExistingPeriodRejected 同账期账单已存在时再次生成应拒绝，且不产生脏数据
+func TestBillGenerateExistingPeriodRejected(t *testing.T) {
+	client, demandSvc, billSvc := newBillEnv(t, "bregenreject")
 	ctx := context.Background()
 
 	id1 := prepareDemand(t, demandSvc, "需求一", 2)
 	_ = demandSvc.Accept(ctx, clientActor, id1, false, false)
 
-	bill1, err := billSvc.Generate(ctx, admin, "2026-07")
-	if err != nil {
+	if _, err := billSvc.Generate(ctx, admin, "2026-07"); err != nil {
 		t.Fatalf("首次生成失败: %v", err)
 	}
-	firstCount := client.BillItem.Query().CountX(ctx)
-	if firstCount != 1 {
-		t.Fatalf("首次生成明细数 = %d, want 1", firstCount)
+	if _, err := billSvc.Generate(ctx, admin, "2026-07"); err == nil {
+		t.Error("同账期账单已存在应拒绝生成")
 	}
 
-	id2 := prepareDemand(t, demandSvc, "需求二", 4)
-	_ = demandSvc.Accept(ctx, clientActor, id2, false, false)
-
-	var bill2 *ent.Bill
-	bill2, err = billSvc.Generate(ctx, admin, "2026-07")
-	if err != nil {
-		t.Fatalf("重新生成失败: %v", err)
+	if n := client.Bill.Query().CountX(ctx); n != 1 {
+		t.Errorf("账单数 = %d, want 1", n)
 	}
-	if bill2.ID == bill1.ID {
-		t.Error("重新生成应创建新账单记录而非复用旧 ID")
-	}
-
-	// 重新生成后明细应仅剩当前两条需求对应的行，旧账单的明细不残留
-	secondCount := client.BillItem.Query().CountX(ctx)
-	if secondCount != 2 {
-		t.Errorf("重新生成后明细数 = %d, want 2", secondCount)
-	}
-
-	billCount := client.Bill.Query().CountX(ctx)
-	if billCount != 1 {
-		t.Errorf("同账期账单数 = %d, want 1（旧账单应已删除）", billCount)
+	if n := client.BillItem.Query().CountX(ctx); n != 1 {
+		t.Errorf("明细数 = %d, want 1", n)
 	}
 }

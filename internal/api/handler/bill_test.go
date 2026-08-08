@@ -81,6 +81,9 @@ func TestBillLifecycleHandlers(t *testing.T) {
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "2026-07") {
 		t.Errorf("List 响应异常: %d, %s", rec.Code, rec.Body.String())
 	}
+	if !strings.Contains(rec.Body.String(), "自动生成：2026-07") {
+		t.Errorf("List 响应应包含自动账单名称, got %s", rec.Body.String())
+	}
 
 	// List：契约上明细仅详情接口返回，列表项不应残留 items/edges 字段
 	var listResp struct {
@@ -161,17 +164,6 @@ func TestBillLifecycleHandlers(t *testing.T) {
 		t.Errorf("减免后应保留零值 amount 字段, got %s", rec.Body.String())
 	}
 
-	// Share：草稿 → 待确认
-	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/share", "")
-	c.SetParamNames("id")
-	c.SetParamValues(billIDStr)
-	if err = h.Share(c); err != nil {
-		t.Fatalf("Share 失败: %v", err)
-	}
-	if rec.Code != http.StatusOK {
-		t.Errorf("Share 响应异常: %d, %s", rec.Code, rec.Body.String())
-	}
-
 	// Confirm：确认账单，人工确认固定 auto=false
 	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/confirm", "")
 	c.SetParamNames("id")
@@ -187,68 +179,10 @@ func TestBillLifecycleHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("查询最终状态失败: %v", err)
 	}
-	if final.Status.String() != "confirmed" {
-		t.Errorf("最终状态 = %s, want confirmed", final.Status)
+	if final.Status.String() != "unpaid" {
+		t.Errorf("最终状态 = %s, want unpaid", final.Status)
 	}
 	if final.ConfirmAuto {
 		t.Error("人工确认 ConfirmAuto 应为 false")
-	}
-}
-
-// TestBillRevokeHandler 覆盖撤回接口：草稿状态拒绝撤回，分享后可撤回并回到草稿
-func TestBillRevokeHandler(t *testing.T) {
-	client := enttest.Open(t, "sqlite3", "file:hbillrevoke?mode=memory&cache=shared&_fk=1")
-	defer client.Close()
-
-	ctx := context.Background()
-	_ = service.Seed(ctx, client, config.Admin{Username: "a", Password: "admin123"}, nil)
-
-	settingSvc := service.NewSetting(client)
-	audit := service.NewAudit(client)
-	demandSvc := service.NewDemand(client, settingSvc, audit)
-	billSvc := service.NewBill(client, settingSvc, demandSvc, audit)
-	h := NewBill(billSvc)
-	e := echo.New()
-
-	act := service.Actor{ID: 1, Name: "管理员"}
-	b, err := billSvc.Generate(ctx, act, "2026-06")
-	if err != nil {
-		t.Fatalf("生成账单失败: %v", err)
-	}
-	billIDStr := strconv.Itoa(b.ID)
-
-	// Revoke：草稿状态应拒绝
-	c, rec := newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/revoke", "")
-	c.SetParamNames("id")
-	c.SetParamValues(billIDStr)
-	_ = h.Revoke(c)
-	if rec.Code == http.StatusOK {
-		t.Errorf("草稿账单不应可撤回, body=%s", rec.Body.String())
-	}
-
-	// Share 后 Revoke 应成功
-	c, _ = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/share", "")
-	c.SetParamNames("id")
-	c.SetParamValues(billIDStr)
-	if err = h.Share(c); err != nil {
-		t.Fatalf("Share 失败: %v", err)
-	}
-
-	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/"+billIDStr+"/revoke", "")
-	c.SetParamNames("id")
-	c.SetParamValues(billIDStr)
-	if err = h.Revoke(c); err != nil {
-		t.Fatalf("Revoke 失败: %v", err)
-	}
-	if rec.Code != http.StatusOK {
-		t.Errorf("Revoke 响应异常: %d, %s", rec.Code, rec.Body.String())
-	}
-
-	final, err := billSvc.Get(ctx, b.ID)
-	if err != nil {
-		t.Fatalf("查询最终状态失败: %v", err)
-	}
-	if final.Status.String() != "draft" {
-		t.Errorf("撤回后状态 = %s, want draft", final.Status)
 	}
 }

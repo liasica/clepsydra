@@ -96,8 +96,8 @@ func TestEnsurePrevBill(t *testing.T) {
 		t.Fatalf("补生成失败: %v", err)
 	}
 	b := client.Bill.Query().Where(bill.Period("2026-07")).OnlyX(ctx)
-	if b.Status.String() != "draft" {
-		t.Errorf("生成的账单应为草稿, got %s", b.Status)
+	if b.Status.String() != "pending" {
+		t.Errorf("生成的账单应为待确认, got %s", b.Status)
 	}
 
 	// 幂等：已存在则跳过，不重建

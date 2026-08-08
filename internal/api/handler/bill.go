@@ -76,7 +76,12 @@ func (h *Bill) Generate(c echo.Context) error {
 		return api.Fail(c, err)
 	}
 
-	return api.OK(c, b)
+	full, err := h.svc.Get(c.Request().Context(), b.ID)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, newBillDetailDTO(full))
 }
 
 // ToggleWaive POST /api/bills/:id/items/:itemId/waive
@@ -92,34 +97,6 @@ func (h *Bill) ToggleWaive(c echo.Context) error {
 	}
 
 	if err = h.svc.ToggleWaive(c.Request().Context(), actor(c), id, itemID); err != nil {
-		return api.Fail(c, err)
-	}
-
-	return api.OK(c, nil)
-}
-
-// Share POST /api/bills/:id/share
-func (h *Bill) Share(c echo.Context) error {
-	id, err := parseID(c)
-	if err != nil {
-		return api.Fail(c, err)
-	}
-
-	if err = h.svc.Share(c.Request().Context(), actor(c), id); err != nil {
-		return api.Fail(c, err)
-	}
-
-	return api.OK(c, nil)
-}
-
-// Revoke POST /api/bills/:id/revoke
-func (h *Bill) Revoke(c echo.Context) error {
-	id, err := parseID(c)
-	if err != nil {
-		return api.Fail(c, err)
-	}
-
-	if err = h.svc.Revoke(c.Request().Context(), actor(c), id); err != nil {
 		return api.Fail(c, err)
 	}
 

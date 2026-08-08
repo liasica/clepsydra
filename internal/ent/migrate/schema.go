@@ -35,17 +35,19 @@ var (
 	// BillsColumns holds the columns for the "bills" table.
 	BillsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "period", Type: field.TypeString, Unique: true},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "pending", "confirmed"}, Default: "draft"},
+		{Name: "name", Type: field.TypeString},
+		{Name: "period", Type: field.TypeString, Unique: true, Nullable: true},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "unpaid", "paid"}, Default: "pending"},
 		{Name: "daily_rate", Type: field.TypeInt},
 		{Name: "base_fee", Type: field.TypeInt},
 		{Name: "total_half_days", Type: field.TypeInt},
 		{Name: "total_amount", Type: field.TypeInt},
-		{Name: "shared_at", Type: field.TypeTime, Nullable: true},
 		{Name: "confirm_deadline", Type: field.TypeTime, Nullable: true},
 		{Name: "confirmed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "confirmed_by", Type: field.TypeInt, Nullable: true},
 		{Name: "confirm_auto", Type: field.TypeBool, Default: false},
+		{Name: "paid_at", Type: field.TypeTime, Nullable: true},
+		{Name: "paid_by", Type: field.TypeInt, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}

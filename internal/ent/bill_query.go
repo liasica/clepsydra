@@ -299,12 +299,12 @@ func (_q *BillQuery) WithItems(opts ...func(*BillItemQuery)) *BillQuery {
 // Example:
 //
 //	var v []struct {
-//		Period string `json:"period,omitempty"`
+//		Name string `json:"name,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Bill.Query().
-//		GroupBy(bill.FieldPeriod).
+//		GroupBy(bill.FieldName).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *BillQuery) GroupBy(field string, fields ...string) *BillGroupBy {
@@ -322,11 +322,11 @@ func (_q *BillQuery) GroupBy(field string, fields ...string) *BillGroupBy {
 // Example:
 //
 //	var v []struct {
-//		Period string `json:"period,omitempty"`
+//		Name string `json:"name,omitempty"`
 //	}
 //
 //	client.Bill.Query().
-//		Select(bill.FieldPeriod).
+//		Select(bill.FieldName).
 //		Scan(ctx, &v)
 func (_q *BillQuery) Select(fields ...string) *BillSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

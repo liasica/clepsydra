@@ -17,8 +17,10 @@ type Bill struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// Name holds the value of the "name" field.
+	Name string `json:"name,omitempty"`
 	// Period holds the value of the "period" field.
-	Period string `json:"period,omitempty"`
+	Period *string `json:"period,omitempty"`
 	// Status holds the value of the "status" field.
 	Status bill.Status `json:"status,omitempty"`
 	// DailyRate holds the value of the "daily_rate" field.
@@ -29,8 +31,6 @@ type Bill struct {
 	TotalHalfDays int `json:"total_half_days,omitempty"`
 	// TotalAmount holds the value of the "total_amount" field.
 	TotalAmount int `json:"total_amount,omitempty"`
-	// SharedAt holds the value of the "shared_at" field.
-	SharedAt *time.Time `json:"shared_at,omitempty"`
 	// ConfirmDeadline holds the value of the "confirm_deadline" field.
 	ConfirmDeadline *time.Time `json:"confirm_deadline,omitempty"`
 	// ConfirmedAt holds the value of the "confirmed_at" field.
@@ -39,6 +39,10 @@ type Bill struct {
 	ConfirmedBy *int `json:"confirmed_by,omitempty"`
 	// ConfirmAuto holds the value of the "confirm_auto" field.
 	ConfirmAuto bool `json:"confirm_auto,omitempty"`
+	// PaidAt holds the value of the "paid_at" field.
+	PaidAt *time.Time `json:"paid_at,omitempty"`
+	// PaidBy holds the value of the "paid_by" field.
+	PaidBy *int `json:"paid_by,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -74,11 +78,11 @@ func (*Bill) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case bill.FieldConfirmAuto:
 			values[i] = new(sql.NullBool)
-		case bill.FieldID, bill.FieldDailyRate, bill.FieldBaseFee, bill.FieldTotalHalfDays, bill.FieldTotalAmount, bill.FieldConfirmedBy:
+		case bill.FieldID, bill.FieldDailyRate, bill.FieldBaseFee, bill.FieldTotalHalfDays, bill.FieldTotalAmount, bill.FieldConfirmedBy, bill.FieldPaidBy:
 			values[i] = new(sql.NullInt64)
-		case bill.FieldPeriod, bill.FieldStatus:
+		case bill.FieldName, bill.FieldPeriod, bill.FieldStatus:
 			values[i] = new(sql.NullString)
-		case bill.FieldSharedAt, bill.FieldConfirmDeadline, bill.FieldConfirmedAt, bill.FieldCreatedAt, bill.FieldUpdatedAt:
+		case bill.FieldConfirmDeadline, bill.FieldConfirmedAt, bill.FieldPaidAt, bill.FieldCreatedAt, bill.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -101,11 +105,18 @@ func (_m *Bill) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int(value.Int64)
+		case bill.FieldName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field name", values[i])
+			} else if value.Valid {
+				_m.Name = value.String
+			}
 		case bill.FieldPeriod:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field period", values[i])
 			} else if value.Valid {
-				_m.Period = value.String
+				_m.Period = new(string)
+				*_m.Period = value.String
 			}
 		case bill.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -137,13 +148,6 @@ func (_m *Bill) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.TotalAmount = int(value.Int64)
 			}
-		case bill.FieldSharedAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field shared_at", values[i])
-			} else if value.Valid {
-				_m.SharedAt = new(time.Time)
-				*_m.SharedAt = value.Time
-			}
 		case bill.FieldConfirmDeadline:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field confirm_deadline", values[i])
@@ -170,6 +174,20 @@ func (_m *Bill) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field confirm_auto", values[i])
 			} else if value.Valid {
 				_m.ConfirmAuto = value.Bool
+			}
+		case bill.FieldPaidAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field paid_at", values[i])
+			} else if value.Valid {
+				_m.PaidAt = new(time.Time)
+				*_m.PaidAt = value.Time
+			}
+		case bill.FieldPaidBy:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field paid_by", values[i])
+			} else if value.Valid {
+				_m.PaidBy = new(int)
+				*_m.PaidBy = int(value.Int64)
 			}
 		case bill.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -224,8 +242,13 @@ func (_m *Bill) String() string {
 	var builder strings.Builder
 	builder.WriteString("Bill(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("period=")
-	builder.WriteString(_m.Period)
+	builder.WriteString("name=")
+	builder.WriteString(_m.Name)
+	builder.WriteString(", ")
+	if v := _m.Period; v != nil {
+		builder.WriteString("period=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
@@ -241,11 +264,6 @@ func (_m *Bill) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("total_amount=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TotalAmount))
-	builder.WriteString(", ")
-	if v := _m.SharedAt; v != nil {
-		builder.WriteString("shared_at=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
 	builder.WriteString(", ")
 	if v := _m.ConfirmDeadline; v != nil {
 		builder.WriteString("confirm_deadline=")
@@ -264,6 +282,16 @@ func (_m *Bill) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("confirm_auto=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ConfirmAuto))
+	builder.WriteString(", ")
+	if v := _m.PaidAt; v != nil {
+		builder.WriteString("paid_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.PaidBy; v != nil {
+		builder.WriteString("paid_by=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

@@ -26,9 +26,9 @@ func TestSchemaSmoke(t *testing.T) {
 	}
 
 	// 账单账期唯一约束
-	client.Bill.Create().SetPeriod("2026-07").SetDailyRate(1200).SetBaseFee(12000).
+	client.Bill.Create().SetName("自动生成：2026-07").SetPeriod("2026-07").SetDailyRate(1200).SetBaseFee(12000).
 		SetTotalHalfDays(0).SetTotalAmount(12000).SaveX(ctx)
-	_, err := client.Bill.Create().SetPeriod("2026-07").SetDailyRate(1200).SetBaseFee(12000).
+	_, err := client.Bill.Create().SetName("自动生成：2026-07").SetPeriod("2026-07").SetDailyRate(1200).SetBaseFee(12000).
 		SetTotalHalfDays(0).SetTotalAmount(12000).Save(ctx)
 	if err == nil {
 		t.Error("重复账期应违反唯一约束")

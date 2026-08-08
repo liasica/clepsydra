@@ -10,17 +10,19 @@ import (
 // 显式声明 JSON tag 且不带 omitempty，避免 ent 生成结构体的零值字段被省略
 type billDTO struct {
 	ID              int           `json:"id"`
-	Period          string        `json:"period"`
+	Name            string        `json:"name"`
+	Period          *string       `json:"period"`
 	Status          string        `json:"status"`
 	DailyRate       int           `json:"daily_rate"`
 	BaseFee         int           `json:"base_fee"`
 	TotalHalfDays   int           `json:"total_half_days"`
 	TotalAmount     int           `json:"total_amount"`
-	SharedAt        *time.Time    `json:"shared_at"`
 	ConfirmDeadline *time.Time    `json:"confirm_deadline"`
 	ConfirmedAt     *time.Time    `json:"confirmed_at"`
 	ConfirmedBy     *int          `json:"confirmed_by"`
 	ConfirmAuto     bool          `json:"confirm_auto"`
+	PaidAt          *time.Time    `json:"paid_at"`
+	PaidBy          *int          `json:"paid_by"`
 	CreatedAt       time.Time     `json:"created_at"`
 	UpdatedAt       time.Time     `json:"updated_at"`
 	Items           []billItemDTO `json:"items,omitempty"` // 仅账单详情接口填充，列表接口保持缺省
@@ -45,17 +47,19 @@ type billItemDTO struct {
 func newBillDTO(b *ent.Bill) billDTO {
 	return billDTO{
 		ID:              b.ID,
+		Name:            b.Name,
 		Period:          b.Period,
 		Status:          b.Status.String(),
 		DailyRate:       b.DailyRate,
 		BaseFee:         b.BaseFee,
 		TotalHalfDays:   b.TotalHalfDays,
 		TotalAmount:     b.TotalAmount,
-		SharedAt:        b.SharedAt,
 		ConfirmDeadline: b.ConfirmDeadline,
 		ConfirmedAt:     b.ConfirmedAt,
 		ConfirmedBy:     b.ConfirmedBy,
 		ConfirmAuto:     b.ConfirmAuto,
+		PaidAt:          b.PaidAt,
+		PaidBy:          b.PaidBy,
 		CreatedAt:       b.CreatedAt,
 		UpdatedAt:       b.UpdatedAt,
 	}

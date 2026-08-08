@@ -37,8 +37,8 @@ func TestDashboardTodos(t *testing.T) {
 	if todos.PendingEstimateCount != 1 {
 		t.Errorf("待确认人天数 = %d, want 1", todos.PendingEstimateCount)
 	}
-	if todos.PrevBillShared {
-		t.Error("上月账单未生成，PrevBillShared 应为 false")
+	if todos.PrevBillGenerated {
+		t.Error("上月账单未生成，PrevBillGenerated 应为 false")
 	}
 	if todos.BillingDueDate == "" {
 		t.Error("出账截止日不应为空")

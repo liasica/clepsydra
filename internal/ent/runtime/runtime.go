@@ -29,11 +29,11 @@ func init() {
 	// bill.DefaultConfirmAuto holds the default value on creation for the confirm_auto field.
 	bill.DefaultConfirmAuto = billDescConfirmAuto.Default.(bool)
 	// billDescCreatedAt is the schema descriptor for created_at field.
-	billDescCreatedAt := billFields[11].Descriptor()
+	billDescCreatedAt := billFields[13].Descriptor()
 	// bill.DefaultCreatedAt holds the default value on creation for the created_at field.
 	bill.DefaultCreatedAt = billDescCreatedAt.Default.(func() time.Time)
 	// billDescUpdatedAt is the schema descriptor for updated_at field.
-	billDescUpdatedAt := billFields[12].Descriptor()
+	billDescUpdatedAt := billFields[14].Descriptor()
 	// bill.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	bill.DefaultUpdatedAt = billDescUpdatedAt.Default.(func() time.Time)
 	// bill.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

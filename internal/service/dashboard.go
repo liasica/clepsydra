@@ -17,7 +17,7 @@ type Todos struct {
 	PendingBillCount       int    `json:"pending_bill_count"`
 	BillingDueDate         string `json:"billing_due_date"`
 	BillingDueToday        bool   `json:"billing_due_today"`
-	PrevBillShared         bool   `json:"prev_bill_shared"`
+	PrevBillGenerated      bool   `json:"prev_bill_generated"`
 }
 
 // Dashboard 工作台服务
@@ -65,7 +65,7 @@ func (s *Dashboard) Todos(ctx context.Context, role string, now time.Time) (*Tod
 	if err != nil && !ent.IsNotFound(err) {
 		return nil, err
 	}
-	todos.PrevBillShared = prev != nil && prev.Status != bill.StatusDraft
+	todos.PrevBillGenerated = prev != nil
 
 	return todos, nil
 }

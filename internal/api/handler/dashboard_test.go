@@ -54,7 +54,7 @@ func TestDashboardTodosHandler(t *testing.T) {
 		`"pending_bill_count":0`,
 		`"billing_due_date":"`,
 		`"billing_due_today":`,
-		`"prev_bill_shared":false`,
+		`"prev_bill_generated":false`,
 	} {
 		if !strings.Contains(body, field) {
 			t.Errorf("响应缺少字段 %s: %s", field, body)

@@ -107,7 +107,7 @@ func (r *Runner) ScanExpired(ctx context.Context, now time.Time) error {
 		if err = r.bill.Confirm(ctx, service.SystemActor, b.ID, true); err != nil {
 			return err
 		}
-		r.log.Info().Int("bill_id", b.ID).Str("period", b.Period).Msg("账单逾期自动确认")
+		r.log.Info().Int("bill_id", b.ID).Str("name", b.Name).Msg("账单逾期自动确认")
 	}
 
 	return nil

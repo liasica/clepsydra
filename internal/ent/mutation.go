@@ -786,6 +786,7 @@ type BillMutation struct {
 	op                 Op
 	typ                string
 	id                 *int
+	name               *string
 	period             *string
 	status             *bill.Status
 	daily_rate         *int
@@ -796,12 +797,14 @@ type BillMutation struct {
 	addtotal_half_days *int
 	total_amount       *int
 	addtotal_amount    *int
-	shared_at          *time.Time
 	confirm_deadline   *time.Time
 	confirmed_at       *time.Time
 	confirmed_by       *int
 	addconfirmed_by    *int
 	confirm_auto       *bool
+	paid_at            *time.Time
+	paid_by            *int
+	addpaid_by         *int
 	created_at         *time.Time
 	updated_at         *time.Time
 	clearedFields      map[string]struct{}
@@ -911,6 +914,42 @@ func (m *BillMutation) IDs(ctx context.Context) ([]int, error) {
 	}
 }
 
+// SetName sets the "name" field.
+func (m *BillMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *BillMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Bill entity.
+// If the Bill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BillMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *BillMutation) ResetName() {
+	m.name = nil
+}
+
 // SetPeriod sets the "period" field.
 func (m *BillMutation) SetPeriod(s string) {
 	m.period = &s
@@ -928,7 +967,7 @@ func (m *BillMutation) Period() (r string, exists bool) {
 // OldPeriod returns the old "period" field's value of the Bill entity.
 // If the Bill object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *BillMutation) OldPeriod(ctx context.Context) (v string, err error) {
+func (m *BillMutation) OldPeriod(ctx context.Context) (v *string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldPeriod is only allowed on UpdateOne operations")
 	}
@@ -942,9 +981,22 @@ func (m *BillMutation) OldPeriod(ctx context.Context) (v string, err error) {
 	return oldValue.Period, nil
 }
 
+// ClearPeriod clears the value of the "period" field.
+func (m *BillMutation) ClearPeriod() {
+	m.period = nil
+	m.clearedFields[bill.FieldPeriod] = struct{}{}
+}
+
+// PeriodCleared returns if the "period" field was cleared in this mutation.
+func (m *BillMutation) PeriodCleared() bool {
+	_, ok := m.clearedFields[bill.FieldPeriod]
+	return ok
+}
+
 // ResetPeriod resets all changes to the "period" field.
 func (m *BillMutation) ResetPeriod() {
 	m.period = nil
+	delete(m.clearedFields, bill.FieldPeriod)
 }
 
 // SetStatus sets the "status" field.
@@ -1207,55 +1259,6 @@ func (m *BillMutation) ResetTotalAmount() {
 	m.addtotal_amount = nil
 }
 
-// SetSharedAt sets the "shared_at" field.
-func (m *BillMutation) SetSharedAt(t time.Time) {
-	m.shared_at = &t
-}
-
-// SharedAt returns the value of the "shared_at" field in the mutation.
-func (m *BillMutation) SharedAt() (r time.Time, exists bool) {
-	v := m.shared_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSharedAt returns the old "shared_at" field's value of the Bill entity.
-// If the Bill object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *BillMutation) OldSharedAt(ctx context.Context) (v *time.Time, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSharedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSharedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSharedAt: %w", err)
-	}
-	return oldValue.SharedAt, nil
-}
-
-// ClearSharedAt clears the value of the "shared_at" field.
-func (m *BillMutation) ClearSharedAt() {
-	m.shared_at = nil
-	m.clearedFields[bill.FieldSharedAt] = struct{}{}
-}
-
-// SharedAtCleared returns if the "shared_at" field was cleared in this mutation.
-func (m *BillMutation) SharedAtCleared() bool {
-	_, ok := m.clearedFields[bill.FieldSharedAt]
-	return ok
-}
-
-// ResetSharedAt resets all changes to the "shared_at" field.
-func (m *BillMutation) ResetSharedAt() {
-	m.shared_at = nil
-	delete(m.clearedFields, bill.FieldSharedAt)
-}
-
 // SetConfirmDeadline sets the "confirm_deadline" field.
 func (m *BillMutation) SetConfirmDeadline(t time.Time) {
 	m.confirm_deadline = &t
@@ -1460,6 +1463,125 @@ func (m *BillMutation) ResetConfirmAuto() {
 	m.confirm_auto = nil
 }
 
+// SetPaidAt sets the "paid_at" field.
+func (m *BillMutation) SetPaidAt(t time.Time) {
+	m.paid_at = &t
+}
+
+// PaidAt returns the value of the "paid_at" field in the mutation.
+func (m *BillMutation) PaidAt() (r time.Time, exists bool) {
+	v := m.paid_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPaidAt returns the old "paid_at" field's value of the Bill entity.
+// If the Bill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BillMutation) OldPaidAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPaidAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPaidAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPaidAt: %w", err)
+	}
+	return oldValue.PaidAt, nil
+}
+
+// ClearPaidAt clears the value of the "paid_at" field.
+func (m *BillMutation) ClearPaidAt() {
+	m.paid_at = nil
+	m.clearedFields[bill.FieldPaidAt] = struct{}{}
+}
+
+// PaidAtCleared returns if the "paid_at" field was cleared in this mutation.
+func (m *BillMutation) PaidAtCleared() bool {
+	_, ok := m.clearedFields[bill.FieldPaidAt]
+	return ok
+}
+
+// ResetPaidAt resets all changes to the "paid_at" field.
+func (m *BillMutation) ResetPaidAt() {
+	m.paid_at = nil
+	delete(m.clearedFields, bill.FieldPaidAt)
+}
+
+// SetPaidBy sets the "paid_by" field.
+func (m *BillMutation) SetPaidBy(i int) {
+	m.paid_by = &i
+	m.addpaid_by = nil
+}
+
+// PaidBy returns the value of the "paid_by" field in the mutation.
+func (m *BillMutation) PaidBy() (r int, exists bool) {
+	v := m.paid_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPaidBy returns the old "paid_by" field's value of the Bill entity.
+// If the Bill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BillMutation) OldPaidBy(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPaidBy is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPaidBy requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPaidBy: %w", err)
+	}
+	return oldValue.PaidBy, nil
+}
+
+// AddPaidBy adds i to the "paid_by" field.
+func (m *BillMutation) AddPaidBy(i int) {
+	if m.addpaid_by != nil {
+		*m.addpaid_by += i
+	} else {
+		m.addpaid_by = &i
+	}
+}
+
+// AddedPaidBy returns the value that was added to the "paid_by" field in this mutation.
+func (m *BillMutation) AddedPaidBy() (r int, exists bool) {
+	v := m.addpaid_by
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearPaidBy clears the value of the "paid_by" field.
+func (m *BillMutation) ClearPaidBy() {
+	m.paid_by = nil
+	m.addpaid_by = nil
+	m.clearedFields[bill.FieldPaidBy] = struct{}{}
+}
+
+// PaidByCleared returns if the "paid_by" field was cleared in this mutation.
+func (m *BillMutation) PaidByCleared() bool {
+	_, ok := m.clearedFields[bill.FieldPaidBy]
+	return ok
+}
+
+// ResetPaidBy resets all changes to the "paid_by" field.
+func (m *BillMutation) ResetPaidBy() {
+	m.paid_by = nil
+	m.addpaid_by = nil
+	delete(m.clearedFields, bill.FieldPaidBy)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *BillMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -1620,7 +1742,10 @@ func (m *BillMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BillMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 15)
+	if m.name != nil {
+		fields = append(fields, bill.FieldName)
+	}
 	if m.period != nil {
 		fields = append(fields, bill.FieldPeriod)
 	}
@@ -1639,9 +1764,6 @@ func (m *BillMutation) Fields() []string {
 	if m.total_amount != nil {
 		fields = append(fields, bill.FieldTotalAmount)
 	}
-	if m.shared_at != nil {
-		fields = append(fields, bill.FieldSharedAt)
-	}
 	if m.confirm_deadline != nil {
 		fields = append(fields, bill.FieldConfirmDeadline)
 	}
@@ -1653,6 +1775,12 @@ func (m *BillMutation) Fields() []string {
 	}
 	if m.confirm_auto != nil {
 		fields = append(fields, bill.FieldConfirmAuto)
+	}
+	if m.paid_at != nil {
+		fields = append(fields, bill.FieldPaidAt)
+	}
+	if m.paid_by != nil {
+		fields = append(fields, bill.FieldPaidBy)
 	}
 	if m.created_at != nil {
 		fields = append(fields, bill.FieldCreatedAt)
@@ -1668,6 +1796,8 @@ func (m *BillMutation) Fields() []string {
 // schema.
 func (m *BillMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case bill.FieldName:
+		return m.Name()
 	case bill.FieldPeriod:
 		return m.Period()
 	case bill.FieldStatus:
@@ -1680,8 +1810,6 @@ func (m *BillMutation) Field(name string) (ent.Value, bool) {
 		return m.TotalHalfDays()
 	case bill.FieldTotalAmount:
 		return m.TotalAmount()
-	case bill.FieldSharedAt:
-		return m.SharedAt()
 	case bill.FieldConfirmDeadline:
 		return m.ConfirmDeadline()
 	case bill.FieldConfirmedAt:
@@ -1690,6 +1818,10 @@ func (m *BillMutation) Field(name string) (ent.Value, bool) {
 		return m.ConfirmedBy()
 	case bill.FieldConfirmAuto:
 		return m.ConfirmAuto()
+	case bill.FieldPaidAt:
+		return m.PaidAt()
+	case bill.FieldPaidBy:
+		return m.PaidBy()
 	case bill.FieldCreatedAt:
 		return m.CreatedAt()
 	case bill.FieldUpdatedAt:
@@ -1703,6 +1835,8 @@ func (m *BillMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *BillMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case bill.FieldName:
+		return m.OldName(ctx)
 	case bill.FieldPeriod:
 		return m.OldPeriod(ctx)
 	case bill.FieldStatus:
@@ -1715,8 +1849,6 @@ func (m *BillMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldTotalHalfDays(ctx)
 	case bill.FieldTotalAmount:
 		return m.OldTotalAmount(ctx)
-	case bill.FieldSharedAt:
-		return m.OldSharedAt(ctx)
 	case bill.FieldConfirmDeadline:
 		return m.OldConfirmDeadline(ctx)
 	case bill.FieldConfirmedAt:
@@ -1725,6 +1857,10 @@ func (m *BillMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldConfirmedBy(ctx)
 	case bill.FieldConfirmAuto:
 		return m.OldConfirmAuto(ctx)
+	case bill.FieldPaidAt:
+		return m.OldPaidAt(ctx)
+	case bill.FieldPaidBy:
+		return m.OldPaidBy(ctx)
 	case bill.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case bill.FieldUpdatedAt:
@@ -1738,6 +1874,13 @@ func (m *BillMutation) OldField(ctx context.Context, name string) (ent.Value, er
 // type.
 func (m *BillMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case bill.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
 	case bill.FieldPeriod:
 		v, ok := value.(string)
 		if !ok {
@@ -1780,13 +1923,6 @@ func (m *BillMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetTotalAmount(v)
 		return nil
-	case bill.FieldSharedAt:
-		v, ok := value.(time.Time)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSharedAt(v)
-		return nil
 	case bill.FieldConfirmDeadline:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -1814,6 +1950,20 @@ func (m *BillMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetConfirmAuto(v)
+		return nil
+	case bill.FieldPaidAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPaidAt(v)
+		return nil
+	case bill.FieldPaidBy:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPaidBy(v)
 		return nil
 	case bill.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -1852,6 +2002,9 @@ func (m *BillMutation) AddedFields() []string {
 	if m.addconfirmed_by != nil {
 		fields = append(fields, bill.FieldConfirmedBy)
 	}
+	if m.addpaid_by != nil {
+		fields = append(fields, bill.FieldPaidBy)
+	}
 	return fields
 }
 
@@ -1870,6 +2023,8 @@ func (m *BillMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedTotalAmount()
 	case bill.FieldConfirmedBy:
 		return m.AddedConfirmedBy()
+	case bill.FieldPaidBy:
+		return m.AddedPaidBy()
 	}
 	return nil, false
 }
@@ -1914,6 +2069,13 @@ func (m *BillMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddConfirmedBy(v)
 		return nil
+	case bill.FieldPaidBy:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPaidBy(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Bill numeric field %s", name)
 }
@@ -1922,8 +2084,8 @@ func (m *BillMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *BillMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(bill.FieldSharedAt) {
-		fields = append(fields, bill.FieldSharedAt)
+	if m.FieldCleared(bill.FieldPeriod) {
+		fields = append(fields, bill.FieldPeriod)
 	}
 	if m.FieldCleared(bill.FieldConfirmDeadline) {
 		fields = append(fields, bill.FieldConfirmDeadline)
@@ -1933,6 +2095,12 @@ func (m *BillMutation) ClearedFields() []string {
 	}
 	if m.FieldCleared(bill.FieldConfirmedBy) {
 		fields = append(fields, bill.FieldConfirmedBy)
+	}
+	if m.FieldCleared(bill.FieldPaidAt) {
+		fields = append(fields, bill.FieldPaidAt)
+	}
+	if m.FieldCleared(bill.FieldPaidBy) {
+		fields = append(fields, bill.FieldPaidBy)
 	}
 	return fields
 }
@@ -1948,8 +2116,8 @@ func (m *BillMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *BillMutation) ClearField(name string) error {
 	switch name {
-	case bill.FieldSharedAt:
-		m.ClearSharedAt()
+	case bill.FieldPeriod:
+		m.ClearPeriod()
 		return nil
 	case bill.FieldConfirmDeadline:
 		m.ClearConfirmDeadline()
@@ -1960,6 +2128,12 @@ func (m *BillMutation) ClearField(name string) error {
 	case bill.FieldConfirmedBy:
 		m.ClearConfirmedBy()
 		return nil
+	case bill.FieldPaidAt:
+		m.ClearPaidAt()
+		return nil
+	case bill.FieldPaidBy:
+		m.ClearPaidBy()
+		return nil
 	}
 	return fmt.Errorf("unknown Bill nullable field %s", name)
 }
@@ -1968,6 +2142,9 @@ func (m *BillMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *BillMutation) ResetField(name string) error {
 	switch name {
+	case bill.FieldName:
+		m.ResetName()
+		return nil
 	case bill.FieldPeriod:
 		m.ResetPeriod()
 		return nil
@@ -1986,9 +2163,6 @@ func (m *BillMutation) ResetField(name string) error {
 	case bill.FieldTotalAmount:
 		m.ResetTotalAmount()
 		return nil
-	case bill.FieldSharedAt:
-		m.ResetSharedAt()
-		return nil
 	case bill.FieldConfirmDeadline:
 		m.ResetConfirmDeadline()
 		return nil
@@ -2000,6 +2174,12 @@ func (m *BillMutation) ResetField(name string) error {
 		return nil
 	case bill.FieldConfirmAuto:
 		m.ResetConfirmAuto()
+		return nil
+	case bill.FieldPaidAt:
+		m.ResetPaidAt()
+		return nil
+	case bill.FieldPaidBy:
+		m.ResetPaidBy()
 		return nil
 	case bill.FieldCreatedAt:
 		m.ResetCreatedAt()

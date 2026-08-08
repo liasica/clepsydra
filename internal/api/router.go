@@ -55,8 +55,6 @@ type BillHandler interface {
 	Get(c echo.Context) error
 	Generate(c echo.Context) error
 	ToggleWaive(c echo.Context) error
-	Share(c echo.Context) error
-	Revoke(c echo.Context) error
 	Confirm(c echo.Context) error
 }
 
@@ -134,8 +132,6 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	adminGroup.POST("/demands/:id/finish", h.Demand.Finish)
 	adminGroup.POST("/bills/generate", h.Bill.Generate)
 	adminGroup.POST("/bills/:id/items/:itemId/waive", h.Bill.ToggleWaive)
-	adminGroup.POST("/bills/:id/share", h.Bill.Share)
-	adminGroup.POST("/bills/:id/revoke", h.Bill.Revoke)
 	adminGroup.GET("/audit-logs", h.AuditLog.List)
 
 	// 前端静态资源与 SPA 回退，挂在最后避免遮蔽具体路由

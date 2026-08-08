@@ -90,14 +90,22 @@ func TestBillGenerate(t *testing.T) {
 		t.Errorf("明细行 = %d 计费 / %d 展示, want 2 / 1", billable, display)
 	}
 
-	// draft 状态可重新生成
-	if _, err = billSvc.Generate(ctx, admin, "2026-07"); err != nil {
-		t.Errorf("draft 账单应可重新生成: %v", err)
+	// 生成即待确认：名称、状态与确认截止时间
+	if bill.Name != "自动生成：2026-07" {
+		t.Errorf("账单名称 = %s, want 自动生成：2026-07", bill.Name)
+	}
+	if bill.Status.String() != "pending" || bill.ConfirmDeadline == nil {
+		t.Errorf("生成后状态 = %s, deadline=%v, want pending 且截止时间非空", bill.Status, bill.ConfirmDeadline)
+	}
+
+	// 同账期账单已存在则拒绝
+	if _, err = billSvc.Generate(ctx, admin, "2026-07"); err == nil {
+		t.Error("同账期账单已存在应拒绝生成")
 	}
 }
 
-func TestBillWaiveAndShareConfirm(t *testing.T) {
-	client, demandSvc, billSvc := newBillEnv(t, "bshare")
+func TestBillWaiveAndConfirm(t *testing.T) {
+	client, demandSvc, billSvc := newBillEnv(t, "bconfirm")
 	ctx := context.Background()
 
 	id1 := prepareDemand(t, demandSvc, "小缺陷修复", 2)
@@ -115,30 +123,27 @@ func TestBillWaiveAndShareConfirm(t *testing.T) {
 		t.Errorf("减免后总额 = %d, want 12000", bill.TotalAmount)
 	}
 
-	// 分享 → 确认
-	if err := billSvc.Share(ctx, admin, bill.ID); err != nil {
-		t.Fatalf("分享失败: %v", err)
-	}
-	bill, _ = billSvc.Get(ctx, bill.ID)
-	if bill.Status.String() != "pending" || bill.ConfirmDeadline == nil {
-		t.Fatalf("分享后状态 = %s", bill.Status)
-	}
-
-	// 分享后不可重新生成
-	if _, err := billSvc.Generate(ctx, admin, "2026-07"); err == nil {
-		t.Error("已分享账单不应可重新生成")
-	}
-
+	// 确认后直接进入待支付，确认信息落库
 	if err := billSvc.Confirm(ctx, clientActor, bill.ID, false); err != nil {
 		t.Fatalf("确认失败: %v", err)
 	}
-
-	// 已确认后减免与撤回均拒绝
-	if err := billSvc.ToggleWaive(ctx, admin, bill.ID, item.ID); err == nil {
-		t.Error("已确认账单不应可减免")
+	bill, _ = billSvc.Get(ctx, bill.ID)
+	if bill.Status.String() != "unpaid" || bill.ConfirmedAt == nil {
+		t.Fatalf("确认后状态 = %s, confirmedAt=%v, want unpaid 且确认时间非空", bill.Status, bill.ConfirmedAt)
 	}
-	if err := billSvc.Revoke(ctx, admin, bill.ID); err == nil {
-		t.Error("已确认账单不应可撤回")
+
+	// 待支付状态仍可调整减免（恢复原金额）
+	if err := billSvc.ToggleWaive(ctx, admin, bill.ID, item.ID); err != nil {
+		t.Errorf("待支付账单应可调整减免: %v", err)
+	}
+	bill, _ = billSvc.Get(ctx, bill.ID)
+	if bill.TotalAmount != 13200 {
+		t.Errorf("恢复减免后总额 = %d, want 13200", bill.TotalAmount)
+	}
+
+	// 重复确认拒绝
+	if err := billSvc.Confirm(ctx, clientActor, bill.ID, false); err == nil {
+		t.Error("已确认账单重复确认应拒绝")
 	}
 }
 
