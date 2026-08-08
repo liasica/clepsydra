@@ -20,6 +20,20 @@ type DemandCreate struct {
 	hooks    []Hook
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (_c *DemandCreate) SetDeletedAt(v time.Time) *DemandCreate {
+	_c.mutation.SetDeletedAt(v)
+	return _c
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_c *DemandCreate) SetNillableDeletedAt(v *time.Time) *DemandCreate {
+	if v != nil {
+		_c.SetDeletedAt(*v)
+	}
+	return _c
+}
+
 // SetTitle sets the "title" field.
 func (_c *DemandCreate) SetTitle(v string) *DemandCreate {
 	_c.mutation.SetTitle(v)
@@ -249,7 +263,9 @@ func (_c *DemandCreate) Mutation() *DemandMutation {
 
 // Save creates the Demand in the database.
 func (_c *DemandCreate) Save(ctx context.Context) (*Demand, error) {
-	_c.defaults()
+	if err := _c.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -276,7 +292,7 @@ func (_c *DemandCreate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_c *DemandCreate) defaults() {
+func (_c *DemandCreate) defaults() error {
 	if _, ok := _c.mutation.Status(); !ok {
 		v := demand.DefaultStatus
 		_c.mutation.SetStatus(v)
@@ -290,13 +306,20 @@ func (_c *DemandCreate) defaults() {
 		_c.mutation.SetAcceptLocked(v)
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
+		if demand.DefaultCreatedAt == nil {
+			return fmt.Errorf("ent: uninitialized demand.DefaultCreatedAt (forgotten import ent/runtime?)")
+		}
 		v := demand.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		if demand.DefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized demand.DefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := demand.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -358,6 +381,10 @@ func (_c *DemandCreate) createSpec() (*Demand, *sqlgraph.CreateSpec) {
 		_node = &Demand{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(demand.Table, sqlgraph.NewFieldSpec(demand.FieldID, field.TypeInt))
 	)
+	if value, ok := _c.mutation.DeletedAt(); ok {
+		_spec.SetField(demand.FieldDeletedAt, field.TypeTime, value)
+		_node.DeletedAt = &value
+	}
 	if value, ok := _c.mutation.Title(); ok {
 		_spec.SetField(demand.FieldTitle, field.TypeString, value)
 		_node.Title = value

@@ -120,6 +120,34 @@ func (s *Demand) Update(ctx context.Context, actor Actor, id int, title, descrip
 	return d, nil
 }
 
+// Delete 软删除需求，任何状态都允许
+//
+// 删除后需求不再出现在列表、工作台统计与账单生成范围里。账单明细存的是快照，
+// 已出的账单金额不受影响；明细里的 demand_id 仍指向保留下来的记录，
+// 需要追溯时用 schema.SkipSoftDelete 查询即可
+func (s *Demand) Delete(ctx context.Context, actor Actor, id int) error {
+	// 先取一次拿标题与状态写审计，同时借 Get 的软删除过滤挡掉重复删除
+	d, err := s.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if err = s.client.Demand.DeleteOneID(id).Exec(ctx); err != nil {
+		if ent.IsNotFound(err) {
+			return ErrNotFound
+		}
+
+		return err
+	}
+
+	s.audit.Record(ctx, actor, "demand.delete", "demand", id, map[string]any{
+		"title":  d.Title,
+		"status": d.Status.String(),
+	})
+
+	return nil
+}
+
 // transit 通用状态流转：条件更新防止并发下重复流转
 func (s *Demand) transit(ctx context.Context, id int, from, to demand.Status, apply func(*ent.DemandUpdate)) error {
 	if !canTransit(from, to) {

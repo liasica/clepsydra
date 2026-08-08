@@ -795,12 +795,14 @@ func (c *DemandClient) GetX(ctx context.Context, id int) *Demand {
 
 // Hooks returns the client hooks.
 func (c *DemandClient) Hooks() []Hook {
-	return c.hooks.Demand
+	hooks := c.hooks.Demand
+	return append(hooks[:len(hooks):len(hooks)], demand.Hooks[:]...)
 }
 
 // Interceptors returns the client interceptors.
 func (c *DemandClient) Interceptors() []Interceptor {
-	return c.inters.Demand
+	inters := c.inters.Demand
+	return append(inters[:len(inters):len(inters)], demand.Interceptors[:]...)
 }
 
 func (c *DemandClient) mutate(ctx context.Context, m *DemandMutation) (Value, error) {

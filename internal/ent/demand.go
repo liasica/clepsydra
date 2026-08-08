@@ -17,6 +17,8 @@ type Demand struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// DeletedAt holds the value of the "deleted_at" field.
+	DeletedAt *time.Time `json:"deleted_at,omitempty"`
 	// Title holds the value of the "title" field.
 	Title string `json:"title,omitempty"`
 	// Description holds the value of the "description" field.
@@ -65,7 +67,7 @@ func (*Demand) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case demand.FieldTitle, demand.FieldDescription, demand.FieldStatus:
 			values[i] = new(sql.NullString)
-		case demand.FieldEstimateConfirmedAt, demand.FieldPlannedStartDate, demand.FieldActualStartDate, demand.FieldActualEndDate, demand.FieldAcceptDeadline, demand.FieldAcceptedAt, demand.FieldCreatedAt, demand.FieldUpdatedAt:
+		case demand.FieldDeletedAt, demand.FieldEstimateConfirmedAt, demand.FieldPlannedStartDate, demand.FieldActualStartDate, demand.FieldActualEndDate, demand.FieldAcceptDeadline, demand.FieldAcceptedAt, demand.FieldCreatedAt, demand.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -88,6 +90,13 @@ func (_m *Demand) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int(value.Int64)
+		case demand.FieldDeletedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field deleted_at", values[i])
+			} else if value.Valid {
+				_m.DeletedAt = new(time.Time)
+				*_m.DeletedAt = value.Time
+			}
 		case demand.FieldTitle:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field title", values[i])
@@ -235,6 +244,11 @@ func (_m *Demand) String() string {
 	var builder strings.Builder
 	builder.WriteString("Demand(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	if v := _m.DeletedAt; v != nil {
+		builder.WriteString("deleted_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
 	builder.WriteString("title=")
 	builder.WriteString(_m.Title)
 	builder.WriteString(", ")

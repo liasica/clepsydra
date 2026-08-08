@@ -17,6 +17,11 @@ import (
 	"clepsydra/internal/api/handler"
 	"clepsydra/internal/config"
 	"clepsydra/internal/ent"
+
+	// 注册 schema 上声明的 hook 与 interceptor，需求软删除依赖它们生效；
+	// 缺了这个空导入，查询会直接报 uninitialized interceptor
+	_ "clepsydra/internal/ent/runtime"
+
 	"clepsydra/internal/logger"
 	"clepsydra/internal/service"
 	"clepsydra/internal/task"
@@ -75,6 +80,11 @@ func main() {
 	billSvc := service.NewBill(client, settingSvc, demandSvc, audit)
 	dashboardSvc := service.NewDashboard(client, settingSvc)
 
+	uploadSvc, err := service.NewUpload(cfg.Upload)
+	if err != nil {
+		log.Fatal().Err(err).Str("dir", cfg.Upload.Dir).Msg("初始化上传目录失败")
+	}
+
 	handlers := api.Handlers{
 		Auth:      handler.NewAuth(authSvc),
 		User:      handler.NewUser(userSvc),
@@ -83,6 +93,7 @@ func main() {
 		Bill:      handler.NewBill(billSvc),
 		Dashboard: handler.NewDashboard(dashboardSvc),
 		AuditLog:  handler.NewAuditLog(audit),
+		Upload:    handler.NewUpload(uploadSvc),
 	}
 
 	// 启动定时任务

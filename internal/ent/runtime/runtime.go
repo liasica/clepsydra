@@ -2,7 +2,99 @@
 
 package runtime
 
-// The schema-stitching logic is generated in clepsydra/internal/ent/runtime.go
+import (
+	"clepsydra/internal/ent/auditlog"
+	"clepsydra/internal/ent/bill"
+	"clepsydra/internal/ent/billitem"
+	"clepsydra/internal/ent/demand"
+	"clepsydra/internal/ent/schema"
+	"clepsydra/internal/ent/user"
+	"time"
+)
+
+// The init function reads all schema descriptors with runtime code
+// (default values, validators, hooks and policies) and stitches it
+// to their package variables.
+func init() {
+	auditlogFields := schema.AuditLog{}.Fields()
+	_ = auditlogFields
+	// auditlogDescCreatedAt is the schema descriptor for created_at field.
+	auditlogDescCreatedAt := auditlogFields[6].Descriptor()
+	// auditlog.DefaultCreatedAt holds the default value on creation for the created_at field.
+	auditlog.DefaultCreatedAt = auditlogDescCreatedAt.Default.(func() time.Time)
+	billFields := schema.Bill{}.Fields()
+	_ = billFields
+	// billDescConfirmAuto is the schema descriptor for confirm_auto field.
+	billDescConfirmAuto := billFields[10].Descriptor()
+	// bill.DefaultConfirmAuto holds the default value on creation for the confirm_auto field.
+	bill.DefaultConfirmAuto = billDescConfirmAuto.Default.(bool)
+	// billDescCreatedAt is the schema descriptor for created_at field.
+	billDescCreatedAt := billFields[11].Descriptor()
+	// bill.DefaultCreatedAt holds the default value on creation for the created_at field.
+	bill.DefaultCreatedAt = billDescCreatedAt.Default.(func() time.Time)
+	// billDescUpdatedAt is the schema descriptor for updated_at field.
+	billDescUpdatedAt := billFields[12].Descriptor()
+	// bill.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	bill.DefaultUpdatedAt = billDescUpdatedAt.Default.(func() time.Time)
+	// bill.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	bill.UpdateDefaultUpdatedAt = billDescUpdatedAt.UpdateDefault.(func() time.Time)
+	billitemFields := schema.BillItem{}.Fields()
+	_ = billitemFields
+	// billitemDescWaived is the schema descriptor for waived field.
+	billitemDescWaived := billitemFields[6].Descriptor()
+	// billitem.DefaultWaived holds the default value on creation for the waived field.
+	billitem.DefaultWaived = billitemDescWaived.Default.(bool)
+	// billitemDescCreatedAt is the schema descriptor for created_at field.
+	billitemDescCreatedAt := billitemFields[9].Descriptor()
+	// billitem.DefaultCreatedAt holds the default value on creation for the created_at field.
+	billitem.DefaultCreatedAt = billitemDescCreatedAt.Default.(func() time.Time)
+	demandMixin := schema.Demand{}.Mixin()
+	demandMixinHooks0 := demandMixin[0].Hooks()
+	demand.Hooks[0] = demandMixinHooks0[0]
+	demand.Hooks[1] = demandMixinHooks0[1]
+	demandMixinInters0 := demandMixin[0].Interceptors()
+	demand.Interceptors[0] = demandMixinInters0[0]
+	demandFields := schema.Demand{}.Fields()
+	_ = demandFields
+	// demandDescEstimatedHalfDays is the schema descriptor for estimated_half_days field.
+	demandDescEstimatedHalfDays := demandFields[2].Descriptor()
+	// demand.EstimatedHalfDaysValidator is a validator for the "estimated_half_days" field. It is called by the builders before save.
+	demand.EstimatedHalfDaysValidator = demandDescEstimatedHalfDays.Validators[0].(func(int) error)
+	// demandDescAcceptAuto is the schema descriptor for accept_auto field.
+	demandDescAcceptAuto := demandFields[13].Descriptor()
+	// demand.DefaultAcceptAuto holds the default value on creation for the accept_auto field.
+	demand.DefaultAcceptAuto = demandDescAcceptAuto.Default.(bool)
+	// demandDescAcceptLocked is the schema descriptor for accept_locked field.
+	demandDescAcceptLocked := demandFields[14].Descriptor()
+	// demand.DefaultAcceptLocked holds the default value on creation for the accept_locked field.
+	demand.DefaultAcceptLocked = demandDescAcceptLocked.Default.(bool)
+	// demandDescCreatedAt is the schema descriptor for created_at field.
+	demandDescCreatedAt := demandFields[15].Descriptor()
+	// demand.DefaultCreatedAt holds the default value on creation for the created_at field.
+	demand.DefaultCreatedAt = demandDescCreatedAt.Default.(func() time.Time)
+	// demandDescUpdatedAt is the schema descriptor for updated_at field.
+	demandDescUpdatedAt := demandFields[16].Descriptor()
+	// demand.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	demand.DefaultUpdatedAt = demandDescUpdatedAt.Default.(func() time.Time)
+	// demand.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	demand.UpdateDefaultUpdatedAt = demandDescUpdatedAt.UpdateDefault.(func() time.Time)
+	userFields := schema.User{}.Fields()
+	_ = userFields
+	// userDescEnabled is the schema descriptor for enabled field.
+	userDescEnabled := userFields[4].Descriptor()
+	// user.DefaultEnabled holds the default value on creation for the enabled field.
+	user.DefaultEnabled = userDescEnabled.Default.(bool)
+	// userDescCreatedAt is the schema descriptor for created_at field.
+	userDescCreatedAt := userFields[5].Descriptor()
+	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
+	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
+	// userDescUpdatedAt is the schema descriptor for updated_at field.
+	userDescUpdatedAt := userFields[6].Descriptor()
+	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
+	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
+}
 
 const (
 	Version = "v0.14.6"                                         // Version of ent codegen.

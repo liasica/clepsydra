@@ -15,6 +15,7 @@ type Config struct {
 	Admin    Admin    `mapstructure:"admin"`
 	Log      Log      `mapstructure:"log"`
 	Holiday  Holiday  `mapstructure:"holiday"`
+	Upload   Upload   `mapstructure:"upload"`
 }
 
 // Server HTTP 服务配置
@@ -50,6 +51,13 @@ type Log struct {
 // Holiday 节假日数据文件配置
 type Holiday struct {
 	File string `mapstructure:"file"`
+}
+
+// Upload 图片上传配置
+// 容器部署时 Dir 必须挂载为持久卷，否则镜像重建后历史图片会全部丢失
+type Upload struct {
+	Dir     string `mapstructure:"dir"`
+	MaxSize int64  `mapstructure:"max_size"` // 单文件上限，单位 MB
 }
 
 // Load 从指定路径加载 YAML 配置，环境变量以 CLEPSYDRA_ 前缀覆盖

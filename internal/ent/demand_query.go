@@ -262,12 +262,12 @@ func (_q *DemandQuery) Clone() *DemandQuery {
 // Example:
 //
 //	var v []struct {
-//		Title string `json:"title,omitempty"`
+//		DeletedAt time.Time `json:"deleted_at,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Demand.Query().
-//		GroupBy(demand.FieldTitle).
+//		GroupBy(demand.FieldDeletedAt).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *DemandQuery) GroupBy(field string, fields ...string) *DemandGroupBy {
@@ -285,11 +285,11 @@ func (_q *DemandQuery) GroupBy(field string, fields ...string) *DemandGroupBy {
 // Example:
 //
 //	var v []struct {
-//		Title string `json:"title,omitempty"`
+//		DeletedAt time.Time `json:"deleted_at,omitempty"`
 //	}
 //
 //	client.Demand.Query().
-//		Select(demand.FieldTitle).
+//		Select(demand.FieldDeletedAt).
 //		Scan(ctx, &v)
 func (_q *DemandQuery) Select(fields ...string) *DemandSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

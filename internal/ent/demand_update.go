@@ -28,6 +28,26 @@ func (_u *DemandUpdate) Where(ps ...predicate.Demand) *DemandUpdate {
 	return _u
 }
 
+// SetDeletedAt sets the "deleted_at" field.
+func (_u *DemandUpdate) SetDeletedAt(v time.Time) *DemandUpdate {
+	_u.mutation.SetDeletedAt(v)
+	return _u
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_u *DemandUpdate) SetNillableDeletedAt(v *time.Time) *DemandUpdate {
+	if v != nil {
+		_u.SetDeletedAt(*v)
+	}
+	return _u
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (_u *DemandUpdate) ClearDeletedAt() *DemandUpdate {
+	_u.mutation.ClearDeletedAt()
+	return _u
+}
+
 // SetTitle sets the "title" field.
 func (_u *DemandUpdate) SetTitle(v string) *DemandUpdate {
 	_u.mutation.SetTitle(v)
@@ -339,7 +359,9 @@ func (_u *DemandUpdate) Mutation() *DemandMutation {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *DemandUpdate) Save(ctx context.Context) (int, error) {
-	_u.defaults()
+	if err := _u.defaults(); err != nil {
+		return 0, err
+	}
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -366,11 +388,15 @@ func (_u *DemandUpdate) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_u *DemandUpdate) defaults() {
+func (_u *DemandUpdate) defaults() error {
 	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		if demand.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized demand.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := demand.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -399,6 +425,12 @@ func (_u *DemandUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.DeletedAt(); ok {
+		_spec.SetField(demand.FieldDeletedAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeletedAtCleared() {
+		_spec.ClearField(demand.FieldDeletedAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(demand.FieldTitle, field.TypeString, value)
@@ -508,6 +540,26 @@ type DemandUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *DemandMutation
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (_u *DemandUpdateOne) SetDeletedAt(v time.Time) *DemandUpdateOne {
+	_u.mutation.SetDeletedAt(v)
+	return _u
+}
+
+// SetNillableDeletedAt sets the "deleted_at" field if the given value is not nil.
+func (_u *DemandUpdateOne) SetNillableDeletedAt(v *time.Time) *DemandUpdateOne {
+	if v != nil {
+		_u.SetDeletedAt(*v)
+	}
+	return _u
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (_u *DemandUpdateOne) ClearDeletedAt() *DemandUpdateOne {
+	_u.mutation.ClearDeletedAt()
+	return _u
 }
 
 // SetTitle sets the "title" field.
@@ -834,7 +886,9 @@ func (_u *DemandUpdateOne) Select(field string, fields ...string) *DemandUpdateO
 
 // Save executes the query and returns the updated Demand entity.
 func (_u *DemandUpdateOne) Save(ctx context.Context) (*Demand, error) {
-	_u.defaults()
+	if err := _u.defaults(); err != nil {
+		return nil, err
+	}
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -861,11 +915,15 @@ func (_u *DemandUpdateOne) ExecX(ctx context.Context) {
 }
 
 // defaults sets the default values of the builder before save.
-func (_u *DemandUpdateOne) defaults() {
+func (_u *DemandUpdateOne) defaults() error {
 	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		if demand.UpdateDefaultUpdatedAt == nil {
+			return fmt.Errorf("ent: uninitialized demand.UpdateDefaultUpdatedAt (forgotten import ent/runtime?)")
+		}
 		v := demand.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
+	return nil
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -911,6 +969,12 @@ func (_u *DemandUpdateOne) sqlSave(ctx context.Context) (_node *Demand, err erro
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.DeletedAt(); ok {
+		_spec.SetField(demand.FieldDeletedAt, field.TypeTime, value)
+	}
+	if _u.mutation.DeletedAtCleared() {
+		_spec.ClearField(demand.FieldDeletedAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.Title(); ok {
 		_spec.SetField(demand.FieldTitle, field.TypeString, value)

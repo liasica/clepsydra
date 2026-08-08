@@ -3123,6 +3123,7 @@ type DemandMutation struct {
 	op                       Op
 	typ                      string
 	id                       *int
+	deleted_at               *time.Time
 	title                    *string
 	description              *string
 	estimated_half_days      *int
@@ -3246,6 +3247,55 @@ func (m *DemandMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetDeletedAt sets the "deleted_at" field.
+func (m *DemandMutation) SetDeletedAt(t time.Time) {
+	m.deleted_at = &t
+}
+
+// DeletedAt returns the value of the "deleted_at" field in the mutation.
+func (m *DemandMutation) DeletedAt() (r time.Time, exists bool) {
+	v := m.deleted_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDeletedAt returns the old "deleted_at" field's value of the Demand entity.
+// If the Demand object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DemandMutation) OldDeletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDeletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDeletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDeletedAt: %w", err)
+	}
+	return oldValue.DeletedAt, nil
+}
+
+// ClearDeletedAt clears the value of the "deleted_at" field.
+func (m *DemandMutation) ClearDeletedAt() {
+	m.deleted_at = nil
+	m.clearedFields[demand.FieldDeletedAt] = struct{}{}
+}
+
+// DeletedAtCleared returns if the "deleted_at" field was cleared in this mutation.
+func (m *DemandMutation) DeletedAtCleared() bool {
+	_, ok := m.clearedFields[demand.FieldDeletedAt]
+	return ok
+}
+
+// ResetDeletedAt resets all changes to the "deleted_at" field.
+func (m *DemandMutation) ResetDeletedAt() {
+	m.deleted_at = nil
+	delete(m.clearedFields, demand.FieldDeletedAt)
 }
 
 // SetTitle sets the "title" field.
@@ -4107,7 +4157,10 @@ func (m *DemandMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DemandMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 18)
+	if m.deleted_at != nil {
+		fields = append(fields, demand.FieldDeletedAt)
+	}
 	if m.title != nil {
 		fields = append(fields, demand.FieldTitle)
 	}
@@ -4167,6 +4220,8 @@ func (m *DemandMutation) Fields() []string {
 // schema.
 func (m *DemandMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case demand.FieldDeletedAt:
+		return m.DeletedAt()
 	case demand.FieldTitle:
 		return m.Title()
 	case demand.FieldDescription:
@@ -4210,6 +4265,8 @@ func (m *DemandMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *DemandMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case demand.FieldDeletedAt:
+		return m.OldDeletedAt(ctx)
 	case demand.FieldTitle:
 		return m.OldTitle(ctx)
 	case demand.FieldDescription:
@@ -4253,6 +4310,13 @@ func (m *DemandMutation) OldField(ctx context.Context, name string) (ent.Value, 
 // type.
 func (m *DemandMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case demand.FieldDeletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDeletedAt(v)
+		return nil
 	case demand.FieldTitle:
 		v, ok := value.(string)
 		if !ok {
@@ -4453,6 +4517,9 @@ func (m *DemandMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *DemandMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(demand.FieldDeletedAt) {
+		fields = append(fields, demand.FieldDeletedAt)
+	}
 	if m.FieldCleared(demand.FieldDescription) {
 		fields = append(fields, demand.FieldDescription)
 	}
@@ -4497,6 +4564,9 @@ func (m *DemandMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *DemandMutation) ClearField(name string) error {
 	switch name {
+	case demand.FieldDeletedAt:
+		m.ClearDeletedAt()
+		return nil
 	case demand.FieldDescription:
 		m.ClearDescription()
 		return nil
@@ -4535,6 +4605,9 @@ func (m *DemandMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *DemandMutation) ResetField(name string) error {
 	switch name {
+	case demand.FieldDeletedAt:
+		m.ResetDeletedAt()
+		return nil
 	case demand.FieldTitle:
 		m.ResetTitle()
 		return nil

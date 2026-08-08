@@ -13,6 +13,14 @@ type Demand struct {
 	ent.Schema
 }
 
+// Mixin 需求支持软删除：删除后不再出现在任何列表与统计里，但记录保留，
+// 账单明细里的 demand_id 仍能追溯到原始需求
+func (Demand) Mixin() []ent.Mixin {
+	return []ent.Mixin{
+		SoftDeleteMixin{},
+	}
+}
+
 func (Demand) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("title"),

@@ -139,6 +139,20 @@ func (h *Demand) Update(c echo.Context) error {
 	return api.OK(c, d)
 }
 
+// Delete DELETE /api/demands/:id
+func (h *Demand) Delete(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	if err = h.svc.Delete(c.Request().Context(), actor(c), id); err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, nil)
+}
+
 // SubmitEstimate POST /api/demands/:id/submit-estimate
 func (h *Demand) SubmitEstimate(c echo.Context) error {
 	id, err := parseID(c)

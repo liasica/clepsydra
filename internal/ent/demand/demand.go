@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 )
 
@@ -14,6 +15,8 @@ const (
 	Label = "demand"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldDeletedAt holds the string denoting the deleted_at field in the database.
+	FieldDeletedAt = "deleted_at"
 	// FieldTitle holds the string denoting the title field in the database.
 	FieldTitle = "title"
 	// FieldDescription holds the string denoting the description field in the database.
@@ -55,6 +58,7 @@ const (
 // Columns holds all SQL columns for demand fields.
 var Columns = []string{
 	FieldID,
+	FieldDeletedAt,
 	FieldTitle,
 	FieldDescription,
 	FieldEstimatedHalfDays,
@@ -84,7 +88,14 @@ func ValidColumn(column string) bool {
 	return false
 }
 
+// Note that the variables below are initialized by the runtime
+// package on the initialization of the application. Therefore,
+// it should be imported in the main as follows:
+//
+//	import _ "clepsydra/internal/ent/runtime"
 var (
+	Hooks        [2]ent.Hook
+	Interceptors [1]ent.Interceptor
 	// EstimatedHalfDaysValidator is a validator for the "estimated_half_days" field. It is called by the builders before save.
 	EstimatedHalfDaysValidator func(int) error
 	// DefaultAcceptAuto holds the default value on creation for the "accept_auto" field.
@@ -135,6 +146,11 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByDeletedAt orders the results by the deleted_at field.
+func ByDeletedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDeletedAt, opts...).ToFunc()
 }
 
 // ByTitle orders the results by the title field.

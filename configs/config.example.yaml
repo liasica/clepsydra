@@ -15,3 +15,6 @@ log:
   max_age: 30
 holiday:
   file: assets/holidays/2026.json
+upload:
+  dir: uploads
+  max_size: 10

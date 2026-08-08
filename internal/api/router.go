@@ -41,6 +41,7 @@ type DemandHandler interface {
 	Get(c echo.Context) error
 	Create(c echo.Context) error
 	Update(c echo.Context) error
+	Delete(c echo.Context) error
 	SubmitEstimate(c echo.Context) error
 	ConfirmEstimate(c echo.Context) error
 	Start(c echo.Context) error
@@ -69,6 +70,12 @@ type AuditLogHandler interface {
 	List(c echo.Context) error
 }
 
+// UploadHandler 图片上传接口方法集
+type UploadHandler interface {
+	Image(c echo.Context) error
+	Serve(c echo.Context) error
+}
+
 // Handlers 全部 handler 集合
 type Handlers struct {
 	Auth      AuthHandler
@@ -78,6 +85,7 @@ type Handlers struct {
 	Bill      BillHandler
 	Dashboard DashboardHandler
 	AuditLog  AuditLogHandler
+	Upload    UploadHandler
 }
 
 // Register 注册全部路由
@@ -90,9 +98,14 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	root := e.Group("/api")
 	root.POST("/auth/login", h.Auth.Login)
 
+	// 图片读取要能直接作为 <img src>，无法携带 Authorization 头，故放在鉴权之外，
+	// 访问控制依赖上传时生成的随机文件名
+	root.GET("/uploads/:name", h.Upload.Serve)
+
 	// 登录可访问
 	authed := root.Group("", RequireAuth(auth))
 	authed.GET("/auth/me", h.Auth.Me)
+	authed.POST("/uploads", h.Upload.Image)
 	authed.GET("/dashboard/todos", h.Dashboard.Todos)
 	authed.GET("/demands", h.Demand.List)
 	authed.GET("/demands/:id", h.Demand.Get)
@@ -115,6 +128,7 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	adminGroup.GET("/holidays", h.Setting.Holidays)
 	adminGroup.PUT("/holidays", h.Setting.SaveHolidays)
 	adminGroup.DELETE("/holidays/:date", h.Setting.DeleteHoliday)
+	adminGroup.DELETE("/demands/:id", h.Demand.Delete)
 	adminGroup.POST("/demands/:id/submit-estimate", h.Demand.SubmitEstimate)
 	adminGroup.POST("/demands/:id/start", h.Demand.Start)
 	adminGroup.POST("/demands/:id/finish", h.Demand.Finish)

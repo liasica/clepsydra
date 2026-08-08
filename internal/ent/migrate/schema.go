@@ -87,6 +87,7 @@ var (
 	// DemandsColumns holds the columns for the "demands" table.
 	DemandsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "deleted_at", Type: field.TypeTime, Nullable: true},
 		{Name: "title", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "estimated_half_days", Type: field.TypeInt},
@@ -114,12 +115,12 @@ var (
 			{
 				Name:    "demand_status",
 				Unique:  false,
-				Columns: []*schema.Column{DemandsColumns[10]},
+				Columns: []*schema.Column{DemandsColumns[11]},
 			},
 			{
 				Name:    "demand_actual_end_date",
 				Unique:  false,
-				Columns: []*schema.Column{DemandsColumns[8]},
+				Columns: []*schema.Column{DemandsColumns[9]},
 			},
 		},
 	}
