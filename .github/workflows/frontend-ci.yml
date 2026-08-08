@@ -17,6 +17,11 @@ on:
 permissions:
   contents: read
 
+# 业务日期计算重度依赖 Asia/Shanghai（见 Dockerfile 与 CLAUDE.md），CI runner 默认 UTC
+# 会导致时区相关单元测试失败，此处统一固定时区
+env:
+  TZ: Asia/Shanghai
+
 jobs:
   lint-and-test:
     name: lint + 单元测试
