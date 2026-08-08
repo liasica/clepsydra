@@ -338,3 +338,23 @@ func (s *Bill) Confirm(ctx context.Context, actor Actor, id int, auto bool) erro
 
 	return nil
 }
+
+// Pay 标记账单已支付，仅待支付状态允许，支付后账单完全锁定
+func (s *Bill) Pay(ctx context.Context, actor Actor, id int) error {
+	n, err := s.client.Bill.Update().
+		Where(bill.ID(id), bill.StatusEQ(bill.StatusUnpaid)).
+		SetStatus(bill.StatusPaid).
+		SetPaidAt(time.Now()).
+		SetPaidBy(actor.ID).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrInvalidTransition
+	}
+
+	s.audit.Record(ctx, actor, "bill.pay", "bill", id, nil)
+
+	return nil
+}

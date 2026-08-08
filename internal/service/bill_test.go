@@ -147,6 +147,42 @@ func TestBillWaiveAndConfirm(t *testing.T) {
 	}
 }
 
+func TestBillPay(t *testing.T) {
+	_, demandSvc, billSvc := newBillEnv(t, "bpay")
+	ctx := context.Background()
+
+	id1 := prepareDemand(t, demandSvc, "需求", 2)
+	_ = demandSvc.Accept(ctx, clientActor, id1, false, false)
+	bill, _ := billSvc.Generate(ctx, admin, "2026-07")
+
+	// 待确认状态不可直接标记已支付
+	if err := billSvc.Pay(ctx, admin, bill.ID); err == nil {
+		t.Error("待确认账单直接标记已支付应拒绝")
+	}
+
+	_ = billSvc.Confirm(ctx, clientActor, bill.ID, false)
+	if err := billSvc.Pay(ctx, admin, bill.ID); err != nil {
+		t.Fatalf("标记已支付失败: %v", err)
+	}
+
+	bill, _ = billSvc.Get(ctx, bill.ID)
+	if bill.Status.String() != "paid" || bill.PaidAt == nil || bill.PaidBy == nil || *bill.PaidBy != admin.ID {
+		t.Errorf("已支付状态 = %s, paidAt=%v, paidBy=%v", bill.Status, bill.PaidAt, bill.PaidBy)
+	}
+
+	// 已支付后：重复支付、调整减免均拒绝
+	if err := billSvc.Pay(ctx, admin, bill.ID); err == nil {
+		t.Error("重复标记已支付应拒绝")
+	}
+	item := 0
+	for _, it := range bill.Edges.Items {
+		item = it.ID
+	}
+	if err := billSvc.ToggleWaive(ctx, admin, bill.ID, item); err == nil {
+		t.Error("已支付账单不应可调整减免")
+	}
+}
+
 func TestPrevPeriod(t *testing.T) {
 	if got := PrevPeriod(time.Date(2026, 8, 1, 0, 0, 0, 0, time.Local)); got != "2026-07" {
 		t.Errorf("PrevPeriod = %s, want 2026-07", got)
