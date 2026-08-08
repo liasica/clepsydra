@@ -7,11 +7,12 @@ uploads/
 config.local.yaml
 /config.yaml
 !.superpowers/
+.superpowers/sdd/
+.superpowers/screenshots/
 !CLAUDE.md
 configs/*
 !configs/config.example.yaml
 .claude/scheduled_tasks.lock
-.superpowers/sdd/review-*.diff
 
 dashboard/**/node_modules/
 dashboard/**/dist/
