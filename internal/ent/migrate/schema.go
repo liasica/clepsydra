@@ -3,6 +3,7 @@
 package migrate
 
 import (
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 )
@@ -83,6 +84,16 @@ var (
 				Columns:    []*schema.Column{BillItemsColumns[11]},
 				RefColumns: []*schema.Column{BillsColumns[0]},
 				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "billitem_demand_id",
+				Unique:  true,
+				Columns: []*schema.Column{BillItemsColumns[1]},
+				Annotation: &entsql.IndexAnnotation{
+					Where: "billable",
+				},
 			},
 		},
 	}

@@ -237,6 +237,21 @@ func (s *Bill) confirmDeadline(ctx context.Context) (time.Time, error) {
 	return cal.Deadline(time.Now(), window, workday.Unit(unit)), nil
 }
 
+// billableConflict 将计费行唯一索引冲突转换为友好业务报错，其余错误原样返回
+// bill_items(demand_id) WHERE billable 部分唯一索引是计费防重的数据库不变量，
+// service 层预检查（billedDemandIDs）存在并发窗口，并发竞争的败者在此收敛；
+// demand_id 上仅有该唯一索引，按列名匹配对 Postgres 与 sqlite 错误文案均成立
+func billableConflict(err error) error {
+	if err == nil || !ent.IsConstraintError(err) {
+		return err
+	}
+	if !strings.Contains(err.Error(), billitem.FieldDemandID) {
+		return err
+	}
+
+	return ErrBadRequest("该需求已被其他账单计费")
+}
+
 // createItem 写入一条账单明细
 func (s *Bill) createItem(ctx context.Context, b *ent.Bill, d *ent.Demand, halfDays, amount int, billable bool) error {
 	builder := s.client.BillItem.Create().
@@ -253,7 +268,7 @@ func (s *Bill) createItem(ctx context.Context, b *ent.Bill, d *ent.Demand, halfD
 
 	_, err := builder.Save(ctx)
 
-	return err
+	return billableConflict(err)
 }
 
 // rollback 事务失败时回滚，若回滚本身失败则将其原因附加到原始错误，避免掩盖根因
@@ -573,7 +588,7 @@ func (s *Bill) AddItem(ctx context.Context, actor Actor, billID, demandID int) e
 		builder.SetPlannedStartDate(*d.PlannedStartDate)
 	}
 	if _, err = builder.Save(ctx); err != nil {
-		return rollback(tx, err)
+		return rollback(tx, billableConflict(err))
 	}
 
 	if err = txRecalcTotals(ctx, tx, b); err != nil {

@@ -4,8 +4,10 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 )
 
 // BillItem 账单明细行，快照生成时的需求信息
@@ -31,5 +33,15 @@ func (BillItem) Fields() []ent.Field {
 func (BillItem) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("bill", Bill.Type).Ref("items").Unique().Required(),
+	}
+}
+
+func (BillItem) Indexes() []ent.Index {
+	return []ent.Index{
+		// 计费防重的数据库不变量：一个需求全局至多被一张账单计费，展示行（billable=false）不受限
+		// service 层预检查存在并发窗口，部分唯一索引是最终防线；谓词用裸布尔列，Postgres 与 sqlite（测试）语法均兼容
+		index.Fields("demand_id").
+			Unique().
+			Annotations(entsql.IndexWhere("billable")),
 	}
 }
