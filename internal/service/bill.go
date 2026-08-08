@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -57,6 +58,25 @@ func (s *Bill) Get(ctx context.Context, id int) (*ent.Bill, error) {
 	}
 
 	return b, err
+}
+
+// billedDemandIDs 返回已被任何账单计费（billable 行）的需求 ID 集合
+// 计费防重的唯一判定来源：一个需求只能被一张账单计费，展示行不受限
+func (s *Bill) billedDemandIDs(ctx context.Context) (map[int]bool, error) {
+	ids, err := s.client.BillItem.Query().
+		Where(billitem.Billable(true)).
+		Select(billitem.FieldDemandID).
+		Ints(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	billed := make(map[int]bool, len(ids))
+	for _, id := range ids {
+		billed[id] = true
+	}
+
+	return billed, nil
 }
 
 // Generate 生成指定账期的自动账单，同账期账单已存在则拒绝
@@ -120,7 +140,13 @@ func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.B
 		return nil, err
 	}
 
-	// 计费行：账期内完成且已验收的需求
+	// 计费行：账期内完成且已验收且未被其他账单计费的需求
+	var billed map[int]bool
+	billed, err = s.billedDemandIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	var accepted []*ent.Demand
 	accepted, err = s.client.Demand.Query().Where(
 		demand.StatusEQ(demand.StatusAccepted),
@@ -130,6 +156,7 @@ func (s *Bill) Generate(ctx context.Context, actor Actor, period string) (*ent.B
 	if err != nil {
 		return nil, err
 	}
+	accepted = slices.DeleteFunc(accepted, func(d *ent.Demand) bool { return billed[d.ID] })
 
 	// 展示行：设置包含的未完结状态需求
 	var display []*ent.Demand
