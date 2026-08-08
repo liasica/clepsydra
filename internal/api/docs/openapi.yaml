@@ -98,7 +98,7 @@ paths:
       tags: [Dashboard]
       operationId: dashboardTodos
       summary: 查询工作台待办汇总
-      description: 汇总待预估确认、待验收确认、待出账数量，以及本月出账截止日与上月账单分享状态
+      description: 汇总待预估确认、待验收确认、待出账数量，以及本月出账截止日与上月账单生成状态
       security:
         - bearerAuth: []
       responses:
@@ -371,7 +371,7 @@ paths:
       tags: [Bills]
       operationId: billsConfirm
       summary: 需求方确认账单
-      description: 需求方人工确认账单，状态由 pending 流转为 confirmed，固定 auto=false，登录即可操作
+      description: 需求方人工确认账单，确认后直接进入待支付（unpaid），固定 auto=false，登录即可操作
       security:
         - bearerAuth: []
       parameters:
@@ -1022,7 +1022,7 @@ paths:
       tags: [Bills]
       operationId: billsToggleWaive
       summary: 切换账单明细减免状态
-      description: 翻转指定明细行的减免状态并重算账单总额，仅草稿账单允许，展示行不可减免（仅超级管理员）
+      description: 翻转指定明细行的减免状态并重算账单总额，待确认与待支付账单允许，已支付拒绝，展示行不可减免（仅超级管理员）
       security:
         - bearerAuth: []
       parameters:
