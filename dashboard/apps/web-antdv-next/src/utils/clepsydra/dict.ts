@@ -27,12 +27,7 @@ export type DemandAction =
   | 'start'
   | 'submitEstimate';
 
-export type BillAction =
-  | 'addItem'
-  | 'confirm'
-  | 'pay'
-  | 'removeItem'
-  | 'waive';
+export type BillAction = 'addItem' | 'confirm' | 'pay' | 'removeItem' | 'waive';
 
 type TagType = 'danger' | 'info' | 'primary' | 'success' | 'warning';
 
