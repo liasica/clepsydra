@@ -1,6 +1,7 @@
 .idea/
 .DS_Store
-bin/
+# 仅忽略仓库根的 Go 二进制输出，避免误伤 dashboard 下 scripts/*/bin 的源码启动器
+/bin/
 logs/
 uploads/
 *.log
