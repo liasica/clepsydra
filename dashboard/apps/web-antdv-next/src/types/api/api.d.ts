@@ -129,20 +129,28 @@ declare namespace Api {
     /** 账单实体，items 仅详情接口返回 */
     interface Detail {
       id: number;
-      period: string;
+      name: string;
+      period: null | string;
       status: Status;
       daily_rate: number;
       base_fee: number;
       total_half_days: number;
       total_amount: number;
-      shared_at: null | string;
       confirm_deadline: null | string;
       confirmed_at: null | string;
       confirmed_by: null | number;
       confirm_auto: boolean;
+      paid_at: null | string;
+      paid_by: null | number;
       created_at: string;
       updated_at: string;
       items?: Item[];
+    }
+
+    /** 可加入账单的需求，按加入后的行类型分组 */
+    interface SelectableDemands {
+      billable: Api.Demand.Item[];
+      display: Api.Demand.Item[];
     }
   }
 
@@ -235,7 +243,7 @@ declare namespace Api {
       pending_bill_count: number;
       billing_due_date: string;
       billing_due_today: boolean;
-      prev_bill_shared: boolean;
+      prev_bill_generated: boolean;
     }
   }
 }

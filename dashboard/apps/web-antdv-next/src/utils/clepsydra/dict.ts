@@ -5,6 +5,7 @@
  *
  * 权限约定：超级管理员拥有全部权限，因此 admin 恒为 client 的超集——
  * 需求方专属的确认类操作（confirmEstimate、accept、confirm）超管同样可代为执行
+ * waive / addItem / removeItem 为明细区交互动作，不渲染为顶部按钮
  */
 
 export type DemandStatus =
@@ -15,7 +16,7 @@ export type DemandStatus =
   | 'pending_acceptance'
   | 'pending_estimate';
 
-export type BillStatus = 'confirmed' | 'draft' | 'pending';
+export type BillStatus = 'paid' | 'pending' | 'unpaid';
 
 export type DemandAction =
   | 'accept'
@@ -27,10 +28,10 @@ export type DemandAction =
   | 'submitEstimate';
 
 export type BillAction =
+  | 'addItem'
   | 'confirm'
-  | 'regenerate'
-  | 'revoke'
-  | 'share'
+  | 'pay'
+  | 'removeItem'
   | 'waive';
 
 type TagType = 'danger' | 'info' | 'primary' | 'success' | 'warning';
@@ -94,18 +95,24 @@ export const DEMAND_STATUS: Record<DemandStatus, StatusMeta<DemandAction>> = {
 };
 
 export const BILL_STATUS: Record<BillStatus, StatusMeta<BillAction>> = {
-  draft: {
-    label: '草稿',
-    type: 'info',
-    actions: { admin: ['regenerate', 'waive', 'share'], client: [] },
-  },
   pending: {
     label: '待确认',
     type: 'warning',
-    actions: { admin: ['revoke', 'confirm'], client: ['confirm'] },
+    actions: {
+      admin: ['confirm', 'waive', 'addItem', 'removeItem'],
+      client: ['confirm'],
+    },
   },
-  confirmed: {
-    label: '已确认',
+  unpaid: {
+    label: '待支付',
+    type: 'primary',
+    actions: {
+      admin: ['pay', 'waive', 'addItem', 'removeItem'],
+      client: [],
+    },
+  },
+  paid: {
+    label: '已支付',
     type: 'success',
     actions: { admin: [], client: [] },
   },

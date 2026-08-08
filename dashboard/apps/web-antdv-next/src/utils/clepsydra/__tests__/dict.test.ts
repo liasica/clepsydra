@@ -49,15 +49,22 @@ describe('状态字典', () => {
   });
 
   it('账单 3 态齐全且动作按角色区分', () => {
-    expect(Object.keys(BILL_STATUS)).toEqual(['draft', 'pending', 'confirmed']);
-    expect(BILL_STATUS.draft.actions.admin).toEqual([
-      'regenerate',
+    expect(Object.keys(BILL_STATUS)).toEqual(['pending', 'unpaid', 'paid']);
+    expect(BILL_STATUS.pending.actions.admin).toEqual([
+      'confirm',
       'waive',
-      'share',
+      'addItem',
+      'removeItem',
     ]);
-    expect(BILL_STATUS.pending.actions.admin).toEqual(['revoke', 'confirm']);
     expect(BILL_STATUS.pending.actions.client).toEqual(['confirm']);
-    expect(BILL_STATUS.confirmed.actions.admin).toEqual([]);
+    expect(BILL_STATUS.unpaid.actions.admin).toEqual([
+      'pay',
+      'waive',
+      'addItem',
+      'removeItem',
+    ]);
+    expect(BILL_STATUS.unpaid.actions.client).toEqual([]);
+    expect(BILL_STATUS.paid.actions.admin).toEqual([]);
   });
 
   it('超级管理员拥有全部权限：admin 动作恒为 client 的超集', () => {
