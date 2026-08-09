@@ -277,18 +277,26 @@
   padding: 4px 6px;
 }
 
+/* Crepe 默认给 tab 标签、分组标题、菜单项文字统一加 600 字重，整个菜单看起来
+   全是粗体，这里压回正常字重 */
 .clepsydra-md-editor .milkdown .milkdown-slash-menu .tab-group ul li {
   padding: 4px 10px;
+  font-weight: 400;
 }
 
 .clepsydra-md-editor .milkdown .milkdown-slash-menu .menu-group h6 {
   padding: 8px 8px 2px;
+  font-weight: 400;
 }
 
 .clepsydra-md-editor .milkdown .milkdown-slash-menu .menu-group li {
   gap: 10px;
   min-width: 184px;
   padding: 6px 8px;
+}
+
+.clepsydra-md-editor .milkdown .milkdown-slash-menu .menu-group li > span {
+  font-weight: 400;
 }
 
 .clepsydra-md-editor .milkdown .milkdown-slash-menu .menu-group li svg {

@@ -10,8 +10,11 @@
 
 .clepsydra-markdown {
   /* 字体 */
+
+  /* system-ui 置于栈首：Chrome 不识别小写的 blinkmacsystemfont（大小写敏感），
+     -apple-system 一旦失配就会落到本机安装的 roboto 等后备字体，字形可能异常 */
   --md-font-body:
-    -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'PingFang SC',
+    system-ui, -apple-system, 'Segoe UI', roboto, 'PingFang SC',
     'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', arial, sans-serif;
   --md-font-title: var(--md-font-body);
   --md-font-code:

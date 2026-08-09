@@ -1,9 +1,12 @@
 :root {
   /** 弹出层的基础层级 **/
   --popup-z-index: 2000;
+
+  /* system-ui 置于栈首：Chrome 不识别小写的 blinkmacsystemfont（大小写敏感），
+     -apple-system 一旦失配就会落到本机安装的 roboto 等后备字体，字形可能异常 */
   --font-family:
-    -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue',
-    arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    system-ui, -apple-system, 'Segoe UI', roboto, 'Helvetica Neue', arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
     'Segoe UI Symbol', 'Noto Color Emoji';
 
   /* Default background color of <body />...etc */
