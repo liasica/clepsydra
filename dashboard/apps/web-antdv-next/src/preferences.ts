@@ -16,6 +16,10 @@ export const overridesPreferences = defineOverridesPreferences({
     // 只提供 zh-CN 语言包，锁定默认语言避免随 vben 升级漂移
     locale: 'zh-CN',
   },
+  logo: {
+    // 替换 vben 默认的 unpkg 远程 logo，使用项目自身 logo（public/logo.svg）
+    source: '/logo.svg',
+  },
   theme: {
     // 默认亮色，主题色与暗色切换开关保留，暗色可手动切换
     mode: 'light',
