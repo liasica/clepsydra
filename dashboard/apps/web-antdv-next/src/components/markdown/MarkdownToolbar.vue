@@ -7,6 +7,7 @@ import {
   Bold,
   ChevronDown,
   Code,
+  CodeXml,
   Italic,
   Link2,
   List,
@@ -30,6 +31,8 @@ import { Button, Dropdown, Input, Popover, Tooltip } from 'antdv-next';
 defineOptions({ name: 'MarkdownToolbar' });
 
 const props = defineProps<{
+  /** 源码（Markdown）编辑模式：除源码开关外的格式化按钮全部禁用 */
+  sourceMode?: boolean;
   /** 当前光标处的格式状态，用于点亮按钮 */
   state: ToolbarState;
 }>();
@@ -41,6 +44,7 @@ const emit = defineEmits<{
   mark: [mark: InlineMark];
   setBlock: [kind: Exclude<BlockKind, 'other'>];
   table: [];
+  toggleSource: [];
 }>();
 
 const rootRef = ref<HTMLDivElement>();
@@ -126,11 +130,12 @@ const blockMenu = computed(() => ({
 <template>
   <div ref="rootRef" class="md-toolbar">
     <Dropdown
+      :disabled="sourceMode"
       :get-popup-container="getPopupContainer"
       :menu="blockMenu"
       :trigger="['click']"
     >
-      <button class="md-toolbar__block" type="button">
+      <button class="md-toolbar__block" :disabled="sourceMode" type="button">
         <span>{{ blockLabel }}</span>
         <ChevronDown class="md-toolbar__caret" />
       </button>
@@ -147,6 +152,7 @@ const blockMenu = computed(() => ({
       <button
         class="md-toolbar__btn"
         :class="{ 'md-toolbar__btn--active': state.marks[item.key] }"
+        :disabled="sourceMode"
         type="button"
         @click="emit('mark', item.key)"
       >
@@ -156,7 +162,7 @@ const blockMenu = computed(() => ({
 
     <Popover
       v-model:open="linkOpen"
-      :disabled="state.selectionEmpty"
+      :disabled="state.selectionEmpty || sourceMode"
       :get-popup-container="getPopupContainer"
       placement="bottom"
       trigger="click"
@@ -179,6 +185,7 @@ const blockMenu = computed(() => ({
         <button
           class="md-toolbar__btn"
           :class="{ 'md-toolbar__btn--disabled': state.selectionEmpty }"
+          :disabled="sourceMode"
           type="button"
         >
           <Link2 />
@@ -196,6 +203,7 @@ const blockMenu = computed(() => ({
       <template #title>{{ item.label }}</template>
       <button
         class="md-toolbar__btn"
+        :disabled="sourceMode"
         type="button"
         @click="emit('list', item.key)"
       >
@@ -210,6 +218,7 @@ const blockMenu = computed(() => ({
       <button
         class="md-toolbar__btn"
         :class="{ 'md-toolbar__btn--active': state.block === 'blockquote' }"
+        :disabled="sourceMode"
         type="button"
         @click="emit('setBlock', 'blockquote')"
       >
@@ -222,6 +231,7 @@ const blockMenu = computed(() => ({
       <button
         class="md-toolbar__btn"
         :class="{ 'md-toolbar__btn--active': state.block === 'codeBlock' }"
+        :disabled="sourceMode"
         type="button"
         @click="emit('setBlock', 'codeBlock')"
       >
@@ -231,15 +241,39 @@ const blockMenu = computed(() => ({
 
     <Tooltip :mouse-enter-delay="0.4">
       <template #title>表格</template>
-      <button class="md-toolbar__btn" type="button" @click="emit('table')">
+      <button
+        class="md-toolbar__btn"
+        :disabled="sourceMode"
+        type="button"
+        @click="emit('table')"
+      >
         <Table />
       </button>
     </Tooltip>
 
     <Tooltip :mouse-enter-delay="0.4">
       <template #title>分割线</template>
-      <button class="md-toolbar__btn" type="button" @click="emit('divider')">
+      <button
+        class="md-toolbar__btn"
+        :disabled="sourceMode"
+        type="button"
+        @click="emit('divider')"
+      >
         <Minus />
+      </button>
+    </Tooltip>
+
+    <Tooltip :mouse-enter-delay="0.4">
+      <template #title>
+        {{ sourceMode ? '返回可视化编辑' : '编辑源码（Markdown）' }}
+      </template>
+      <button
+        class="md-toolbar__btn md-toolbar__source"
+        :class="{ 'md-toolbar__btn--active': sourceMode }"
+        type="button"
+        @click="emit('toggleSource')"
+      >
+        <CodeXml />
       </button>
     </Tooltip>
   </div>
@@ -289,14 +323,21 @@ const blockMenu = computed(() => ({
   );
 }
 
-.md-toolbar__btn--disabled {
+.md-toolbar__btn--disabled,
+.md-toolbar__btn:disabled {
   color: var(--ant-color-text-quaternary, hsl(var(--muted-foreground) / 50%));
   cursor: not-allowed;
 }
 
-.md-toolbar__btn--disabled:hover {
+.md-toolbar__btn--disabled:hover,
+.md-toolbar__btn:disabled:hover {
   color: var(--ant-color-text-quaternary, hsl(var(--muted-foreground) / 50%));
   background: transparent;
+}
+
+/* 源码开关固定推到最右侧，与格式化按钮群拉开距离 */
+.md-toolbar__source {
+  margin-left: auto;
 }
 
 .md-toolbar__btn :deep(svg) {
@@ -331,6 +372,13 @@ const blockMenu = computed(() => ({
 
 .md-toolbar__block:hover {
   background: var(--ant-control-item-bg-hover, hsl(var(--accent)));
+}
+
+.md-toolbar__block:disabled,
+.md-toolbar__block:disabled:hover {
+  color: var(--ant-color-text-quaternary, hsl(var(--muted-foreground) / 50%));
+  cursor: not-allowed;
+  background: transparent;
 }
 
 .md-toolbar__caret {

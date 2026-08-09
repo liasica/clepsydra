@@ -18,6 +18,9 @@ catalogs:
     '@clack/prompts':
       specifier: ^1.4.0
       version: 1.4.0
+    '@codemirror/commands':
+      specifier: ^6.10.4
+      version: 6.10.4
     '@codemirror/lang-css':
       specifier: ^6.3.1
       version: 6.3.1
@@ -48,6 +51,12 @@ catalogs:
     '@codemirror/legacy-modes':
       specifier: ^6.5.3
       version: 6.5.3
+    '@codemirror/state':
+      specifier: ^6.7.1
+      version: 6.7.1
+    '@codemirror/view':
+      specifier: ^6.43.8
+      version: 6.43.8
     '@commitlint/cli':
       specifier: ^21.0.1
       version: 21.0.1
@@ -642,6 +651,9 @@ importers:
 
   apps/web-antdv-next:
     dependencies:
+      '@codemirror/commands':
+        specifier: 'catalog:'
+        version: 6.10.4
       '@codemirror/lang-css':
         specifier: 'catalog:'
         version: 6.3.1
@@ -672,6 +684,12 @@ importers:
       '@codemirror/legacy-modes':
         specifier: 'catalog:'
         version: 6.5.3
+      '@codemirror/state':
+        specifier: 'catalog:'
+        version: 6.7.1
+      '@codemirror/view':
+        specifier: 'catalog:'
+        version: 6.43.8
       '@floating-ui/dom':
         specifier: 'catalog:'
         version: 1.7.6

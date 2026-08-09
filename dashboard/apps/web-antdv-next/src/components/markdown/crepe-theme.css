@@ -356,3 +356,53 @@
   padding: 10px 11px;
   cursor: default;
 }
+
+/* ------------------------------------------------------------------ */
+
+/* 源码（Markdown）编辑模式                                            */
+
+/* ------------------------------------------------------------------ */
+
+/* CodeMirror 宿主：尺寸与内边距对齐可视化编辑区，等宽字体走 --md-font-code */
+.clepsydra-md-editor .clepsydra-md-source .cm-editor {
+  min-height: var(--md-editor-min-height, 200px);
+  background: transparent;
+}
+
+.clepsydra-md-editor .clepsydra-md-source .cm-editor.cm-focused {
+  outline: none;
+}
+
+.clepsydra-md-editor .clepsydra-md-source .cm-scroller {
+  padding: 10px 11px 14px;
+  font-family: var(--md-font-code);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.clepsydra-md-editor .clepsydra-md-source .cm-content {
+  padding: 0;
+  color: var(--md-fg);
+  caret-color: var(--md-fg);
+}
+
+.clepsydra-md-editor .clepsydra-md-source .cm-line {
+  padding: 0;
+}
+
+.clepsydra-md-editor .clepsydra-md-source .cm-placeholder {
+  color: var(--md-fg-muted);
+}
+
+.clepsydra-md-editor .clepsydra-md-source .cm-cursor,
+.clepsydra-md-editor .clepsydra-md-source .cm-dropCursor {
+  border-left-color: var(--md-fg);
+}
+
+.clepsydra-md-editor .clepsydra-md-source .cm-selectionBackground,
+.clepsydra-md-editor
+  .clepsydra-md-source
+  .cm-focused
+  .cm-selectionBackground {
+  background: var(--md-selection);
+}

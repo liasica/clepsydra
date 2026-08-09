@@ -25,6 +25,7 @@ export {
   CircleHelp,
   CircleX,
   Code,
+  CodeXml,
   Copy,
   CornerDownLeft,
   Download,

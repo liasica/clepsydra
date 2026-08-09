@@ -1,8 +1,14 @@
 <script lang="ts" setup>
 import type { BlockKind, InlineMark, ToolbarState } from './toolbar-actions';
 
-import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import {
+  placeholder as cmPlaceholder,
+  EditorView,
+  keymap,
+} from '@codemirror/view';
 import { flip, offset, size } from '@floating-ui/dom';
 import { CrepeBuilder } from '@milkdown/crepe/builder';
 import { blockEdit } from '@milkdown/crepe/feature/block-edit';
@@ -74,6 +80,11 @@ const hostRef = ref<HTMLDivElement>();
 
 /** 工具栏按钮的点亮状态，跟随光标位置与文档变化刷新 */
 const toolbarState = shallowRef<ToolbarState>(EMPTY_TOOLBAR_STATE);
+
+/** 源码（Markdown）编辑模式：显示 CodeMirror 源码区，隐藏 Crepe 可视化编辑区 */
+const sourceMode = ref(false);
+const sourceHostRef = ref<HTMLDivElement>();
+let sourceView: EditorView | undefined;
 
 let crepe: CrepeBuilder | undefined;
 
@@ -274,6 +285,8 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  sourceView?.destroy();
+  sourceView = undefined;
   crepe?.destroy();
   crepe = undefined;
   // 浮层宿主是手动挂到编辑器外面的，Crepe 销毁不会带走它
@@ -283,19 +296,91 @@ onBeforeUnmount(() => {
 
 // 外部回写（表单异步加载详情等）时把整篇内容换掉
 watch(content, (next = '') => {
-  if (!crepe || next === lastEmitted) {
+  if (next === lastEmitted) {
     return;
   }
   lastEmitted = next;
-  crepe.editor.action(replaceAll(next));
+  if (sourceMode.value && sourceView) {
+    sourceView.dispatch({
+      changes: { from: 0, to: sourceView.state.doc.length, insert: next },
+    });
+    return;
+  }
+  crepe?.editor.action(replaceAll(next));
 });
 
 watch(
   () => props.readonly,
   (value) => {
+    // 只读态没有源码入口，正处于源码模式时先把改动写回可视化编辑器
+    if (value && sourceMode.value) {
+      exitSourceMode();
+    }
     crepe?.setReadonly(value);
   },
 );
+
+/**
+ * 进入源码模式：取 Crepe 当前的 markdown 原文，就地建一个 CodeMirror 编辑器。
+ * markdown 语言包与代码块的语言表一样按需加载，首次切换才拉取对应 chunk
+ */
+async function enterSourceMode() {
+  if (!crepe || props.readonly) {
+    return;
+  }
+  sourceMode.value = true;
+  await nextTick();
+  const { markdown } = await import('@codemirror/lang-markdown');
+  // 等待语言包期间可能已被切回或卸载
+  if (!sourceMode.value || !sourceHostRef.value || sourceView) {
+    return;
+  }
+  sourceView = new EditorView({
+    parent: sourceHostRef.value,
+    doc: crepe.getMarkdown(),
+    extensions: [
+      history(),
+      keymap.of([...defaultKeymap, ...historyKeymap]),
+      EditorView.lineWrapping,
+      cmPlaceholder('编写 Markdown 源码'),
+      markdown(),
+      // 复用代码块的高亮样式（--md-code-* 调色板），亮暗切换由 CSS 变量完成
+      ...codeExtensions,
+      EditorView.updateListener.of((update) => {
+        if (!update.docChanged) {
+          return;
+        }
+        // 源码模式下 v-model 跟随每次输入，表单提交时拿到的始终是最新原文
+        const next = update.state.doc.toString();
+        lastEmitted = next;
+        if (next !== content.value) {
+          content.value = next;
+        }
+      }),
+    ],
+  });
+  sourceView.focus();
+}
+
+/** 退出源码模式：销毁 CodeMirror，把源码整篇写回 Crepe */
+function exitSourceMode() {
+  const text = sourceView?.state.doc.toString();
+  sourceView?.destroy();
+  sourceView = undefined;
+  sourceMode.value = false;
+  if (crepe && text !== undefined) {
+    // 写回后 markdownUpdated 会带出规范化后的 markdown，同步给 v-model
+    crepe.editor.action(replaceAll(text));
+  }
+}
+
+function toggleSourceMode() {
+  if (sourceMode.value) {
+    exitSourceMode();
+  } else {
+    void enterSourceMode();
+  }
+}
 
 /**
  * 工具栏动作统一入口
@@ -304,7 +389,7 @@ watch(
  * 事件处理里重复这三步
  */
 function runAction(action: (ctx: Parameters<typeof refocus>[0]) => void) {
-  if (!crepe || props.readonly) {
+  if (!crepe || props.readonly || sourceMode.value) {
     return;
   }
   crepe.editor.action((ctx) => {
@@ -316,7 +401,10 @@ function runAction(action: (ctx: Parameters<typeof refocus>[0]) => void) {
 
 defineExpose({
   /** 取当前 markdown 原文（提交前兜底用，正常走 v-model 即可） */
-  getMarkdown: () => crepe?.getMarkdown() ?? content.value ?? '',
+  getMarkdown: () =>
+    sourceMode.value && sourceView
+      ? sourceView.state.doc.toString()
+      : (crepe?.getMarkdown() ?? content.value ?? ''),
 });
 </script>
 
@@ -328,6 +416,7 @@ defineExpose({
   >
     <MarkdownToolbar
       v-if="!readonly"
+      :source-mode="sourceMode"
       :state="toolbarState"
       @divider="runAction(insertDivider)"
       @link="(href: string) => runAction((ctx) => applyLink(ctx, href))"
@@ -338,7 +427,10 @@ defineExpose({
           runAction((ctx) => setBlock(ctx, kind))
       "
       @table="runAction(insertTable)"
+      @toggle-source="toggleSourceMode"
     />
-    <div ref="hostRef"></div>
+    <!-- Crepe 实例保持常驻，切到源码模式时仅隐藏，避免反复重建 -->
+    <div v-show="!sourceMode" ref="hostRef"></div>
+    <div v-show="sourceMode" ref="sourceHostRef" class="clepsydra-md-source"></div>
   </div>
 </template>

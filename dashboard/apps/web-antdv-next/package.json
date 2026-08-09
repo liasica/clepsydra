@@ -26,6 +26,7 @@
     "#/*": "./src/*"
   },
   "dependencies": {
+    "@codemirror/commands": "catalog:",
     "@codemirror/lang-css": "catalog:",
     "@codemirror/lang-go": "catalog:",
     "@codemirror/lang-html": "catalog:",
@@ -36,6 +37,8 @@
     "@codemirror/lang-yaml": "catalog:",
     "@codemirror/language": "catalog:",
     "@codemirror/legacy-modes": "catalog:",
+    "@codemirror/state": "catalog:",
+    "@codemirror/view": "catalog:",
     "@floating-ui/dom": "catalog:",
     "@lezer/highlight": "catalog:",
     "@milkdown/crepe": "catalog:",
