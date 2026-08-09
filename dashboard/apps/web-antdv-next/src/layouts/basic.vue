@@ -7,6 +7,7 @@ import { BasicLayout, LockScreen, UserDropdown } from '@vben/layouts';
 import { preferences, usePreferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
 
+import { BrandWordmark } from '#/components/brand';
 import { useAuthStore } from '#/store';
 import LoginForm from '#/views/_core/authentication/login.vue';
 
@@ -80,6 +81,10 @@ watch(
 
 <template>
   <BasicLayout @clear-preferences-and-logout="handleLogout">
+    <!-- 侧边栏 logo 文字区：字标与图标（preferences.logo.source）组合成完整 lockup -->
+    <template #logo-text>
+      <BrandWordmark class="text-foreground h-[22px]" />
+    </template>
     <template #user-dropdown>
       <UserDropdown
         :avatar
