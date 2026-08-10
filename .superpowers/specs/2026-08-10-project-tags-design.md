@@ -58,8 +58,7 @@
 
 ### 账单接口变更
 
-- `GET /bills/:id` 明细行（`bill_dto.go`）增加 `projects` 数组，取自明细行 `demand_id` 关联需求的项目，实时查询（`WithDemand(WithProjects)` 或按需求 ID 批量查询后组装）
-- 手工明细行（无 demand_id）`projects` 为空数组
+- `GET /bills/:id` 明细行（`bill_dto.go`）增加 `projects` 数组，取自明细行 `demand_id` 关联需求的项目，按需求 ID 批量查询后组装；查询用 `SkipSoftDelete`，已软删需求的明细行也能追溯项目
 
 ## 前端（dashboard/apps/web-antdv-next）
 
