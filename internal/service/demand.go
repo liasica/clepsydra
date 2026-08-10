@@ -71,7 +71,7 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 		return nil, ErrBadRequest("标题不能为空")
 	}
 	if estimatedHalfDays < 0 {
-		return nil, ErrBadRequest("预估人天必须为正")
+		return nil, ErrBadRequest("预估人天不可为负")
 	}
 	if confirmed && estimatedHalfDays == 0 {
 		return nil, ErrBadRequest("勾选已确认时预估人天必须为正")

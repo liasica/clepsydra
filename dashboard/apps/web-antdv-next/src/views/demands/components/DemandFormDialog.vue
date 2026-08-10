@@ -59,7 +59,7 @@ const editorMounted = ref(false);
 const form = reactive({
   confirmed: false,
   description: '',
-  manday: undefined as number | undefined,
+  manday: undefined as null | number | undefined,
   plannedStartDate: undefined as Dayjs | undefined,
   title: '',
 });
