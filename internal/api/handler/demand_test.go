@@ -345,3 +345,63 @@ func TestDemandCreateWithEstimateHandler(t *testing.T) {
 		t.Errorf("draft 需求数 = %d, want 1", len(drafts))
 	}
 }
+
+// TestDemandProjectsHandler 覆盖创建带项目与独立改标签接口
+func TestDemandProjectsHandler(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:hdproj?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	_ = service.Seed(ctx, client, config.Admin{Username: "a", Password: "admin123"}, nil)
+
+	p := client.Project.Create().SetName("官网").SaveX(ctx)
+
+	settingSvc := service.NewSetting(client)
+	svc := service.NewDemand(client, settingSvc, service.NewAudit(client))
+	h := NewDemand(svc)
+	e := echo.New()
+
+	// 创建带项目
+	body := `{"title":"需求一","project_ids":[` + strconv.Itoa(p.ID) + `]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/demands", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &service.Claims{UserID: 2, Role: "client", Name: "需求方"})
+	if err := h.Create(c); err != nil {
+		t.Fatalf("创建错误: %v", err)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":0`) {
+		t.Fatalf("创建响应异常: %s", rec.Body.String())
+	}
+
+	rows, _ := svc.List(ctx, "", 0)
+	id := strconv.Itoa(rows[0].ID)
+
+	// 独立接口清空标签（需求方也可操作）
+	req = httptest.NewRequest(http.MethodPut, "/api/demands/"+id+"/projects", strings.NewReader(`{"project_ids":[]}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues(id)
+	c.Set("claims", &service.Claims{UserID: 2, Role: "client", Name: "需求方"})
+	if err := h.UpdateProjects(c); err != nil {
+		t.Fatalf("改标签错误: %v", err)
+	}
+	got, _ := svc.Get(ctx, rows[0].ID)
+	if len(got.Edges.Projects) != 0 {
+		t.Errorf("标签应已清空: %+v", got.Edges.Projects)
+	}
+
+	// 列表按项目筛选参数透传
+	req = httptest.NewRequest(http.MethodGet, "/api/demands?project_id="+strconv.Itoa(p.ID), nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	if err := h.List(c); err != nil {
+		t.Fatalf("列表错误: %v", err)
+	}
+	if strings.Contains(rec.Body.String(), "需求一") {
+		t.Errorf("标签已清空，按该项目筛选不应包含需求一: %s", rec.Body.String())
+	}
+}

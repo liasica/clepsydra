@@ -34,6 +34,12 @@ type demandCreateRequest struct {
 	EstimatedHalfDays int    `json:"estimated_half_days"`
 	PlannedStartDate  string `json:"planned_start_date"`
 	Confirmed         bool   `json:"confirmed"`
+	ProjectIDs        []int  `json:"project_ids"`
+}
+
+// demandProjectsRequest 项目标签全量覆盖请求体
+type demandProjectsRequest struct {
+	ProjectIDs []int `json:"project_ids"`
 }
 
 // estimateRequest 提交人天确认请求体
@@ -84,11 +90,12 @@ func actor(c echo.Context) service.Actor {
 	return service.Actor{ID: claims.UserID, Name: claims.Name}
 }
 
-// List GET /api/demands?status=
+// List GET /api/demands?status=&project_id=
 func (h *Demand) List(c echo.Context) error {
 	status := c.QueryParam("status")
+	projectID, _ := strconv.Atoi(c.QueryParam("project_id")) // 非法或缺省按 0 处理，即不筛选
 
-	demands, err := h.svc.List(c.Request().Context(), status, 0)
+	demands, err := h.svc.List(c.Request().Context(), status, projectID)
 	if err != nil {
 		return api.Fail(c, err)
 	}
@@ -135,7 +142,7 @@ func (h *Demand) Create(c echo.Context) error {
 	}
 
 	d, err := h.svc.Create(c.Request().Context(), actor(c), req.Title, req.Description,
-		req.EstimatedHalfDays, planned, req.Confirmed, nil)
+		req.EstimatedHalfDays, planned, req.Confirmed, req.ProjectIDs)
 	if err != nil {
 		return api.Fail(c, err)
 	}
@@ -157,6 +164,27 @@ func (h *Demand) Update(c echo.Context) error {
 
 	var d *ent.Demand
 	d, err = h.svc.Update(c.Request().Context(), actor(c), id, req.Title, req.Description)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, d)
+}
+
+// UpdateProjects PUT /api/demands/:id/projects
+// 任何状态可用：标签是归类元数据，不影响人天与账单金额
+func (h *Demand) UpdateProjects(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	var req demandProjectsRequest
+	if err = c.Bind(&req); err != nil {
+		return api.Fail(c, service.ErrBadRequest("参数错误"))
+	}
+
+	d, err := h.svc.UpdateProjects(c.Request().Context(), actor(c), id, req.ProjectIDs)
 	if err != nil {
 		return api.Fail(c, err)
 	}

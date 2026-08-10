@@ -94,7 +94,7 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  # 以下 10 条为登录组（authed），登录即可访问，对应 router.go 的 authed.* 分组
+  # 以下 11 条为登录组（authed），登录即可访问，对应 router.go 的 authed.* 分组
   /api/dashboard/todos:
     get:
       tags: [Dashboard]
@@ -136,6 +136,12 @@ paths:
           schema:
             type: string
             enum: [draft, pending_estimate, confirmed, in_progress, pending_acceptance, accepted]
+        - name: project_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: 按项目筛选，缺省不筛选
       responses:
         '200':
           description: 查询成功
@@ -253,6 +259,49 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/demands/{id}/projects:
+    put:
+      tags: [Demands]
+      operationId: demandsUpdateProjects
+      summary: 更新需求的项目标签
+      description: 全量覆盖式更新，传空数组即清空；任何状态可用，登录即可操作
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_ids:
+                  type: array
+                  description: 关联的项目 ID 列表，传空数组即清空
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Demand'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -1678,6 +1727,15 @@ components:
           type: string
           format: date-time
           description: 更新时间
+        edges:
+          type: object
+          description: ent 关联预加载结果
+          properties:
+            projects:
+              type: array
+              description: 关联的项目标签
+              items:
+                $ref: '#/components/schemas/Project'
 
     DemandRequest:
       type: object
@@ -1712,6 +1770,11 @@ components:
         confirmed:
           type: boolean
           description: 创建即确认人天，需求直达 confirmed，确认人记为创建者；仅超级管理员可用
+        project_ids:
+          type: array
+          description: 关联的项目 ID 列表，可选；含不存在的 ID 返回业务错误
+          items:
+            type: integer
 
     DemandEstimateRequest:
       type: object
