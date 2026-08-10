@@ -5,7 +5,7 @@
  *
  * 权限约定：超级管理员拥有全部权限，因此 admin 恒为 client 的超集——
  * 需求方专属的确认类操作（confirmEstimate、accept、confirm）超管同样可代为执行
- * waive / addItem / removeItem 为明细区交互动作，不渲染为顶部按钮
+ * waive / addItem / editItem / removeItem 为明细区交互动作，不渲染为顶部按钮
  */
 
 export type DemandStatus =
@@ -31,6 +31,7 @@ export type BillAction =
   | 'addItem'
   | 'confirm'
   | 'edit'
+  | 'editItem'
   | 'pay'
   | 'removeItem'
   | 'waive';
@@ -100,7 +101,7 @@ export const BILL_STATUS: Record<BillStatus, StatusMeta<BillAction>> = {
     label: '待确认',
     type: 'warning',
     actions: {
-      admin: ['confirm', 'edit', 'waive', 'addItem', 'removeItem'],
+      admin: ['confirm', 'edit', 'waive', 'addItem', 'editItem', 'removeItem'],
       client: ['confirm'],
     },
   },
@@ -108,7 +109,7 @@ export const BILL_STATUS: Record<BillStatus, StatusMeta<BillAction>> = {
     label: '待支付',
     type: 'primary',
     actions: {
-      admin: ['pay', 'edit', 'waive', 'addItem', 'removeItem'],
+      admin: ['pay', 'edit', 'waive', 'addItem', 'editItem', 'removeItem'],
       client: [],
     },
   },

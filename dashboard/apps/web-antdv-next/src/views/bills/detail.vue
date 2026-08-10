@@ -37,18 +37,22 @@ import { isStatusConflict, showSuccess } from '#/utils/http/error';
 
 import AddDemandsDialog from './components/AddDemandsDialog.vue';
 import EditBillDialog from './components/EditBillDialog.vue';
+import EditItemDialog from './components/EditItemDialog.vue';
 
 /**
  * 账单详情
  *
  * 操作按钮完全由 BILL_STATUS[status].actions[role] 驱动，页面不另写任何权限判断——
  * 该字典与后端状态机白名单一一对应，是按钮级权限的唯一来源。
- * waive / addItem / removeItem 为明细区交互动作，决定减免开关、添加需求按钮与移除按钮是否可用，不渲染为顶部按钮
+ * waive / addItem / editItem / removeItem 为明细区交互动作，决定减免开关、添加需求按钮、编辑按钮与移除按钮是否可用，不渲染为顶部按钮
  */
 defineOptions({ name: 'BillDetail' });
 
 /** 顶部实际渲染为按钮的操作，明细区交互动作已被排除（见上方说明） */
-type ButtonAction = Exclude<BillAction, 'addItem' | 'removeItem' | 'waive'>;
+type ButtonAction = Exclude<
+  BillAction,
+  'addItem' | 'editItem' | 'removeItem' | 'waive'
+>;
 
 const route = useRoute();
 const userStore = useUserStore();
@@ -75,12 +79,17 @@ const actions = computed<BillAction[]>(() =>
 const canWaive = computed(() => actions.value.includes('waive'));
 /** 明细加/移项是否可用（已支付后锁定） */
 const canAdjustItems = computed(() => actions.value.includes('addItem'));
+/** 明细行「编辑」按钮是否可用（已支付后锁定） */
+const canEditItems = computed(() => actions.value.includes('editItem'));
 
 /** 顶部按钮实际渲染的动作，渲染顺序即字典中的声明顺序 */
 const buttonActions = computed<ButtonAction[]>(() =>
   actions.value.filter(
     (action): action is ButtonAction =>
-      action !== 'addItem' && action !== 'removeItem' && action !== 'waive',
+      action !== 'addItem' &&
+      action !== 'editItem' &&
+      action !== 'removeItem' &&
+      action !== 'waive',
   ),
 );
 
@@ -107,7 +116,7 @@ const columns: TableColumnsType<Api.Bill.Item> = [
     minWidth: 120,
     title: '备注',
   },
-  { key: 'actions', title: '操作', width: 80 },
+  { key: 'actions', title: '操作', width: 120 },
 ];
 
 /** 操作按钮元数据，键与 ButtonAction 一一对应，少一个键 TS 就报错 */
@@ -160,6 +169,22 @@ const [EditBillModal, editBillModalApi] = useVbenModal({
 function openEditBill() {
   if (!bill.value) return;
   editBillModalApi.setData({ bill: bill.value }).open();
+}
+
+const [EditItemModal, editItemModalApi] = useVbenModal({
+  connectedComponent: EditItemDialog,
+});
+
+/** 打开编辑明细弹窗，携带账单快照单价供金额联动 */
+function openEditItem(record: Api.Bill.Item) {
+  if (!bill.value) return;
+  editItemModalApi
+    .setData({
+      billId: bill.value.id,
+      dailyRate: bill.value.daily_rate,
+      item: record,
+    })
+    .open();
 }
 
 /** 明细行状态快照转字典项，未知值时兜底为 undefined，模板里原样展示原始字符串 */
@@ -324,6 +349,14 @@ onMounted(load);
               <span v-else>—</span>
             </template>
             <template v-else-if="column.key === 'actions'">
+              <Button
+                v-if="canEditItems"
+                size="small"
+                type="link"
+                @click="openEditItem(record)"
+              >
+                编辑
+              </Button>
               <Popconfirm
                 v-if="canAdjustItems"
                 title="移除该明细并重算总额？"
@@ -331,7 +364,7 @@ onMounted(load);
               >
                 <Button danger size="small" type="link">移除</Button>
               </Popconfirm>
-              <span v-else>—</span>
+              <span v-if="!canEditItems && !canAdjustItems">—</span>
             </template>
           </template>
         </Table>
@@ -351,6 +384,7 @@ onMounted(load);
 
       <AddDemandsModal @success="load" />
       <EditBillModal @success="load" />
+      <EditItemModal @success="load" />
     </Spin>
   </Page>
 </template>
