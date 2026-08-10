@@ -27,7 +27,13 @@ export type DemandAction =
   | 'start'
   | 'submitEstimate';
 
-export type BillAction = 'addItem' | 'confirm' | 'pay' | 'removeItem' | 'waive';
+export type BillAction =
+  | 'addItem'
+  | 'confirm'
+  | 'edit'
+  | 'pay'
+  | 'removeItem'
+  | 'waive';
 
 type TagType = 'danger' | 'info' | 'primary' | 'success' | 'warning';
 
@@ -94,7 +100,7 @@ export const BILL_STATUS: Record<BillStatus, StatusMeta<BillAction>> = {
     label: '待确认',
     type: 'warning',
     actions: {
-      admin: ['confirm', 'waive', 'addItem', 'removeItem'],
+      admin: ['confirm', 'edit', 'waive', 'addItem', 'removeItem'],
       client: ['confirm'],
     },
   },
@@ -102,7 +108,7 @@ export const BILL_STATUS: Record<BillStatus, StatusMeta<BillAction>> = {
     label: '待支付',
     type: 'primary',
     actions: {
-      admin: ['pay', 'waive', 'addItem', 'removeItem'],
+      admin: ['pay', 'edit', 'waive', 'addItem', 'removeItem'],
       client: [],
     },
   },

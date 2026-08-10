@@ -36,6 +36,7 @@ import { formatAmount, formatMandayStrict } from '#/utils/clepsydra/manday';
 import { isStatusConflict, showSuccess } from '#/utils/http/error';
 
 import AddDemandsDialog from './components/AddDemandsDialog.vue';
+import EditBillDialog from './components/EditBillDialog.vue';
 
 /**
  * 账单详情
@@ -119,6 +120,11 @@ const ACTION_META: Record<
     run: (target: Api.Bill.Detail) => void;
   }
 > = {
+  edit: {
+    label: '编辑账单',
+    primary: false,
+    run: () => openEditBill(),
+  },
   confirm: {
     label: '确认账单',
     primary: true,
@@ -144,6 +150,16 @@ const [AddDemandsModal, addDemandsModalApi] = useVbenModal({
 function openAddDemands() {
   if (!bill.value) return;
   addDemandsModalApi.setData({ billId: bill.value.id }).open();
+}
+
+const [EditBillModal, editBillModalApi] = useVbenModal({
+  connectedComponent: EditBillDialog,
+});
+
+/** 打开编辑账单弹窗，携带当前账单快照供表单回填 */
+function openEditBill() {
+  if (!bill.value) return;
+  editBillModalApi.setData({ bill: bill.value }).open();
 }
 
 /** 明细行状态快照转字典项，未知值时兜底为 undefined，模板里原样展示原始字符串 */
@@ -252,6 +268,9 @@ onMounted(load);
           </DescriptionsItem>
           <DescriptionsItem label="账单总额">
             {{ formatAmount(bill.total_amount) }}
+            <Tag v-if="bill.total_override" class="ml-1" color="warning">
+              手动指定
+            </Tag>
           </DescriptionsItem>
           <DescriptionsItem label="支付时间">
             {{ formatDateTime(bill.paid_at) }}
@@ -331,6 +350,7 @@ onMounted(load);
       </Card>
 
       <AddDemandsModal @success="load" />
+      <EditBillModal @success="load" />
     </Spin>
   </Page>
 </template>
