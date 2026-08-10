@@ -21,6 +21,9 @@ type Demand func(*sql.Selector)
 // Holiday is the predicate function for holiday builders.
 type Holiday func(*sql.Selector)
 
+// Project is the predicate function for project builders.
+type Project func(*sql.Selector)
+
 // Setting is the predicate function for setting builders.
 type Setting func(*sql.Selector)
 

@@ -4,6 +4,7 @@ package ent
 
 import (
 	"clepsydra/internal/ent/demand"
+	"clepsydra/internal/ent/project"
 	"context"
 	"errors"
 	"fmt"
@@ -256,6 +257,21 @@ func (_c *DemandCreate) SetNillableUpdatedAt(v *time.Time) *DemandCreate {
 	return _c
 }
 
+// AddProjectIDs adds the "projects" edge to the Project entity by IDs.
+func (_c *DemandCreate) AddProjectIDs(ids ...int) *DemandCreate {
+	_c.mutation.AddProjectIDs(ids...)
+	return _c
+}
+
+// AddProjects adds the "projects" edges to the Project entity.
+func (_c *DemandCreate) AddProjects(v ...*Project) *DemandCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddProjectIDs(ids...)
+}
+
 // Mutation returns the DemandMutation object of the builder.
 func (_c *DemandCreate) Mutation() *DemandMutation {
 	return _c.mutation
@@ -452,6 +468,22 @@ func (_c *DemandCreate) createSpec() (*Demand, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(demand.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if nodes := _c.mutation.ProjectsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   demand.ProjectsTable,
+			Columns: demand.ProjectsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

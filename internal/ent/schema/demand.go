@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 )
@@ -42,6 +43,13 @@ func (Demand) Fields() []ent.Field {
 		field.Bool("accept_locked").Default(false), // 出账前锁定产生的自动确认
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
+	}
+}
+
+// Edges 需求与项目的多对多关联：项目是轻量归类标签，不影响人天与账单金额
+func (Demand) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("projects", Project.Type).Ref("demands"),
 	}
 }
 

@@ -151,6 +151,21 @@ var (
 		Columns:    HolidaysColumns,
 		PrimaryKey: []*schema.Column{HolidaysColumns[0]},
 	}
+	// ProjectsColumns holds the columns for the "projects" table.
+	ProjectsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "color", Type: field.TypeString, Nullable: true},
+		{Name: "remark", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// ProjectsTable holds the schema information for the "projects" table.
+	ProjectsTable = &schema.Table{
+		Name:       "projects",
+		Columns:    ProjectsColumns,
+		PrimaryKey: []*schema.Column{ProjectsColumns[0]},
+	}
 	// SettingsColumns holds the columns for the "settings" table.
 	SettingsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -180,6 +195,31 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
+	// ProjectDemandsColumns holds the columns for the "project_demands" table.
+	ProjectDemandsColumns = []*schema.Column{
+		{Name: "project_id", Type: field.TypeInt},
+		{Name: "demand_id", Type: field.TypeInt},
+	}
+	// ProjectDemandsTable holds the schema information for the "project_demands" table.
+	ProjectDemandsTable = &schema.Table{
+		Name:       "project_demands",
+		Columns:    ProjectDemandsColumns,
+		PrimaryKey: []*schema.Column{ProjectDemandsColumns[0], ProjectDemandsColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "project_demands_project_id",
+				Columns:    []*schema.Column{ProjectDemandsColumns[0]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "project_demands_demand_id",
+				Columns:    []*schema.Column{ProjectDemandsColumns[1]},
+				RefColumns: []*schema.Column{DemandsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AuditLogsTable,
@@ -187,11 +227,15 @@ var (
 		BillItemsTable,
 		DemandsTable,
 		HolidaysTable,
+		ProjectsTable,
 		SettingsTable,
 		UsersTable,
+		ProjectDemandsTable,
 	}
 )
 
 func init() {
 	BillItemsTable.ForeignKeys[0].RefTable = BillsTable
+	ProjectDemandsTable.ForeignKeys[0].RefTable = ProjectsTable
+	ProjectDemandsTable.ForeignKeys[1].RefTable = DemandsTable
 }

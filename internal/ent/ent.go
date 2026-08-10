@@ -8,6 +8,7 @@ import (
 	"clepsydra/internal/ent/billitem"
 	"clepsydra/internal/ent/demand"
 	"clepsydra/internal/ent/holiday"
+	"clepsydra/internal/ent/project"
 	"clepsydra/internal/ent/setting"
 	"clepsydra/internal/ent/user"
 	"context"
@@ -84,6 +85,7 @@ func checkColumn(t, c string) error {
 			billitem.Table: billitem.ValidColumn,
 			demand.Table:   demand.ValidColumn,
 			holiday.Table:  holiday.ValidColumn,
+			project.Table:  project.ValidColumn,
 			setting.Table:  setting.ValidColumn,
 			user.Table:     user.ValidColumn,
 		})

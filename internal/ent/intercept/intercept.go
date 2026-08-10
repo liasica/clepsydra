@@ -13,6 +13,7 @@ import (
 	"clepsydra/internal/ent/demand"
 	"clepsydra/internal/ent/holiday"
 	"clepsydra/internal/ent/predicate"
+	"clepsydra/internal/ent/project"
 	"clepsydra/internal/ent/setting"
 	"clepsydra/internal/ent/user"
 
@@ -210,6 +211,33 @@ func (f TraverseHoliday) Traverse(ctx context.Context, q ent.Query) error {
 	return fmt.Errorf("unexpected query type %T. expect *ent.HolidayQuery", q)
 }
 
+// The ProjectFunc type is an adapter to allow the use of ordinary function as a Querier.
+type ProjectFunc func(context.Context, *ent.ProjectQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f ProjectFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.ProjectQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.ProjectQuery", q)
+}
+
+// The TraverseProject type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseProject func(context.Context, *ent.ProjectQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseProject) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseProject) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.ProjectQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.ProjectQuery", q)
+}
+
 // The SettingFunc type is an adapter to allow the use of ordinary function as a Querier.
 type SettingFunc func(context.Context, *ent.SettingQuery) (ent.Value, error)
 
@@ -277,6 +305,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.DemandQuery, predicate.Demand, demand.OrderOption]{typ: ent.TypeDemand, tq: q}, nil
 	case *ent.HolidayQuery:
 		return &query[*ent.HolidayQuery, predicate.Holiday, holiday.OrderOption]{typ: ent.TypeHoliday, tq: q}, nil
+	case *ent.ProjectQuery:
+		return &query[*ent.ProjectQuery, predicate.Project, project.OrderOption]{typ: ent.TypeProject, tq: q}, nil
 	case *ent.SettingQuery:
 		return &query[*ent.SettingQuery, predicate.Setting, setting.OrderOption]{typ: ent.TypeSetting, tq: q}, nil
 	case *ent.UserQuery:

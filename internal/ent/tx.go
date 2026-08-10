@@ -22,6 +22,8 @@ type Tx struct {
 	Demand *DemandClient
 	// Holiday is the client for interacting with the Holiday builders.
 	Holiday *HolidayClient
+	// Project is the client for interacting with the Project builders.
+	Project *ProjectClient
 	// Setting is the client for interacting with the Setting builders.
 	Setting *SettingClient
 	// User is the client for interacting with the User builders.
@@ -162,6 +164,7 @@ func (tx *Tx) init() {
 	tx.BillItem = NewBillItemClient(tx.config)
 	tx.Demand = NewDemandClient(tx.config)
 	tx.Holiday = NewHolidayClient(tx.config)
+	tx.Project = NewProjectClient(tx.config)
 	tx.Setting = NewSettingClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }

@@ -17,53 +17,53 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-// DemandQuery is the builder for querying Demand entities.
-type DemandQuery struct {
+// ProjectQuery is the builder for querying Project entities.
+type ProjectQuery struct {
 	config
-	ctx          *QueryContext
-	order        []demand.OrderOption
-	inters       []Interceptor
-	predicates   []predicate.Demand
-	withProjects *ProjectQuery
+	ctx         *QueryContext
+	order       []project.OrderOption
+	inters      []Interceptor
+	predicates  []predicate.Project
+	withDemands *DemandQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the DemandQuery builder.
-func (_q *DemandQuery) Where(ps ...predicate.Demand) *DemandQuery {
+// Where adds a new predicate for the ProjectQuery builder.
+func (_q *ProjectQuery) Where(ps ...predicate.Project) *ProjectQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *DemandQuery) Limit(limit int) *DemandQuery {
+func (_q *ProjectQuery) Limit(limit int) *ProjectQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *DemandQuery) Offset(offset int) *DemandQuery {
+func (_q *ProjectQuery) Offset(offset int) *ProjectQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *DemandQuery) Unique(unique bool) *DemandQuery {
+func (_q *ProjectQuery) Unique(unique bool) *ProjectQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *DemandQuery) Order(o ...demand.OrderOption) *DemandQuery {
+func (_q *ProjectQuery) Order(o ...project.OrderOption) *ProjectQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
-// QueryProjects chains the current query on the "projects" edge.
-func (_q *DemandQuery) QueryProjects() *ProjectQuery {
-	query := (&ProjectClient{config: _q.config}).Query()
+// QueryDemands chains the current query on the "demands" edge.
+func (_q *ProjectQuery) QueryDemands() *DemandQuery {
+	query := (&DemandClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -73,9 +73,9 @@ func (_q *DemandQuery) QueryProjects() *ProjectQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(demand.Table, demand.FieldID, selector),
-			sqlgraph.To(project.Table, project.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, demand.ProjectsTable, demand.ProjectsPrimaryKey...),
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(demand.Table, demand.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, project.DemandsTable, project.DemandsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -83,21 +83,21 @@ func (_q *DemandQuery) QueryProjects() *ProjectQuery {
 	return query
 }
 
-// First returns the first Demand entity from the query.
-// Returns a *NotFoundError when no Demand was found.
-func (_q *DemandQuery) First(ctx context.Context) (*Demand, error) {
+// First returns the first Project entity from the query.
+// Returns a *NotFoundError when no Project was found.
+func (_q *ProjectQuery) First(ctx context.Context) (*Project, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{demand.Label}
+		return nil, &NotFoundError{project.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *DemandQuery) FirstX(ctx context.Context) *Demand {
+func (_q *ProjectQuery) FirstX(ctx context.Context) *Project {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -105,22 +105,22 @@ func (_q *DemandQuery) FirstX(ctx context.Context) *Demand {
 	return node
 }
 
-// FirstID returns the first Demand ID from the query.
-// Returns a *NotFoundError when no Demand ID was found.
-func (_q *DemandQuery) FirstID(ctx context.Context) (id int, err error) {
+// FirstID returns the first Project ID from the query.
+// Returns a *NotFoundError when no Project ID was found.
+func (_q *ProjectQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{demand.Label}
+		err = &NotFoundError{project.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *DemandQuery) FirstIDX(ctx context.Context) int {
+func (_q *ProjectQuery) FirstIDX(ctx context.Context) int {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -128,10 +128,10 @@ func (_q *DemandQuery) FirstIDX(ctx context.Context) int {
 	return id
 }
 
-// Only returns a single Demand entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one Demand entity is found.
-// Returns a *NotFoundError when no Demand entities are found.
-func (_q *DemandQuery) Only(ctx context.Context) (*Demand, error) {
+// Only returns a single Project entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one Project entity is found.
+// Returns a *NotFoundError when no Project entities are found.
+func (_q *ProjectQuery) Only(ctx context.Context) (*Project, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -140,14 +140,14 @@ func (_q *DemandQuery) Only(ctx context.Context) (*Demand, error) {
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{demand.Label}
+		return nil, &NotFoundError{project.Label}
 	default:
-		return nil, &NotSingularError{demand.Label}
+		return nil, &NotSingularError{project.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *DemandQuery) OnlyX(ctx context.Context) *Demand {
+func (_q *ProjectQuery) OnlyX(ctx context.Context) *Project {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -155,10 +155,10 @@ func (_q *DemandQuery) OnlyX(ctx context.Context) *Demand {
 	return node
 }
 
-// OnlyID is like Only, but returns the only Demand ID in the query.
-// Returns a *NotSingularError when more than one Demand ID is found.
+// OnlyID is like Only, but returns the only Project ID in the query.
+// Returns a *NotSingularError when more than one Project ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *DemandQuery) OnlyID(ctx context.Context) (id int, err error) {
+func (_q *ProjectQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
@@ -167,15 +167,15 @@ func (_q *DemandQuery) OnlyID(ctx context.Context) (id int, err error) {
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{demand.Label}
+		err = &NotFoundError{project.Label}
 	default:
-		err = &NotSingularError{demand.Label}
+		err = &NotSingularError{project.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *DemandQuery) OnlyIDX(ctx context.Context) int {
+func (_q *ProjectQuery) OnlyIDX(ctx context.Context) int {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -183,18 +183,18 @@ func (_q *DemandQuery) OnlyIDX(ctx context.Context) int {
 	return id
 }
 
-// All executes the query and returns a list of Demands.
-func (_q *DemandQuery) All(ctx context.Context) ([]*Demand, error) {
+// All executes the query and returns a list of Projects.
+func (_q *ProjectQuery) All(ctx context.Context) ([]*Project, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*Demand, *DemandQuery]()
-	return withInterceptors[[]*Demand](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*Project, *ProjectQuery]()
+	return withInterceptors[[]*Project](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *DemandQuery) AllX(ctx context.Context) []*Demand {
+func (_q *ProjectQuery) AllX(ctx context.Context) []*Project {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -202,20 +202,20 @@ func (_q *DemandQuery) AllX(ctx context.Context) []*Demand {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Demand IDs.
-func (_q *DemandQuery) IDs(ctx context.Context) (ids []int, err error) {
+// IDs executes the query and returns a list of Project IDs.
+func (_q *ProjectQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(demand.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(project.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *DemandQuery) IDsX(ctx context.Context) []int {
+func (_q *ProjectQuery) IDsX(ctx context.Context) []int {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -224,16 +224,16 @@ func (_q *DemandQuery) IDsX(ctx context.Context) []int {
 }
 
 // Count returns the count of the given query.
-func (_q *DemandQuery) Count(ctx context.Context) (int, error) {
+func (_q *ProjectQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*DemandQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*ProjectQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *DemandQuery) CountX(ctx context.Context) int {
+func (_q *ProjectQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -242,7 +242,7 @@ func (_q *DemandQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *DemandQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *ProjectQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -255,7 +255,7 @@ func (_q *DemandQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *DemandQuery) ExistX(ctx context.Context) bool {
+func (_q *ProjectQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -263,33 +263,33 @@ func (_q *DemandQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the DemandQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the ProjectQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *DemandQuery) Clone() *DemandQuery {
+func (_q *ProjectQuery) Clone() *ProjectQuery {
 	if _q == nil {
 		return nil
 	}
-	return &DemandQuery{
-		config:       _q.config,
-		ctx:          _q.ctx.Clone(),
-		order:        append([]demand.OrderOption{}, _q.order...),
-		inters:       append([]Interceptor{}, _q.inters...),
-		predicates:   append([]predicate.Demand{}, _q.predicates...),
-		withProjects: _q.withProjects.Clone(),
+	return &ProjectQuery{
+		config:      _q.config,
+		ctx:         _q.ctx.Clone(),
+		order:       append([]project.OrderOption{}, _q.order...),
+		inters:      append([]Interceptor{}, _q.inters...),
+		predicates:  append([]predicate.Project{}, _q.predicates...),
+		withDemands: _q.withDemands.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
 }
 
-// WithProjects tells the query-builder to eager-load the nodes that are connected to
-// the "projects" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *DemandQuery) WithProjects(opts ...func(*ProjectQuery)) *DemandQuery {
-	query := (&ProjectClient{config: _q.config}).Query()
+// WithDemands tells the query-builder to eager-load the nodes that are connected to
+// the "demands" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithDemands(opts ...func(*DemandQuery)) *ProjectQuery {
+	query := (&DemandClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withProjects = query
+	_q.withDemands = query
 	return _q
 }
 
@@ -299,19 +299,19 @@ func (_q *DemandQuery) WithProjects(opts ...func(*ProjectQuery)) *DemandQuery {
 // Example:
 //
 //	var v []struct {
-//		DeletedAt time.Time `json:"deleted_at,omitempty"`
+//		Name string `json:"name,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.Demand.Query().
-//		GroupBy(demand.FieldDeletedAt).
+//	client.Project.Query().
+//		GroupBy(project.FieldName).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *DemandQuery) GroupBy(field string, fields ...string) *DemandGroupBy {
+func (_q *ProjectQuery) GroupBy(field string, fields ...string) *ProjectGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &DemandGroupBy{build: _q}
+	grbuild := &ProjectGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = demand.Label
+	grbuild.label = project.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -322,26 +322,26 @@ func (_q *DemandQuery) GroupBy(field string, fields ...string) *DemandGroupBy {
 // Example:
 //
 //	var v []struct {
-//		DeletedAt time.Time `json:"deleted_at,omitempty"`
+//		Name string `json:"name,omitempty"`
 //	}
 //
-//	client.Demand.Query().
-//		Select(demand.FieldDeletedAt).
+//	client.Project.Query().
+//		Select(project.FieldName).
 //		Scan(ctx, &v)
-func (_q *DemandQuery) Select(fields ...string) *DemandSelect {
+func (_q *ProjectQuery) Select(fields ...string) *ProjectSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &DemandSelect{DemandQuery: _q}
-	sbuild.label = demand.Label
+	sbuild := &ProjectSelect{ProjectQuery: _q}
+	sbuild.label = project.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a DemandSelect configured with the given aggregations.
-func (_q *DemandQuery) Aggregate(fns ...AggregateFunc) *DemandSelect {
+// Aggregate returns a ProjectSelect configured with the given aggregations.
+func (_q *ProjectQuery) Aggregate(fns ...AggregateFunc) *ProjectSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *DemandQuery) prepareQuery(ctx context.Context) error {
+func (_q *ProjectQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -353,7 +353,7 @@ func (_q *DemandQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !demand.ValidColumn(f) {
+		if !project.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -367,19 +367,19 @@ func (_q *DemandQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *DemandQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Demand, error) {
+func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Project, error) {
 	var (
-		nodes       = []*Demand{}
+		nodes       = []*Project{}
 		_spec       = _q.querySpec()
 		loadedTypes = [1]bool{
-			_q.withProjects != nil,
+			_q.withDemands != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*Demand).scanValues(nil, columns)
+		return (*Project).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &Demand{config: _q.config}
+		node := &Project{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -393,20 +393,20 @@ func (_q *DemandQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Deman
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withProjects; query != nil {
-		if err := _q.loadProjects(ctx, query, nodes,
-			func(n *Demand) { n.Edges.Projects = []*Project{} },
-			func(n *Demand, e *Project) { n.Edges.Projects = append(n.Edges.Projects, e) }); err != nil {
+	if query := _q.withDemands; query != nil {
+		if err := _q.loadDemands(ctx, query, nodes,
+			func(n *Project) { n.Edges.Demands = []*Demand{} },
+			func(n *Project, e *Demand) { n.Edges.Demands = append(n.Edges.Demands, e) }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (_q *DemandQuery) loadProjects(ctx context.Context, query *ProjectQuery, nodes []*Demand, init func(*Demand), assign func(*Demand, *Project)) error {
+func (_q *ProjectQuery) loadDemands(ctx context.Context, query *DemandQuery, nodes []*Project, init func(*Project), assign func(*Project, *Demand)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
-	byID := make(map[int]*Demand)
-	nids := make(map[int]map[*Demand]struct{})
+	byID := make(map[int]*Project)
+	nids := make(map[int]map[*Project]struct{})
 	for i, node := range nodes {
 		edgeIDs[i] = node.ID
 		byID[node.ID] = node
@@ -415,11 +415,11 @@ func (_q *DemandQuery) loadProjects(ctx context.Context, query *ProjectQuery, no
 		}
 	}
 	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(demand.ProjectsTable)
-		s.Join(joinT).On(s.C(project.FieldID), joinT.C(demand.ProjectsPrimaryKey[0]))
-		s.Where(sql.InValues(joinT.C(demand.ProjectsPrimaryKey[1]), edgeIDs...))
+		joinT := sql.Table(project.DemandsTable)
+		s.Join(joinT).On(s.C(demand.FieldID), joinT.C(project.DemandsPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(project.DemandsPrimaryKey[0]), edgeIDs...))
 		columns := s.SelectedColumns()
-		s.Select(joinT.C(demand.ProjectsPrimaryKey[1]))
+		s.Select(joinT.C(project.DemandsPrimaryKey[0]))
 		s.AppendSelect(columns...)
 		s.SetDistinct(false)
 	})
@@ -441,7 +441,7 @@ func (_q *DemandQuery) loadProjects(ctx context.Context, query *ProjectQuery, no
 				outValue := int(values[0].(*sql.NullInt64).Int64)
 				inValue := int(values[1].(*sql.NullInt64).Int64)
 				if nids[inValue] == nil {
-					nids[inValue] = map[*Demand]struct{}{byID[outValue]: {}}
+					nids[inValue] = map[*Project]struct{}{byID[outValue]: {}}
 					return assign(columns[1:], values[1:])
 				}
 				nids[inValue][byID[outValue]] = struct{}{}
@@ -449,14 +449,14 @@ func (_q *DemandQuery) loadProjects(ctx context.Context, query *ProjectQuery, no
 			}
 		})
 	})
-	neighbors, err := withInterceptors[[]*Project](ctx, query, qr, query.inters)
+	neighbors, err := withInterceptors[[]*Demand](ctx, query, qr, query.inters)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
 		nodes, ok := nids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected "projects" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected "demands" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)
@@ -465,7 +465,7 @@ func (_q *DemandQuery) loadProjects(ctx context.Context, query *ProjectQuery, no
 	return nil
 }
 
-func (_q *DemandQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *ProjectQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
@@ -474,8 +474,8 @@ func (_q *DemandQuery) sqlCount(ctx context.Context) (int, error) {
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *DemandQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(demand.Table, demand.Columns, sqlgraph.NewFieldSpec(demand.FieldID, field.TypeInt))
+func (_q *ProjectQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(project.Table, project.Columns, sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -484,9 +484,9 @@ func (_q *DemandQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, demand.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, project.FieldID)
 		for i := range fields {
-			if fields[i] != demand.FieldID {
+			if fields[i] != project.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
@@ -514,12 +514,12 @@ func (_q *DemandQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *DemandQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *ProjectQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(demand.Table)
+	t1 := builder.Table(project.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = demand.Columns
+		columns = project.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -546,28 +546,28 @@ func (_q *DemandQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	return selector
 }
 
-// DemandGroupBy is the group-by builder for Demand entities.
-type DemandGroupBy struct {
+// ProjectGroupBy is the group-by builder for Project entities.
+type ProjectGroupBy struct {
 	selector
-	build *DemandQuery
+	build *ProjectQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *DemandGroupBy) Aggregate(fns ...AggregateFunc) *DemandGroupBy {
+func (_g *ProjectGroupBy) Aggregate(fns ...AggregateFunc) *ProjectGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *DemandGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *ProjectGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*DemandQuery, *DemandGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*ProjectQuery, *ProjectGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *DemandGroupBy) sqlScan(ctx context.Context, root *DemandQuery, v any) error {
+func (_g *ProjectGroupBy) sqlScan(ctx context.Context, root *ProjectQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -594,28 +594,28 @@ func (_g *DemandGroupBy) sqlScan(ctx context.Context, root *DemandQuery, v any) 
 	return sql.ScanSlice(rows, v)
 }
 
-// DemandSelect is the builder for selecting fields of Demand entities.
-type DemandSelect struct {
-	*DemandQuery
+// ProjectSelect is the builder for selecting fields of Project entities.
+type ProjectSelect struct {
+	*ProjectQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *DemandSelect) Aggregate(fns ...AggregateFunc) *DemandSelect {
+func (_s *ProjectSelect) Aggregate(fns ...AggregateFunc) *ProjectSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *DemandSelect) Scan(ctx context.Context, v any) error {
+func (_s *ProjectSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*DemandQuery, *DemandSelect](ctx, _s.DemandQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*ProjectQuery, *ProjectSelect](ctx, _s.ProjectQuery, _s, _s.inters, v)
 }
 
-func (_s *DemandSelect) sqlScan(ctx context.Context, root *DemandQuery, v any) error {
+func (_s *ProjectSelect) sqlScan(ctx context.Context, root *ProjectQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {
