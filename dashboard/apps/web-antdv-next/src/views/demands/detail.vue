@@ -5,6 +5,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import { confirm, Page, useVbenModal } from '@vben/common-ui';
+import { useTabs } from '@vben/hooks';
 import { useUserStore } from '@vben/stores';
 
 import {
@@ -48,6 +49,9 @@ const router = useRouter();
 const userStore = useUserStore();
 
 const demandId = Number(route.params.id);
+// tab 标题带上需求 ID，便于多详情页签间区分
+const { setTabTitle } = useTabs();
+setTabTitle(`需求详情：${demandId}`);
 const demand = ref<Api.Demand.Item>();
 const loading = ref(false);
 
