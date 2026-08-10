@@ -23,10 +23,11 @@ defineOptions({ name: 'AuditLogList' });
 const TARGET_TYPE_OPTIONS = [
   { label: '需求', value: 'demand' },
   { label: '账单', value: 'bill' },
+  { label: '项目', value: 'project' },
 ];
 
 /**
- * 操作类型筛选选项，枚举自 internal/service/{demand,bill}.go 里全部 audit.Record 调用点
+ * 操作类型筛选选项，枚举自 internal/service/{demand,bill,project}.go 里全部 audit.Record 调用点
  * 后端未提供枚举接口，前端固定维护这份映射；value 与 action 原始字符串一一对应
  */
 const ACTION_OPTIONS = [
@@ -37,6 +38,7 @@ const ACTION_OPTIONS = [
   { label: '标记开工', value: 'demand.start' },
   { label: '标记完成', value: 'demand.finish' },
   { label: '验收需求', value: 'demand.accept' },
+  { label: '更新需求项目标签', value: 'demand.update_projects' },
   { label: '生成账单', value: 'bill.generate' },
   { label: '手动生成账单', value: 'bill.manual_generate' },
   { label: '添加账单明细', value: 'bill.add_item' },
@@ -46,6 +48,9 @@ const ACTION_OPTIONS = [
   { label: '编辑账单明细', value: 'bill.update_item' },
   { label: '确认账单', value: 'bill.confirm' },
   { label: '标记已支付', value: 'bill.pay' },
+  { label: '创建项目', value: 'project.create' },
+  { label: '更新项目', value: 'project.update' },
+  { label: '删除项目', value: 'project.delete' },
 ];
 
 const ACTION_LABEL_MAP = new Map(
