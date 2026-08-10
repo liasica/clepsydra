@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"clepsydra/internal/ent"
 	"clepsydra/internal/ent/auditlog"
 	"clepsydra/internal/ent/billitem"
 )
@@ -79,7 +80,7 @@ func TestBillUpdateDailyRateRecalc(t *testing.T) {
 }
 
 func TestBillUpdateTotalOverride(t *testing.T) {
-	_, demandSvc, billSvc := newBillEnv(t, "bupdovr")
+	client, demandSvc, billSvc := newBillEnv(t, "bupdovr")
 	ctx := context.Background()
 
 	id1 := prepareAccepted(t, demandSvc, "需求一", 4)
@@ -93,6 +94,15 @@ func TestBillUpdateTotalOverride(t *testing.T) {
 	b, _ = billSvc.Get(ctx, b.ID)
 	if !b.TotalOverride || b.TotalAmount != 2000 {
 		t.Errorf("覆盖后 override=%v total=%d, want true / 2000", b.TotalOverride, b.TotalAmount)
+	}
+
+	// 审计留痕：覆盖总额时额外记录 total_override 置位（from false to true）
+	log := client.AuditLog.Query().
+		Where(auditlog.Action("bill.update")).
+		Order(ent.Desc(auditlog.FieldID)).FirstX(ctx)
+	override, ok := log.Detail["total_override"].(map[string]any)
+	if !ok || override["from"] != false || override["to"] != true {
+		t.Errorf("覆盖总额审计 detail[total_override] = %v, want from=false to=true", log.Detail["total_override"])
 	}
 
 	// 锁定后加明细：人天合计更新，总额不动
@@ -112,6 +122,51 @@ func TestBillUpdateTotalOverride(t *testing.T) {
 	b, _ = billSvc.Get(ctx, b.ID)
 	if b.TotalOverride || b.TotalAmount != 3600 {
 		t.Errorf("恢复后 override=%v total=%d, want false / 3600", b.TotalOverride, b.TotalAmount)
+	}
+}
+
+// TestBillUpdateNoOpSkipsAudit 验证等值短路：重复提交与当前值相同的字段不产生变更，不写空审计
+func TestBillUpdateNoOpSkipsAudit(t *testing.T) {
+	client, demandSvc, billSvc := newBillEnv(t, "bupdnoop")
+	ctx := context.Background()
+
+	id1 := prepareAccepted(t, demandSvc, "需求一", 2)
+	b, _ := billSvc.CreateManual(ctx, admin, "结算单", []int{id1})
+
+	// 首次设置确认截止时间：记录变更
+	deadline := time.Date(2026, 9, 1, 10, 0, 0, 0, time.Local)
+	if err := billSvc.Update(ctx, admin, b.ID, BillUpdatePatch{ConfirmDeadline: &deadline}); err != nil {
+		t.Fatalf("首次设置截止时间失败: %v", err)
+	}
+	n1 := client.AuditLog.Query().Where(auditlog.Action("bill.update")).CountX(ctx)
+
+	// 重复提交完全相同的截止时间：等值短路，不产生变更，不新增审计
+	if err := billSvc.Update(ctx, admin, b.ID, BillUpdatePatch{ConfirmDeadline: &deadline}); err != nil {
+		t.Fatalf("重复设置截止时间失败: %v", err)
+	}
+	n2 := client.AuditLog.Query().Where(auditlog.Action("bill.update")).CountX(ctx)
+	if n2 != n1 {
+		t.Errorf("重复设置相同截止时间后审计条数 = %d, want %d（不应新增）", n2, n1)
+	}
+	b, _ = billSvc.Get(ctx, b.ID)
+	if b.ConfirmDeadline == nil || !b.ConfirmDeadline.Equal(deadline) {
+		t.Errorf("截止时间 = %v, want %v", b.ConfirmDeadline, deadline)
+	}
+
+	// 首次覆盖总额：记录 total_amount 与 total_override 置位
+	total := 1000
+	if err := billSvc.Update(ctx, admin, b.ID, BillUpdatePatch{TotalAmount: &total}); err != nil {
+		t.Fatalf("覆盖总额失败: %v", err)
+	}
+	n3 := client.AuditLog.Query().Where(auditlog.Action("bill.update")).CountX(ctx)
+
+	// 重复提交完全相同的总额：等值短路，不产生变更，不新增审计
+	if err := billSvc.Update(ctx, admin, b.ID, BillUpdatePatch{TotalAmount: &total}); err != nil {
+		t.Fatalf("重复覆盖总额失败: %v", err)
+	}
+	n4 := client.AuditLog.Query().Where(auditlog.Action("bill.update")).CountX(ctx)
+	if n4 != n3 {
+		t.Errorf("重复覆盖相同总额后审计条数 = %d, want %d（不应新增）", n4, n3)
 	}
 }
 
@@ -223,6 +278,49 @@ func TestBillUpdateItemWaived(t *testing.T) {
 	b, _ = billSvc.Get(ctx, b.ID)
 	if b.TotalHalfDays != 2 {
 		t.Errorf("人天合计 = %d, want 2（含减免行）", b.TotalHalfDays)
+	}
+}
+
+// TestBillUpdateItemDisplayRow 验证展示行（billable=false）金额不可被直调 API 改为非零，人天与备注不受限
+func TestBillUpdateItemDisplayRow(t *testing.T) {
+	client, demandSvc, billSvc := newBillEnv(t, "bupditemd")
+	ctx := context.Background()
+
+	// 需求走到 confirmed 状态：CreateManual 生成展示行
+	d, err := demandSvc.Create(ctx, admin, "confirmed 需求", "")
+	if err != nil {
+		t.Fatalf("创建需求失败: %v", err)
+	}
+	if err = demandSvc.SubmitEstimate(ctx, admin, d.ID, 4, nil); err != nil {
+		t.Fatalf("提交预估失败: %v", err)
+	}
+	if err = demandSvc.ConfirmEstimate(ctx, clientActor, d.ID); err != nil {
+		t.Fatalf("确认预估失败: %v", err)
+	}
+
+	b, err := billSvc.CreateManual(ctx, admin, "结算单", []int{d.ID})
+	if err != nil {
+		t.Fatalf("手动生成失败: %v", err)
+	}
+	item := client.BillItem.Query().Where(billitem.DemandID(d.ID)).OnlyX(ctx)
+	if item.Billable {
+		t.Fatalf("该明细应为展示行，Billable=%v", item.Billable)
+	}
+
+	// 展示行金额不可改为非零
+	amount := 100
+	if err = billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{Amount: &amount}); err == nil {
+		t.Error("展示行金额应拒绝修改")
+	}
+
+	// 人天与备注可改，金额保持 0
+	halfDays, note := 6, "展示行备注"
+	if err = billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{HalfDays: &halfDays, Note: &note}); err != nil {
+		t.Fatalf("展示行人天/备注更新失败: %v", err)
+	}
+	got := client.BillItem.GetX(ctx, item.ID)
+	if got.HalfDays != 6 || got.Note != "展示行备注" || got.Amount != 0 {
+		t.Errorf("展示行 halfDays=%d note=%q amount=%d, want 6 / 展示行备注 / 0", got.HalfDays, got.Note, got.Amount)
 	}
 }
 

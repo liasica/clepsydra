@@ -87,11 +87,18 @@ func (s *Bill) Update(ctx context.Context, actor Actor, id int, patch BillUpdate
 	}
 	if patch.ConfirmDeadline != nil {
 		upd.SetConfirmDeadline(*patch.ConfirmDeadline)
-		change(changes, "confirm_deadline", b.ConfirmDeadline, *patch.ConfirmDeadline)
+		if b.ConfirmDeadline == nil || !patch.ConfirmDeadline.Equal(*b.ConfirmDeadline) {
+			change(changes, "confirm_deadline", b.ConfirmDeadline, *patch.ConfirmDeadline)
+		}
 	}
 	if patch.TotalAmount != nil {
 		upd.SetTotalAmount(*patch.TotalAmount).SetTotalOverride(true)
-		change(changes, "total_amount", b.TotalAmount, *patch.TotalAmount)
+		if *patch.TotalAmount != b.TotalAmount || !b.TotalOverride {
+			change(changes, "total_amount", b.TotalAmount, *patch.TotalAmount)
+		}
+		if !b.TotalOverride {
+			change(changes, "total_override", false, true)
+		}
 	}
 	if patch.ResetTotal && b.TotalOverride {
 		upd.SetTotalOverride(false)
@@ -133,7 +140,9 @@ func (s *Bill) Update(ctx context.Context, actor Actor, id int, patch BillUpdate
 		return err
 	}
 
-	s.audit.Record(ctx, actor, "bill.update", "bill", id, changes)
+	if len(changes) > 0 {
+		s.audit.Record(ctx, actor, "bill.update", "bill", id, changes)
+	}
 
 	return nil
 }
@@ -188,6 +197,9 @@ func (s *Bill) UpdateItem(ctx context.Context, actor Actor, billID, itemID int, 
 	}
 	if item.Waived && patch.Amount != nil && *patch.Amount != 0 {
 		return ErrBadRequest("已减免明细的金额不可修改")
+	}
+	if !item.Billable && patch.Amount != nil && *patch.Amount != 0 {
+		return ErrBadRequest("展示行金额不可修改")
 	}
 
 	var tx *ent.Tx

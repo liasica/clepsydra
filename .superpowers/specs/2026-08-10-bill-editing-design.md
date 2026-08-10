@@ -58,7 +58,7 @@
 
 公共规则：
 
-- 闸门：`status == paid` 拒绝，返回 `ErrInvalidTransition`，与现有增删明细、减免一致
+- 闸门：`status == paid` 拒绝，返回 `ErrBadRequest`（与现有增删明细、减免一致）；事务期间并发流转到已支付由 `txRecalcTotals` 条件更新兜底，返回 `ErrInvalidTransition` 触发回滚
 - 全部在事务内执行，末尾复用改造后的 `txRecalcTotals`（尊重 `total_override`）
 - 空请求（所有字段均 nil）拒绝
 - 审计动作新增 `bill.update`、`bill.update_item`，`detail` 记录逐字段 before/after（仅记录实际变更的字段），作为不打回重新确认的留痕依据
