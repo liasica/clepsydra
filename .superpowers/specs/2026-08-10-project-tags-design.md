@@ -52,9 +52,9 @@
 ### 需求接口变更
 
 - `POST /demands`：请求体新增 `project_ids []int`（可选），创建时建立关联；含不存在的项目 ID 返回 400
-- `PUT /demands/:id`：请求体新增 `project_ids []int`，全量覆盖式更新关联（传空数组即清空）；字段缺省（null）时不改动关联，与现有「仅标题与描述」语义兼容
-- `GET /demands`、`GET /demands/:id`：响应中的需求对象带 `projects` 数组（`id`、`name`、`color`）；列表接口新增查询参数 `project_id`（按单个项目筛选）
-- service 层 `Demand.Create` / `Demand.Update` 签名增加 `projectIDs []int`（Update 用 `*[]int` 或等价方式区分「未传」与「清空」）
+- `PUT /demands/:id/projects`（新增，登录即可）：全量覆盖式更新需求的项目关联（传空数组即清空），**不受需求状态限制**——标签是归类元数据，不影响人天与账单金额，存量已确认/已完成需求也要能补打标签；`PUT /demands/:id` 保持只管标题与描述，不动
+- `GET /demands`、`GET /demands/:id`：查询时预加载项目（ent `WithProjects`，响应中体现在 `edges.projects`）；列表接口新增查询参数 `project_id`（按单个项目筛选）
+- service 层 `Demand.Create` 签名增加 `projectIDs []int`；新增 `Demand.UpdateProjects` 方法
 
 ### 账单接口变更
 
@@ -64,9 +64,9 @@
 ## 前端（dashboard/apps/web-antdv-next）
 
 1. **项目管理页** `src/views/projects/`：仅超管菜单可见，简单表格（名称、颜色、备注、关联需求数、创建时间）+ 新建/编辑弹窗 + 删除确认。删除确认文案提示「该项目已关联 N 个需求，删除后仅解除关联，不影响需求本身」
-2. **需求新建/编辑表单**：新增项目多选下拉（`Select` `mode="multiple"`，选项来自 `GET /projects`），已选项以 tag 展示
+2. **需求新建/编辑表单**：新增项目多选下拉（`Select` `mode="multiple"`，选项来自 `GET /projects`），已选项以 tag 展示；创建走 `project_ids`，编辑模式保存时调用独立的 projects 接口
 3. **需求列表**：每行展示项目 tag（带 color）；筛选区新增项目下拉，选中后传 `project_id`
-4. **需求详情**：基本信息区展示项目 tag
+4. **需求详情**：基本信息区展示项目 tag，任何状态均提供「编辑标签」入口（独立小弹窗）
 5. **账单详情**：明细表格需求列下方（或独立列）展示项目 tag
 6. API 封装跟随现有 `src/api/` 结构，新增 `project.ts`
 
