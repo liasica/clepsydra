@@ -42,6 +42,8 @@ const ACTION_OPTIONS = [
   { label: '添加账单明细', value: 'bill.add_item' },
   { label: '移除账单明细', value: 'bill.remove_item' },
   { label: '切换减免', value: 'bill.toggle_waive' },
+  { label: '编辑账单', value: 'bill.update' },
+  { label: '编辑账单明细', value: 'bill.update_item' },
   { label: '确认账单', value: 'bill.confirm' },
   { label: '标记已支付', value: 'bill.pay' },
 ];

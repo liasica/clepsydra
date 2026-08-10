@@ -52,3 +52,26 @@ export function confirmBill(id: number): Promise<void> {
 export function payBill(id: number): Promise<void> {
   return requestClient.post(`/api/bills/${id}/pay`);
 }
+
+/** 编辑账单，缺省字段不修改，已支付账单拒绝（仅超级管理员） */
+export function updateBill(
+  id: number,
+  params: Api.Bill.UpdateParams,
+): Promise<void> {
+  return requestClient.request(`/api/bills/${id}`, {
+    data: params,
+    method: 'PATCH',
+  });
+}
+
+/** 编辑账单明细行，缺省字段不修改，已支付账单拒绝（仅超级管理员） */
+export function updateBillItem(
+  billId: number,
+  itemId: number,
+  params: Api.Bill.UpdateItemParams,
+): Promise<void> {
+  return requestClient.request(`/api/bills/${billId}/items/${itemId}`, {
+    data: params,
+    method: 'PATCH',
+  });
+}

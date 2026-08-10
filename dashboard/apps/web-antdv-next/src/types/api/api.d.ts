@@ -136,6 +136,7 @@ declare namespace Api {
       base_fee: number;
       total_half_days: number;
       total_amount: number;
+      total_override: boolean;
       confirm_deadline: null | string;
       confirmed_at: null | string;
       confirmed_by: null | number;
@@ -151,6 +152,23 @@ declare namespace Api {
     interface SelectableDemands {
       billable: Api.Demand.Item[];
       display: Api.Demand.Item[];
+    }
+
+    /** 编辑账单请求体，缺省字段不修改（仅超级管理员） */
+    interface UpdateParams {
+      name?: string;
+      daily_rate?: number;
+      base_fee?: number;
+      confirm_deadline?: string;
+      total_amount?: number;
+      reset_total?: boolean;
+    }
+
+    /** 编辑账单明细请求体，缺省字段不修改（仅超级管理员） */
+    interface UpdateItemParams {
+      half_days?: number;
+      amount?: number;
+      note?: string;
     }
   }
 
