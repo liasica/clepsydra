@@ -6,6 +6,7 @@ import (
 
 	"clepsydra/internal/ent"
 	"clepsydra/internal/ent/demand"
+	"clepsydra/internal/ent/project"
 	"clepsydra/internal/workday"
 )
 
@@ -41,19 +42,25 @@ func canTransit(from, to demand.Status) bool {
 	return false
 }
 
-// List 按状态筛选需求，status 为空返回全部
-func (s *Demand) List(ctx context.Context, status string) ([]*ent.Demand, error) {
-	q := s.client.Demand.Query().Order(ent.Desc(demand.FieldID))
+// List 按状态与项目筛选需求，status 为空、projectID 为 0 表示不筛选；预加载项目标签
+func (s *Demand) List(ctx context.Context, status string, projectID int) ([]*ent.Demand, error) {
+	q := s.client.Demand.Query().WithProjects().Order(ent.Desc(demand.FieldID))
 	if status != "" {
 		q = q.Where(demand.StatusEQ(demand.Status(status)))
+	}
+	if projectID > 0 {
+		q = q.Where(demand.HasProjectsWith(project.ID(projectID)))
 	}
 
 	return q.All(ctx)
 }
 
-// Get 按 ID 查询需求
+// Get 按 ID 查询需求，预加载项目标签
 func (s *Demand) Get(ctx context.Context, id int) (*ent.Demand, error) {
-	d, err := s.client.Demand.Get(ctx, id)
+	d, err := s.client.Demand.Query().
+		Where(demand.ID(id)).
+		WithProjects().
+		Only(ctx)
 	if ent.IsNotFound(err) {
 		return nil, ErrNotFound
 	}
@@ -66,7 +73,7 @@ func (s *Demand) Get(ctx context.Context, id int) (*ent.Demand, error) {
 // confirmed 再直达 confirmed（等价超管代确认，确认人记为创建者本人）。
 // INSERT 一次性写入终态，无并发流转问题，故不经过 transit 状态机。
 // 角色权限与「日期 / 已确认必须依附人天」由 handler 层校验，这里只保留业务不变量防御
-func (s *Demand) Create(ctx context.Context, actor Actor, title, description string, estimatedHalfDays int, plannedStart *time.Time, confirmed bool) (*ent.Demand, error) {
+func (s *Demand) Create(ctx context.Context, actor Actor, title, description string, estimatedHalfDays int, plannedStart *time.Time, confirmed bool, projectIDs []int) (*ent.Demand, error) {
 	if title == "" {
 		return nil, ErrBadRequest("标题不能为空")
 	}
@@ -77,10 +84,16 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 		return nil, ErrBadRequest("勾选已确认时预估人天必须为正")
 	}
 
+	ids, err := s.normalizeProjectIDs(ctx, projectIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	create := s.client.Demand.Create().
 		SetTitle(title).
 		SetDescription(description).
-		SetEstimatedHalfDays(estimatedHalfDays)
+		SetEstimatedHalfDays(estimatedHalfDays).
+		AddProjectIDs(ids...)
 
 	now := time.Now()
 	switch {
@@ -108,6 +121,9 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 	if plannedStart != nil {
 		payload["planned_start_date"] = plannedStart.Format("2006-01-02")
 	}
+	if len(ids) > 0 {
+		payload["project_ids"] = ids
+	}
 	s.audit.Record(ctx, actor, "demand.create", "demand", d.ID, payload)
 	// 创建即确认补写确认审计，避免审计时间线里 confirmed 状态凭空出现
 	if confirmed {
@@ -115,6 +131,58 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 	}
 
 	return d, nil
+}
+
+// UpdateProjects 全量覆盖需求的项目标签，任何状态均可：
+// 标签是归类元数据，不影响人天与账单金额，存量已完成需求也要能补打标签
+func (s *Demand) UpdateProjects(ctx context.Context, actor Actor, id int, projectIDs []int) (*ent.Demand, error) {
+	ids, err := s.normalizeProjectIDs(ctx, projectIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.client.Demand.UpdateOneID(id).
+		ClearProjects().
+		AddProjectIDs(ids...).
+		Exec(ctx)
+	if ent.IsNotFound(err) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	s.audit.Record(ctx, actor, "demand.update_projects", "demand", id, map[string]any{
+		"project_ids": ids,
+	})
+
+	return s.Get(ctx, id)
+}
+
+// normalizeProjectIDs 去重并校验项目 ID 均存在，空切片直接通过
+func (s *Demand) normalizeProjectIDs(ctx context.Context, ids []int) ([]int, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	seen := make(map[int]bool, len(ids))
+	uniq := make([]int, 0, len(ids))
+	for _, id := range ids {
+		if !seen[id] {
+			seen[id] = true
+			uniq = append(uniq, id)
+		}
+	}
+
+	n, err := s.client.Project.Query().Where(project.IDIn(uniq...)).Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if n != len(uniq) {
+		return nil, ErrBadRequest("项目不存在")
+	}
+
+	return uniq, nil
 }
 
 // Update 更新需求标题与描述（markdown 原文），仅 draft 与 pending_estimate 状态允许

@@ -47,7 +47,7 @@ func TestDemandCreateHandler(t *testing.T) {
 		t.Errorf("响应异常: %s", rec.Body.String())
 	}
 
-	rows, err := svc.List(ctx, "")
+	rows, err := svc.List(ctx, "", 0)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("创建后查询列表失败: %v, len=%d", err, len(rows))
 	}
@@ -107,7 +107,7 @@ func TestDemandLifecycleHandlers(t *testing.T) {
 		t.Fatalf("创建 HTTP 状态 = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
-	rows, err := svc.List(ctx, "")
+	rows, err := svc.List(ctx, "", 0)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("创建后查询列表失败: %v, len=%d", err, len(rows))
 	}
@@ -293,7 +293,7 @@ func TestDemandCreateWithEstimateHandler(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("HTTP 状态 = %d, body = %s", rec.Code, rec.Body.String())
 	}
-	rows, err := svc.List(ctx, "confirmed")
+	rows, err := svc.List(ctx, "confirmed", 0)
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("confirmed 需求数 = %d, err = %v, want 1", len(rows), err)
 	}
@@ -340,7 +340,7 @@ func TestDemandCreateWithEstimateHandler(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Errorf("需求方普通创建应成功, got %d, body = %s", rec.Code, rec.Body.String())
 	}
-	drafts, _ := svc.List(ctx, "draft")
+	drafts, _ := svc.List(ctx, "draft", 0)
 	if len(drafts) != 1 {
 		t.Errorf("draft 需求数 = %d, want 1", len(drafts))
 	}

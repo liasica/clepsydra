@@ -88,7 +88,7 @@ func actor(c echo.Context) service.Actor {
 func (h *Demand) List(c echo.Context) error {
 	status := c.QueryParam("status")
 
-	demands, err := h.svc.List(c.Request().Context(), status)
+	demands, err := h.svc.List(c.Request().Context(), status, 0)
 	if err != nil {
 		return api.Fail(c, err)
 	}
@@ -135,7 +135,7 @@ func (h *Demand) Create(c echo.Context) error {
 	}
 
 	d, err := h.svc.Create(c.Request().Context(), actor(c), req.Title, req.Description,
-		req.EstimatedHalfDays, planned, req.Confirmed)
+		req.EstimatedHalfDays, planned, req.Confirmed, nil)
 	if err != nil {
 		return api.Fail(c, err)
 	}

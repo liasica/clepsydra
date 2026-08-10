@@ -27,7 +27,7 @@ func TestBillCreateManual(t *testing.T) {
 
 	// 已验收需求 → 计费行；进行中需求 → 展示行
 	id1 := prepareAccepted(t, demandSvc, "补录需求", 6)
-	d2, _ := demandSvc.Create(ctx, admin, "进行中需求", "", 0, nil, false)
+	d2, _ := demandSvc.Create(ctx, admin, "进行中需求", "", 0, nil, false, nil)
 	_ = demandSvc.SubmitEstimate(ctx, admin, d2.ID, 8, nil)
 	_ = demandSvc.ConfirmEstimate(ctx, clientActor, d2.ID)
 	_ = demandSvc.Start(ctx, admin, d2.ID, time.Date(2026, 7, 25, 0, 0, 0, 0, time.Local))
@@ -77,7 +77,7 @@ func TestBillCreateManualValidation(t *testing.T) {
 	}
 
 	// 草稿状态需求不可加入
-	d, _ := demandSvc.Create(ctx, admin, "草稿需求", "", 0, nil, false)
+	d, _ := demandSvc.Create(ctx, admin, "草稿需求", "", 0, nil, false, nil)
 	if _, err := billSvc.CreateManual(ctx, admin, "结算", []int{d.ID}); err == nil {
 		t.Error("草稿状态需求应拒绝")
 	}
@@ -102,12 +102,12 @@ func TestBillSelectableDemands(t *testing.T) {
 	idBilled := prepareAccepted(t, demandSvc, "已结算需求", 2)
 	b, _ := billSvc.CreateManual(ctx, admin, "结算单", []int{idBilled})
 	// 进行中 → display 组
-	d3, _ := demandSvc.Create(ctx, admin, "进行中需求", "", 0, nil, false)
+	d3, _ := demandSvc.Create(ctx, admin, "进行中需求", "", 0, nil, false, nil)
 	_ = demandSvc.SubmitEstimate(ctx, admin, d3.ID, 8, nil)
 	_ = demandSvc.ConfirmEstimate(ctx, clientActor, d3.ID)
 	_ = demandSvc.Start(ctx, admin, d3.ID, time.Date(2026, 7, 25, 0, 0, 0, 0, time.Local))
 	// 草稿 → 不出现
-	_, _ = demandSvc.Create(ctx, admin, "草稿需求", "", 0, nil, false)
+	_, _ = demandSvc.Create(ctx, admin, "草稿需求", "", 0, nil, false, nil)
 
 	sel, err := billSvc.SelectableDemands(ctx, 0)
 	if err != nil {
