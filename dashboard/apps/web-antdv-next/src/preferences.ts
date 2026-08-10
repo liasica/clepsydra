@@ -24,6 +24,12 @@ export const overridesPreferences = defineOverridesPreferences({
     // 默认亮色，主题色与暗色切换开关保留，暗色可手动切换
     mode: 'light',
   },
+  transition: {
+    // 关闭页面切换过渡动画：fade-slide 依赖 rAF 逐帧推进，页面处于后台标签、
+    // 窗口失焦或主线程被长任务阻塞时 rAF 暂停，页面会卡在过渡中间帧
+    // （整页半透明、边框浅到不可见），表现为「样式坏了必须刷新」
+    enable: false,
+  },
   widget: {
     // 只有 zh-CN 一种语言，关闭语言切换部件
     languageToggle: false,
