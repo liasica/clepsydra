@@ -13,6 +13,8 @@ tags:
     description: 用户管理，仅超级管理员可访问
   - name: Demands
     description: 开发需求（项目）管理，登录即可查看，写操作仅超级管理员
+  - name: Projects
+    description: 项目标签管理，需求可多选项目归类，登录即可查看，写操作仅超级管理员
   - name: Bills
     description: 月度账单管理，登录即可查看与确认，其余写操作仅超级管理员
   - name: Settings
@@ -92,7 +94,7 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  # 以下 8 条为登录组（authed），登录即可访问，对应 router.go 的 authed.* 分组
+  # 以下 10 条为登录组（authed），登录即可访问，对应 router.go 的 authed.* 分组
   /api/dashboard/todos:
     get:
       tags: [Dashboard]
@@ -307,6 +309,129 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/projects:
+    get:
+      tags: [Projects]
+      operationId: projectsList
+      summary: 查询项目列表
+      description: 全部项目及各自关联需求数（不含已软删需求），登录即可访问，供管理页、下拉与筛选使用
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Project'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Projects]
+      operationId: projectsCreate
+      summary: 创建项目
+      description: 创建项目标签，名称必填且唯一（仅超级管理员）
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectSave'
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/projects/{id}:
+    put:
+      tags: [Projects]
+      operationId: projectsUpdate
+      summary: 更新项目
+      description: 全量更新名称、颜色与备注，名称必填且唯一（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectSave'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Project'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags: [Projects]
+      operationId: projectsDelete
+      summary: 删除项目
+      description: 物理删除并自动解除与需求的关联，需求本身不受影响（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProjectID'
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -1249,6 +1374,13 @@ components:
       description: 用户 ID
       schema:
         type: integer
+    ProjectID:
+      name: id
+      in: path
+      required: true
+      description: 项目 ID
+      schema:
+        type: integer
 
   responses:
     BadRequest:
@@ -1618,6 +1750,49 @@ components:
         actual_half_days:
           type: integer
           description: 实际人天，单位半天数，必须为正
+
+    Project:
+      type: object
+      description: 项目，轻量标签形态，需求可多选归类
+      properties:
+        id:
+          type: integer
+          description: 项目 ID
+        name:
+          type: string
+          description: 项目名称，唯一
+        color:
+          type: string
+          description: antdv 预设 tag 色名（如 blue），空串表示默认色
+        remark:
+          type: string
+          description: 备注
+        demand_count:
+          type: integer
+          description: 关联需求数（不含已软删需求），仅项目列表接口有效
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+
+    ProjectSave:
+      type: object
+      description: 项目创建 / 更新请求体
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: 项目名称，唯一
+        color:
+          type: string
+          description: antdv 预设 tag 色名，可空
+        remark:
+          type: string
+          description: 备注，可空
 
     Bill:
       type: object

@@ -49,6 +49,14 @@ type DemandHandler interface {
 	Accept(c echo.Context) error
 }
 
+// ProjectHandler 项目管理接口方法集
+type ProjectHandler interface {
+	List(c echo.Context) error
+	Create(c echo.Context) error
+	Update(c echo.Context) error
+	Delete(c echo.Context) error
+}
+
 // BillHandler 账单接口方法集
 type BillHandler interface {
 	List(c echo.Context) error
@@ -87,6 +95,7 @@ type Handlers struct {
 	User      UserHandler
 	Setting   SettingHandler
 	Demand    DemandHandler
+	Project   ProjectHandler
 	Bill      BillHandler
 	Dashboard DashboardHandler
 	AuditLog  AuditLogHandler
@@ -118,6 +127,7 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	authed.PUT("/demands/:id", h.Demand.Update)
 	authed.POST("/demands/:id/confirm-estimate", h.Demand.ConfirmEstimate)
 	authed.POST("/demands/:id/accept", h.Demand.Accept)
+	authed.GET("/projects", h.Project.List)
 	authed.GET("/bills", h.Bill.List)
 	authed.GET("/bills/:id", h.Bill.Get)
 	authed.POST("/bills/:id/confirm", h.Bill.Confirm)
@@ -134,6 +144,9 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	adminGroup.PUT("/holidays", h.Setting.SaveHolidays)
 	adminGroup.DELETE("/holidays/:date", h.Setting.DeleteHoliday)
 	adminGroup.DELETE("/demands/:id", h.Demand.Delete)
+	adminGroup.POST("/projects", h.Project.Create)
+	adminGroup.PUT("/projects/:id", h.Project.Update)
+	adminGroup.DELETE("/projects/:id", h.Project.Delete)
 	adminGroup.POST("/demands/:id/submit-estimate", h.Demand.SubmitEstimate)
 	adminGroup.POST("/demands/:id/start", h.Demand.Start)
 	adminGroup.POST("/demands/:id/finish", h.Demand.Finish)

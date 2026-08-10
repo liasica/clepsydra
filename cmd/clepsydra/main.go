@@ -77,6 +77,7 @@ func main() {
 	userSvc := service.NewUser(client)
 	holidaySvc := service.NewHolidaySvc(client)
 	demandSvc := service.NewDemand(client, settingSvc, audit)
+	projectSvc := service.NewProject(client, audit)
 	billSvc := service.NewBill(client, settingSvc, demandSvc, audit)
 	dashboardSvc := service.NewDashboard(client, settingSvc)
 
@@ -90,6 +91,7 @@ func main() {
 		User:      handler.NewUser(userSvc),
 		Setting:   handler.NewSetting(settingSvc, holidaySvc),
 		Demand:    handler.NewDemand(demandSvc),
+		Project:   handler.NewProject(projectSvc),
 		Bill:      handler.NewBill(billSvc),
 		Dashboard: handler.NewDashboard(dashboardSvc),
 		AuditLog:  handler.NewAuditLog(audit),
