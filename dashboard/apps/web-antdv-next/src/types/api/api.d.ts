@@ -53,6 +53,34 @@ declare namespace Api {
     }
   }
 
+  /** 项目（轻量标签） */
+  namespace Project {
+    /** 项目实体，demand_count 仅列表接口有效 */
+    interface Item {
+      id: number;
+      name: string;
+      color: string;
+      remark: string;
+      demand_count: number;
+      created_at: string;
+      updated_at: string;
+    }
+
+    /** 需求 / 账单明细上携带的精简引用；需求走 ent 序列化，可选字段带 omitempty */
+    interface Ref {
+      id: number;
+      name: string;
+      color?: string;
+    }
+
+    /** 创建 / 更新请求体 */
+    interface SaveParams {
+      name: string;
+      color?: string;
+      remark?: string;
+    }
+  }
+
   /** 需求 */
   namespace Demand {
     type Status = import('#/utils/clepsydra/dict').DemandStatus;
@@ -77,6 +105,10 @@ declare namespace Api {
       accept_locked: boolean;
       created_at: string;
       updated_at: string;
+      /** ent 关联预加载结果，目前仅项目标签 */
+      edges?: {
+        projects?: Api.Project.Ref[];
+      };
     }
 
     /**
@@ -96,6 +128,8 @@ declare namespace Api {
       estimated_half_days?: number;
       planned_start_date?: string;
       confirmed?: boolean;
+      /** 关联的项目 ID 列表，可选 */
+      project_ids?: number[];
     }
 
     /** 提交预估人天请求体，pending_estimate 状态下可重复提交修正预估 */
@@ -134,6 +168,8 @@ declare namespace Api {
       planned_start_date: null | string;
       note: string;
       created_at: string;
+      /** 所属需求的项目标签，实时关联（非快照） */
+      projects: Api.Project.Ref[];
     }
 
     /** 账单实体，items 仅详情接口返回 */

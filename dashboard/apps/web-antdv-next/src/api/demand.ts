@@ -1,10 +1,11 @@
 import { requestClient } from '#/api/request';
 
-/** 查询需求列表，status 为空返回全部 */
-export function fetchDemands(status?: Api.Demand.Status) {
-  return requestClient.get<Api.Demand.Item[]>('/api/demands', {
-    params: status ? { status } : undefined,
-  });
+/** 查询需求列表，可按状态与项目筛选，缺省返回全部 */
+export function fetchDemands(params?: {
+  project_id?: number;
+  status?: Api.Demand.Status;
+}) {
+  return requestClient.get<Api.Demand.Item[]>('/api/demands', { params });
 }
 
 /** 查询需求详情 */
@@ -64,4 +65,11 @@ export function finishDemand(
 /** 需求方验收，pending_acceptance 流转 accepted */
 export function acceptDemand(id: number): Promise<void> {
   return requestClient.post(`/api/demands/${id}/accept`);
+}
+
+/** 全量覆盖需求的项目标签，传空数组即清空；任何状态可用，登录即可操作 */
+export function updateDemandProjects(id: number, projectIds: number[]) {
+  return requestClient.put<Api.Demand.Item>(`/api/demands/${id}/projects`, {
+    project_ids: projectIds,
+  });
 }

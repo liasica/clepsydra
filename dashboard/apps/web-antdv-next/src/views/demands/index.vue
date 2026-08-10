@@ -65,7 +65,7 @@ const [FormModal, formModalApi] = useVbenModal({
 async function load() {
   loading.value = true;
   try {
-    list.value = await fetchDemands(status.value);
+    list.value = await fetchDemands({ status: status.value });
   } finally {
     loading.value = false;
   }
