@@ -102,6 +102,7 @@ const columns: TableColumnsType<Api.Bill.Item> = [
     minWidth: 200,
     title: '需求标题',
   },
+  { key: 'projects', title: '项目', width: 160 },
   { key: 'billable', title: '类型', width: 90 },
   { key: 'demand_status', title: '状态快照', width: 120 },
   { key: 'half_days', title: '人天', width: 90 },
@@ -322,6 +323,15 @@ onMounted(load);
             <template v-if="column.key === 'billable'">
               <Tag :color="record.billable ? 'processing' : 'default'">
                 {{ record.billable ? '计费' : '展示' }}
+              </Tag>
+            </template>
+            <template v-else-if="column.key === 'projects'">
+              <Tag
+                v-for="p in record.projects"
+                :key="p.id"
+                :color="p.color || undefined"
+              >
+                {{ p.name }}
               </Tag>
             </template>
             <template v-else-if="column.key === 'demand_status'">
