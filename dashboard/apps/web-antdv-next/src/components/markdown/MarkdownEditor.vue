@@ -1,7 +1,14 @@
 <script lang="ts" setup>
 import type { BlockKind, InlineMark, ToolbarState } from './toolbar-actions';
 
-import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import {
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue';
 
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import {
@@ -431,6 +438,10 @@ defineExpose({
     />
     <!-- Crepe 实例保持常驻，切到源码模式时仅隐藏，避免反复重建 -->
     <div v-show="!sourceMode" ref="hostRef"></div>
-    <div v-show="sourceMode" ref="sourceHostRef" class="clepsydra-md-source"></div>
+    <div
+      v-show="sourceMode"
+      ref="sourceHostRef"
+      class="clepsydra-md-source"
+    ></div>
   </div>
 </template>

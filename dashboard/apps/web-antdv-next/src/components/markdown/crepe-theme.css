@@ -400,9 +400,6 @@
 }
 
 .clepsydra-md-editor .clepsydra-md-source .cm-selectionBackground,
-.clepsydra-md-editor
-  .clepsydra-md-source
-  .cm-focused
-  .cm-selectionBackground {
+.clepsydra-md-editor .clepsydra-md-source .cm-focused .cm-selectionBackground {
   background: var(--md-selection);
 }
