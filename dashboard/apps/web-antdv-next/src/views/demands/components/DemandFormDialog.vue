@@ -1,21 +1,32 @@
 <script lang="ts" setup>
 import type { FormInstance, FormProps } from 'antdv-next';
+import type { Dayjs } from 'dayjs';
 
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 
 import { useVbenModal } from '@vben/common-ui';
+import { useUserStore } from '@vben/stores';
 
-import { Form, FormItem, Input } from 'antdv-next';
+import {
+  Checkbox,
+  DatePicker,
+  Form,
+  FormItem,
+  Input,
+  InputNumber,
+} from 'antdv-next';
 
 import { createDemand, updateDemand } from '#/api/demand';
 import { MarkdownEditor } from '#/components/markdown';
+import { mandayToHalfDays } from '#/utils/clepsydra/manday';
 import { isStatusConflict, showSuccess } from '#/utils/http/error';
 
 /**
  * 需求创建 / 编辑弹窗
  *
- * 按后端 b5dd325 之后的契约，表单只有标题与描述两项：预估人天与预计开工日期由
- * 「提交人天确认」单独填写，人天确认后（confirmed 及之后）标题与描述都会被后端锁定，
+ * 表单基础项只有标题与描述；创建模式下超管额外可见预估三项（预估人天 / 预计开工 / 已确认），
+ * 这是创建 + 提交预估（+ 代确认）的一步式快捷路径。编辑模式不出现预估项：人天的后续修改
+ * 走「提交人天确认」入口，人天确认后（confirmed 及之后）标题与描述都会被后端锁定，
  * 因此本弹窗只在 draft / pending_estimate 两个状态下可达
  */
 defineOptions({ name: 'DemandFormDialog' });
@@ -30,6 +41,12 @@ const emit = defineEmits<{
 /** 编辑对象，为空即创建模式 */
 const demand = ref<Api.Demand.Item>();
 const formRef = ref<FormInstance>();
+const userStore = useUserStore();
+
+/** 预估三项仅创建模式且超管可见，与后端 403 校验对齐 */
+const showEstimate = computed(
+  () => !demand.value && userStore.userRoles.includes('admin'),
+);
 
 /**
  * markdown 编辑器挂载开关
@@ -40,11 +57,33 @@ const formRef = ref<FormInstance>();
 const editorMounted = ref(false);
 
 const form = reactive({
+  confirmed: false,
   description: '',
+  manday: undefined as number | undefined,
+  plannedStartDate: undefined as Dayjs | undefined,
   title: '',
 });
 
 const rules: FormProps['rules'] = {
+  manday: [
+    {
+      trigger: 'change',
+      // 人天以整数半天数存储（1 人天 = 2），非 0.5 整数倍会被 mandayToHalfDays
+      // 静默四舍五入，导致入账人天与用户输入不符——这里直接拒绝，而不是悄悄纠正；
+      // 勾选已确认后人天成为必填（后端同样拒绝无人天的确认）
+      validator: async (_rule, value: null | number | undefined) => {
+        if (value === null || value === undefined) {
+          if (form.confirmed) {
+            throw new Error('勾选已确认后必须填写预估人天');
+          }
+          return;
+        }
+        if (!Number.isInteger(value * 2)) {
+          throw new TypeError('人天须为 0.5 的整数倍');
+        }
+      },
+    },
+  ],
   title: [{ message: '请输入需求标题', required: true, trigger: 'blur' }],
 };
 
@@ -60,13 +99,23 @@ const [Modal, modalApi] = useVbenModal({
     demand.value = target;
     form.title = target?.title ?? '';
     form.description = target?.description ?? '';
+    form.manday = undefined;
+    form.plannedStartDate = undefined;
+    form.confirmed = false;
     formRef.value?.clearValidate();
     modalApi.setState({ title: target ? '编辑需求' : '新建需求' });
     editorMounted.value = true;
   },
 });
 
-/** 保存：有编辑对象走更新，否则创建 */
+/** 勾选已确认后立即触发人天必填校验，取消勾选则清除该项报错 */
+function onConfirmedChange() {
+  formRef.value?.validateFields(['manday']).catch(() => {
+    // 校验失败的提示已由 FormItem 就地展示
+  });
+}
+
+/** 保存：有编辑对象走更新，否则创建（超管可携带预估三项） */
 async function save() {
   try {
     await formRef.value?.validate();
@@ -77,10 +126,19 @@ async function save() {
 
   modalApi.lock();
   try {
-    const params: Api.Demand.SaveParams = {
+    const params: Api.Demand.CreateParams = {
       description: form.description || undefined,
       title: form.title.trim(),
     };
+    if (
+      showEstimate.value &&
+      form.manday !== undefined &&
+      form.manday !== null
+    ) {
+      params.estimated_half_days = mandayToHalfDays(form.manday);
+      params.planned_start_date = form.plannedStartDate?.format('YYYY-MM-DD');
+      params.confirmed = form.confirmed || undefined;
+    }
     await (demand.value
       ? updateDemand(demand.value.id, params)
       : createDemand(params));
@@ -117,6 +175,35 @@ async function save() {
           show-count
         />
       </FormItem>
+      <template v-if="showEstimate">
+        <FormItem label="预估人天" name="manday">
+          <InputNumber
+            v-model:value="form.manday"
+            :min="0.5"
+            :precision="1"
+            :step="0.5"
+            class="w-full"
+            placeholder="可留空；填写后创建即进入待确认，0.5 的整数倍"
+          />
+        </FormItem>
+        <FormItem label="预计开工" name="plannedStartDate">
+          <DatePicker
+            v-model:value="form.plannedStartDate"
+            :disabled="form.manday === undefined || form.manday === null"
+            allow-clear
+            class="w-full"
+            placeholder="可留空，须与预估人天同时填写"
+          />
+        </FormItem>
+        <FormItem :colon="false" label=" " name="confirmed">
+          <Checkbox
+            v-model:checked="form.confirmed"
+            @change="onConfirmedChange"
+          >
+            已确认（创建后直接完成人天确认，无需需求方再确认）
+          </Checkbox>
+        </FormItem>
+      </template>
       <FormItem label="描述" name="description">
         <MarkdownEditor v-if="editorMounted" v-model="form.description" />
       </FormItem>

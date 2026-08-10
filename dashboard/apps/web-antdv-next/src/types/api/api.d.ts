@@ -80,12 +80,22 @@ declare namespace Api {
     }
 
     /**
-     * 创建与更新共用请求体，仅标题与描述
+     * 更新需求请求体，仅标题与描述
      * 预估人天与预计开工日期由提交人天确认（submit-estimate）时填写，不在此处
      */
     interface SaveParams {
       title: string;
       description?: string;
+    }
+
+    /**
+     * 创建需求请求体；预估三字段是超级管理员专属的可选快捷路径：
+     * 填了人天创建即进入 pending_estimate，再带 confirmed 直达 confirmed（确认人记为创建者）
+     */
+    interface CreateParams extends SaveParams {
+      estimated_half_days?: number;
+      planned_start_date?: string;
+      confirmed?: boolean;
     }
 
     /** 提交预估人天请求体，pending_estimate 状态下可重复提交修正预估 */

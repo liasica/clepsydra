@@ -12,8 +12,8 @@ export function fetchDemand(id: number) {
   return requestClient.get<Api.Demand.Item>(`/api/demands/${id}`);
 }
 
-/** 创建需求，仅标题与描述；预估人天与预计开工由提交人天确认时填写，登录即可操作，需求方也可创建 */
-export function createDemand(params: Api.Demand.SaveParams) {
+/** 创建需求；登录即可操作，需求方仅可提交标题与描述，超管可携带预估人天并勾选已确认直达 confirmed */
+export function createDemand(params: Api.Demand.CreateParams) {
   return requestClient.post<Api.Demand.Item>('/api/demands', params);
 }
 
