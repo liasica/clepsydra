@@ -53,6 +53,8 @@ type DemandHandler interface {
 type BillHandler interface {
 	List(c echo.Context) error
 	Get(c echo.Context) error
+	Update(c echo.Context) error
+	UpdateItem(c echo.Context) error
 	Generate(c echo.Context) error
 	ToggleWaive(c echo.Context) error
 	Confirm(c echo.Context) error
@@ -142,6 +144,8 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	adminGroup.DELETE("/bills/:id/items/:itemId", h.Bill.RemoveItem)
 	adminGroup.POST("/bills/:id/pay", h.Bill.Pay)
 	adminGroup.POST("/bills/:id/items/:itemId/waive", h.Bill.ToggleWaive)
+	adminGroup.PATCH("/bills/:id", h.Bill.Update)
+	adminGroup.PATCH("/bills/:id/items/:itemId", h.Bill.UpdateItem)
 	adminGroup.GET("/audit-logs", h.AuditLog.List)
 
 	// 前端静态资源与 SPA 回退，挂在最后避免遮蔽具体路由

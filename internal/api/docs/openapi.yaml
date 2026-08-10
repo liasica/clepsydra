@@ -365,6 +365,60 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
+    patch:
+      tags: [Bills]
+      operationId: billsUpdate
+      summary: 编辑账单
+      description: 编辑账单头字段，缺省字段不修改；单价变更按新单价重算全部计费未减免明细金额；指定 total_amount 直接覆盖总额并锁定，reset_total 恢复公式计算；已支付账单拒绝，修改不重置确认状态（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: 账单名称，非空
+                daily_rate:
+                  type: integer
+                  description: 人天单价，单位元，必须为正偶数
+                base_fee:
+                  type: integer
+                  description: 基础维护费，单位元，非负整数
+                confirm_deadline:
+                  type: string
+                  format: date-time
+                  description: 需求方确认截止时间，RFC3339 格式
+                total_amount:
+                  type: integer
+                  description: 直接覆盖账单总额并锁定（total_override 置位），单位元，非负，与 reset_total 互斥
+                reset_total:
+                  type: boolean
+                  description: 清除总额手工锁定并按公式重算
+      responses:
+        '200':
+          description: 编辑成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /api/bills/{id}/confirm:
     post:
@@ -988,6 +1042,56 @@ paths:
           $ref: '#/components/responses/InvalidTransition'
         '500':
           $ref: '#/components/responses/ServerError'
+    patch:
+      tags: [Bills]
+      operationId: billsUpdateItem
+      summary: 编辑账单明细
+      description: 编辑明细行人天、金额、备注，缺省字段不修改；计费未减免行只改人天时金额按账单快照单价联动重算；减免行金额恒为 0 不可修改；已支付账单拒绝（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BillID'
+        - name: itemId
+          in: path
+          required: true
+          description: 账单明细 ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                half_days:
+                  type: integer
+                  description: 人天，单位半天数，非负整数
+                amount:
+                  type: integer
+                  description: 金额，单位元，非负整数
+                note:
+                  type: string
+                  description: 备注
+      responses:
+        '200':
+          description: 编辑成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /api/bills/{id}/pay:
     post:
@@ -1521,6 +1625,9 @@ components:
         total_amount:
           type: integer
           description: 账单总金额，单位元，等于基础维护费加各计费行金额
+        total_override:
+          type: boolean
+          description: 总额是否被手工指定，置位后重算只更新人天合计不再触碰总额
         confirm_deadline:
           type: ["string", "null"]
           format: date-time

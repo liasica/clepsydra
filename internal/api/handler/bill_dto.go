@@ -17,6 +17,7 @@ type billDTO struct {
 	BaseFee         int           `json:"base_fee"`
 	TotalHalfDays   int           `json:"total_half_days"`
 	TotalAmount     int           `json:"total_amount"`
+	TotalOverride   bool          `json:"total_override"`
 	ConfirmDeadline *time.Time    `json:"confirm_deadline"`
 	ConfirmedAt     *time.Time    `json:"confirmed_at"`
 	ConfirmedBy     *int          `json:"confirmed_by"`
@@ -54,6 +55,7 @@ func newBillDTO(b *ent.Bill) billDTO {
 		BaseFee:         b.BaseFee,
 		TotalHalfDays:   b.TotalHalfDays,
 		TotalAmount:     b.TotalAmount,
+		TotalOverride:   b.TotalOverride,
 		ConfirmDeadline: b.ConfirmDeadline,
 		ConfirmedAt:     b.ConfirmedAt,
 		ConfirmedBy:     b.ConfirmedBy,

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 
@@ -211,6 +212,83 @@ func (h *Bill) Pay(c echo.Context) error {
 	}
 
 	if err = h.svc.Pay(c.Request().Context(), actor(c), id); err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, nil)
+}
+
+// updateBillRequest 编辑账单请求体，缺省字段不修改
+type updateBillRequest struct {
+	Name            *string `json:"name"`
+	DailyRate       *int    `json:"daily_rate"`
+	BaseFee         *int    `json:"base_fee"`
+	ConfirmDeadline *string `json:"confirm_deadline"` // RFC3339 时间
+	TotalAmount     *int    `json:"total_amount"`
+	ResetTotal      bool    `json:"reset_total"`
+}
+
+// updateItemRequest 编辑账单明细请求体，缺省字段不修改
+type updateItemRequest struct {
+	HalfDays *int    `json:"half_days"`
+	Amount   *int    `json:"amount"`
+	Note     *string `json:"note"`
+}
+
+// Update PATCH /api/bills/:id
+func (h *Bill) Update(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	var req updateBillRequest
+	if err = c.Bind(&req); err != nil {
+		return api.Fail(c, service.ErrBadRequest("参数错误"))
+	}
+
+	patch := service.BillUpdatePatch{
+		Name:        req.Name,
+		DailyRate:   req.DailyRate,
+		BaseFee:     req.BaseFee,
+		TotalAmount: req.TotalAmount,
+		ResetTotal:  req.ResetTotal,
+	}
+	if req.ConfirmDeadline != nil {
+		var deadline time.Time
+		deadline, err = time.Parse(time.RFC3339, *req.ConfirmDeadline)
+		if err != nil {
+			return api.Fail(c, service.ErrBadRequest("确认截止时间格式不合法"))
+		}
+		patch.ConfirmDeadline = &deadline
+	}
+
+	if err = h.svc.Update(c.Request().Context(), actor(c), id, patch); err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, nil)
+}
+
+// UpdateItem PATCH /api/bills/:id/items/:itemId
+func (h *Bill) UpdateItem(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	itemID, err := parseItemID(c)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	var req updateItemRequest
+	if err = c.Bind(&req); err != nil {
+		return api.Fail(c, service.ErrBadRequest("参数错误"))
+	}
+
+	patch := service.BillItemPatch{HalfDays: req.HalfDays, Amount: req.Amount, Note: req.Note}
+	if err = h.svc.UpdateItem(c.Request().Context(), actor(c), id, itemID, patch); err != nil {
 		return api.Fail(c, err)
 	}
 
