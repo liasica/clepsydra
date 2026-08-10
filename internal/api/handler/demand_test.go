@@ -270,3 +270,78 @@ func TestDemandFinishRequiresBothDates(t *testing.T) {
 		t.Errorf("缺少开工日期应返回 400, got %d", rec.Code)
 	}
 }
+
+// TestDemandCreateWithEstimateHandler 创建接口携带预估字段的权限与校验
+func TestDemandCreateWithEstimateHandler(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:hdemandcreateest?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	_ = service.Seed(ctx, client, config.Admin{Username: "a", Password: "admin123"}, nil)
+
+	settingSvc := service.NewSetting(client)
+	svc := service.NewDemand(client, settingSvc, service.NewAudit(client))
+	h := NewDemand(svc)
+	e := echo.New()
+
+	// 超管带人天 + 日期 + 已确认 → 创建即 confirmed
+	c, rec := newDemandTestContext(e, http.MethodPost, "/api/demands",
+		`{"title":"快捷创建","estimated_half_days":4,"planned_start_date":"2026-09-01","confirmed":true}`)
+	if err := h.Create(c); err != nil {
+		t.Fatalf("快捷创建失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("HTTP 状态 = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	rows, err := svc.List(ctx, "confirmed")
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("confirmed 需求数 = %d, err = %v, want 1", len(rows), err)
+	}
+	if rows[0].EstimatedHalfDays != 4 || rows[0].EstimateConfirmedBy == nil || *rows[0].EstimateConfirmedBy != 1 {
+		t.Errorf("人天 = %d, 确认人 = %v, want 4 / 1", rows[0].EstimatedHalfDays, rows[0].EstimateConfirmedBy)
+	}
+
+	// 勾选已确认但未填人天 → 400
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands", `{"title":"缺人天","confirmed":true}`)
+	_ = h.Create(c)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("已确认缺人天应返回 400, got %d", rec.Code)
+	}
+
+	// 只填日期未填人天 → 400
+	c, rec = newDemandTestContext(e, http.MethodPost, "/api/demands",
+		`{"title":"缺人天带日期","planned_start_date":"2026-09-01"}`)
+	_ = h.Create(c)
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("只填日期应返回 400, got %d", rec.Code)
+	}
+
+	// 需求方携带预估字段 → 403
+	req := httptest.NewRequest(http.MethodPost, "/api/demands",
+		strings.NewReader(`{"title":"越权预估","estimated_half_days":4}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	c.Set("claims", &service.Claims{UserID: 2, Role: "client", Name: "需求方"})
+	_ = h.Create(c)
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("需求方携带预估字段应返回 403, got %d", rec.Code)
+	}
+
+	// 需求方不带预估字段 → 正常创建 draft
+	req = httptest.NewRequest(http.MethodPost, "/api/demands", strings.NewReader(`{"title":"需求方创建"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	c.Set("claims", &service.Claims{UserID: 2, Role: "client", Name: "需求方"})
+	if err = h.Create(c); err != nil {
+		t.Fatalf("需求方创建失败: %v", err)
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("需求方普通创建应成功, got %d, body = %s", rec.Code, rec.Body.String())
+	}
+	drafts, _ := svc.List(ctx, "draft")
+	if len(drafts) != 1 {
+		t.Errorf("draft 需求数 = %d, want 1", len(drafts))
+	}
+}

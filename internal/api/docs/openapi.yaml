@@ -156,7 +156,7 @@ paths:
       tags: [Demands]
       operationId: demandsCreate
       summary: 创建需求
-      description: 创建开发需求（项目），初始状态为 draft，仅需标题与描述，预估人天与预计开工由提交人天确认时填写；登录即可操作，需求方也可创建
+      description: 创建开发需求（项目），默认初始状态 draft；超级管理员可携带预估人天与预计开工（创建即进入 pending_estimate），再带 confirmed=true 直达 confirmed（确认人记为创建者）；需求方仅可提交标题与描述
       security:
         - bearerAuth: []
       requestBody:
@@ -164,7 +164,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DemandRequest'
+              $ref: '#/components/schemas/DemandCreateRequest'
       responses:
         '200':
           description: 创建成功
@@ -181,6 +181,8 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -1547,7 +1549,7 @@ components:
 
     DemandRequest:
       type: object
-      description: 创建与更新需求共用的请求体，仅标题与描述，预估人天与预计开工由提交人天确认时填写
+      description: 更新需求请求体，仅标题与描述
       required: [title]
       properties:
         title:
@@ -1556,6 +1558,28 @@ components:
         description:
           type: string
           description: 需求描述，markdown 原文
+
+    DemandCreateRequest:
+      type: object
+      description: 创建需求请求体；预估三字段为超级管理员专属，confirmed 或 planned_start_date 出现时 estimated_half_days 必须为正
+      required: [title]
+      properties:
+        title:
+          type: string
+          description: 需求标题，不能为空
+        description:
+          type: string
+          description: 需求描述，markdown 原文
+        estimated_half_days:
+          type: integer
+          description: 预估人天，单位半天数（1 人天 = 2）；填写后创建即进入 pending_estimate
+        planned_start_date:
+          type: string
+          format: date
+          description: 预计开工日期，格式 YYYY-MM-DD，必须与预估人天同时填写
+        confirmed:
+          type: boolean
+          description: 创建即确认人天，需求直达 confirmed，确认人记为创建者；仅超级管理员可用
 
     DemandEstimateRequest:
       type: object

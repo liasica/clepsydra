@@ -21,10 +21,19 @@ func NewDemand(svc *service.Demand) *Demand {
 	return &Demand{svc: svc}
 }
 
-// demandRequest 创建与更新共用的请求体
+// demandRequest 更新请求体，仅标题与描述
 type demandRequest struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
+}
+
+// demandCreateRequest 创建请求体；预估相关三个字段是超管专属的可选快捷路径
+type demandCreateRequest struct {
+	Title             string `json:"title"`
+	Description       string `json:"description"`
+	EstimatedHalfDays int    `json:"estimated_half_days"`
+	PlannedStartDate  string `json:"planned_start_date"`
+	Confirmed         bool   `json:"confirmed"`
 }
 
 // estimateRequest 提交人天确认请求体
@@ -105,12 +114,28 @@ func (h *Demand) Get(c echo.Context) error {
 
 // Create POST /api/demands
 func (h *Demand) Create(c echo.Context) error {
-	var req demandRequest
+	var req demandCreateRequest
 	if err := c.Bind(&req); err != nil {
 		return api.Fail(c, service.ErrBadRequest("参数错误"))
 	}
 
-	d, err := h.svc.Create(c.Request().Context(), actor(c), req.Title, req.Description, 0, nil, false)
+	// 预估相关字段是超管专属快捷路径，需求方创建仍只允许标题与描述
+	hasEstimate := req.EstimatedHalfDays != 0 || req.PlannedStartDate != "" || req.Confirmed
+	if hasEstimate && api.Claims(c).Role != "admin" {
+		return api.Fail(c, service.ErrForbidden)
+	}
+	// 日期与已确认都是预估的附属信息，必须依附正人天
+	if (req.Confirmed || req.PlannedStartDate != "") && req.EstimatedHalfDays <= 0 {
+		return api.Fail(c, service.ErrBadRequest("预估人天必须为正"))
+	}
+
+	planned, err := parseDate(req.PlannedStartDate)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	d, err := h.svc.Create(c.Request().Context(), actor(c), req.Title, req.Description,
+		req.EstimatedHalfDays, planned, req.Confirmed)
 	if err != nil {
 		return api.Fail(c, err)
 	}
