@@ -40,11 +40,12 @@ const formRef = ref<FormInstance>();
 
 const form = reactive({
   name: '',
-  dailyRate: 0,
-  baseFee: 0,
+  // antd InputNumber 清空后值为 null，需与 number 共存以承接真实运行时取值
+  dailyRate: 0 as null | number,
+  baseFee: 0 as null | number,
   confirmDeadline: undefined as Dayjs | undefined,
   overrideEnabled: false,
-  totalAmount: 0,
+  totalAmount: 0 as null | number,
 });
 
 const rules: FormProps['rules'] = {
@@ -82,22 +83,32 @@ const [Modal, modalApi] = useVbenModal({
   },
 });
 
-/** 构造 diff 请求体，未变更字段不提交 */
+/** 判断 InputNumber 取值是否为有效数字，清空后值为 null 需排除 */
+function isFiniteNumber(value: null | number | undefined): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+/** 构造 diff 请求体，未变更字段不提交；数字输入被清空为 null 时视为未修改，不写入请求体 */
 function buildPayload(target: Api.Bill.Detail): Api.Bill.UpdateParams {
   const payload: Api.Bill.UpdateParams = {};
   const name = form.name.trim();
   if (name !== target.name) payload.name = name;
-  if (form.dailyRate !== target.daily_rate) {
+  if (isFiniteNumber(form.dailyRate) && form.dailyRate !== target.daily_rate) {
     payload.daily_rate = form.dailyRate;
   }
-  if (form.baseFee !== target.base_fee) payload.base_fee = form.baseFee;
+  if (isFiniteNumber(form.baseFee) && form.baseFee !== target.base_fee) {
+    payload.base_fee = form.baseFee;
+  }
   const deadline = form.confirmDeadline?.toISOString();
   const current = target.confirm_deadline
     ? dayjs(target.confirm_deadline).toISOString()
     : undefined;
   if (deadline && deadline !== current) payload.confirm_deadline = deadline;
   if (form.overrideEnabled) {
-    if (!target.total_override || form.totalAmount !== target.total_amount) {
+    if (
+      isFiniteNumber(form.totalAmount) &&
+      (!target.total_override || form.totalAmount !== target.total_amount)
+    ) {
       payload.total_amount = form.totalAmount;
     }
   } else if (target.total_override) {
