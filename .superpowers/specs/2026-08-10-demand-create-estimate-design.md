@@ -36,7 +36,7 @@
 - `confirmed=true` 或填了 `planned_start_date`，但 `estimated_half_days` 未填或 ≤0 → **400**（日期与确认是预估的附属信息，必须跟随人天）
 - 非超管携带这三个字段中的任何一个 → **403**（创建接口本身仍对需求方开放）
 
-权限与参数校验统一在 **handler 层**完成（handler 可获取当前登录用户角色），service 层信任入参，不重复做角色判断。
+权限与参数校验统一在 **handler 层**完成（handler 可获取当前登录用户角色），service 层不做角色判断；但 service 保留业务不变量防御（confirmed 必须伴随正人天、人天不可为负），保证被测试或其他调用方直接调用时数据仍一致。
 
 ### Service 层（internal/service/demand.go）
 
