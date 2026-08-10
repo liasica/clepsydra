@@ -104,6 +104,11 @@ func (s *Project) Delete(ctx context.Context, actor Actor, id int) error {
 	}
 
 	if err = s.client.Project.DeleteOneID(id).Exec(ctx); err != nil {
+		// Get 与 DeleteOneID 之间存在并发删除窗口，命中时转 404 而非原生 NotFound 导致的 500
+		if ent.IsNotFound(err) {
+			return ErrNotFound
+		}
+
 		return err
 	}
 

@@ -110,6 +110,11 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 
 	d, err := create.Save(ctx)
 	if err != nil {
+		// 校验通过后写入前项目被并发删除会触发外键约束冲突，转为业务错误而非 500
+		if len(ids) > 0 && ent.IsConstraintError(err) {
+			return nil, ErrBadRequest("项目不存在")
+		}
+
 		return nil, err
 	}
 
@@ -149,6 +154,11 @@ func (s *Demand) UpdateProjects(ctx context.Context, actor Actor, id int, projec
 		return nil, ErrNotFound
 	}
 	if err != nil {
+		// 校验通过后写入前项目被并发删除会触发外键约束冲突，转为业务错误而非 500
+		if len(ids) > 0 && ent.IsConstraintError(err) {
+			return nil, ErrBadRequest("项目不存在")
+		}
+
 		return nil, err
 	}
 
