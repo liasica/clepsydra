@@ -31,7 +31,7 @@
 
 不使用 `SoftDeleteMixin`：项目是轻量标签，删除时物理删除并自动解除与需求的关联（M2M 中间表记录级联清除）。
 
-`Project` 与 `Demand` 建多对多 edge（ent M2M，自动生成中间表 `demand_projects`）：
+`Project` 与 `Demand` 建多对多 edge（ent M2M，edge 定义在 Project 侧，自动生成中间表 `project_demands`）：
 
 - `Project.demands` ↔ `Demand.projects`（`edge.From` 放在 `Demand` 侧或 `Project` 侧均可，按 ent 惯例 `Project` 定义 `To("demands")`，`Demand` 定义 `From("projects")`）
 - 需求软删除后不主动清理关联；需求列表/详情查询本身已过滤软删数据，关联记录保留无副作用
