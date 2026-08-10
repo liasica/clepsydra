@@ -52,15 +52,19 @@ describe('状态字典', () => {
     expect(Object.keys(BILL_STATUS)).toEqual(['pending', 'unpaid', 'paid']);
     expect(BILL_STATUS.pending.actions.admin).toEqual([
       'confirm',
+      'edit',
       'waive',
       'addItem',
+      'editItem',
       'removeItem',
     ]);
     expect(BILL_STATUS.pending.actions.client).toEqual(['confirm']);
     expect(BILL_STATUS.unpaid.actions.admin).toEqual([
       'pay',
+      'edit',
       'waive',
       'addItem',
+      'editItem',
       'removeItem',
     ]);
     expect(BILL_STATUS.unpaid.actions.client).toEqual([]);
