@@ -61,24 +61,58 @@ func (s *Demand) Get(ctx context.Context, id int) (*ent.Demand, error) {
 	return d, err
 }
 
-// Create 创建需求，初始状态 draft，预估人天与预计开工由提交人天确认时填写
-func (s *Demand) Create(ctx context.Context, actor Actor, title, description string) (*ent.Demand, error) {
+// Create 创建需求；预估人天为超管专属的可选快捷路径：
+// 填了人天创建即进入 pending_estimate（等价创建 + 提交预估一步完成），
+// confirmed 再直达 confirmed（等价超管代确认，确认人记为创建者本人）。
+// INSERT 一次性写入终态，无并发流转问题，故不经过 transit 状态机。
+// 角色权限与「日期 / 已确认必须依附人天」由 handler 层校验，这里只保留业务不变量防御
+func (s *Demand) Create(ctx context.Context, actor Actor, title, description string, estimatedHalfDays int, plannedStart *time.Time, confirmed bool) (*ent.Demand, error) {
 	if title == "" {
 		return nil, ErrBadRequest("标题不能为空")
 	}
+	if estimatedHalfDays < 0 {
+		return nil, ErrBadRequest("预估人天必须为正")
+	}
+	if confirmed && estimatedHalfDays == 0 {
+		return nil, ErrBadRequest("勾选已确认时预估人天必须为正")
+	}
 
-	d, err := s.client.Demand.Create().
+	create := s.client.Demand.Create().
 		SetTitle(title).
 		SetDescription(description).
-		SetEstimatedHalfDays(0).
-		Save(ctx)
+		SetEstimatedHalfDays(estimatedHalfDays)
+
+	now := time.Now()
+	switch {
+	case confirmed:
+		create.SetStatus(demand.StatusConfirmed).
+			SetEstimateConfirmedAt(now).
+			SetEstimateConfirmedBy(actor.ID)
+	case estimatedHalfDays > 0:
+		create.SetStatus(demand.StatusPendingEstimate)
+	}
+	if plannedStart != nil {
+		create.SetPlannedStartDate(*plannedStart)
+	}
+
+	d, err := create.Save(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	s.audit.Record(ctx, actor, "demand.create", "demand", d.ID, map[string]any{
-		"title": title,
-	})
+	payload := map[string]any{
+		"title":               title,
+		"estimated_half_days": estimatedHalfDays,
+		"confirmed":           confirmed,
+	}
+	if plannedStart != nil {
+		payload["planned_start_date"] = plannedStart.Format("2006-01-02")
+	}
+	s.audit.Record(ctx, actor, "demand.create", "demand", d.ID, payload)
+	// 创建即确认补写确认审计，避免审计时间线里 confirmed 状态凭空出现
+	if confirmed {
+		s.audit.Record(ctx, actor, "demand.confirm_estimate", "demand", d.ID, nil)
+	}
 
 	return d, nil
 }

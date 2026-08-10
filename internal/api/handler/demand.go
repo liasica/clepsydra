@@ -110,7 +110,7 @@ func (h *Demand) Create(c echo.Context) error {
 		return api.Fail(c, service.ErrBadRequest("参数错误"))
 	}
 
-	d, err := h.svc.Create(c.Request().Context(), actor(c), req.Title, req.Description)
+	d, err := h.svc.Create(c.Request().Context(), actor(c), req.Title, req.Description, 0, nil, false)
 	if err != nil {
 		return api.Fail(c, err)
 	}

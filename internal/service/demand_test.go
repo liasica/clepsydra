@@ -50,7 +50,7 @@ func TestDemandLifecycle(t *testing.T) {
 	ctx := context.Background()
 
 	// 创建 → 提交预估 → 确认预估 → 开工 → 完成 → 验收
-	d, err := svc.Create(ctx, admin, "新功能", "描述")
+	d, err := svc.Create(ctx, admin, "新功能", "描述", 0, nil, false)
 	if err != nil {
 		t.Fatalf("创建失败: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestDemandInvalidTransition(t *testing.T) {
 	_, svc := newDemandEnv(t, "dinvalid")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false)
 
 	// draft 不能直接验收
 	if err := svc.Accept(ctx, clientActor, d.ID, false, false); err == nil {
@@ -112,7 +112,7 @@ func TestDemandFinishValidation(t *testing.T) {
 	_, svc := newDemandEnv(t, "dfinish")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false)
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, 2, nil)
 	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
 	_ = svc.Start(ctx, admin, d.ID, time.Now())
@@ -134,7 +134,7 @@ func TestDemandCreateWithoutEstimate(t *testing.T) {
 	_, svc := newDemandEnv(t, "dcreatenoest")
 	ctx := context.Background()
 
-	d, err := svc.Create(ctx, admin, "新需求", "描述")
+	d, err := svc.Create(ctx, admin, "新需求", "描述", 0, nil, false)
 	if err != nil {
 		t.Fatalf("创建失败: %v", err)
 	}
@@ -142,7 +142,7 @@ func TestDemandCreateWithoutEstimate(t *testing.T) {
 		t.Errorf("status = %s, estimated = %d, want draft/0", d.Status, d.EstimatedHalfDays)
 	}
 
-	if _, err = svc.Create(ctx, admin, "", ""); err == nil {
+	if _, err = svc.Create(ctx, admin, "", "", 0, nil, false); err == nil {
 		t.Error("空标题应拒绝")
 	}
 }
@@ -152,7 +152,7 @@ func TestDemandSubmitEstimateWithData(t *testing.T) {
 	_, svc := newDemandEnv(t, "dsubmitdata")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false)
 
 	if err := svc.SubmitEstimate(ctx, admin, d.ID, 0, nil); err == nil {
 		t.Error("预估人天为 0 应拒绝")
@@ -188,7 +188,7 @@ func TestDemandUpdateOnlyTitleDescription(t *testing.T) {
 	_, svc := newDemandEnv(t, "dupdatenarrow")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "旧描述")
+	d, _ := svc.Create(ctx, admin, "需求", "旧描述", 0, nil, false)
 	planned := time.Date(2026, 9, 1, 0, 0, 0, 0, time.Local)
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, 4, &planned)
 
@@ -201,5 +201,66 @@ func TestDemandUpdateOnlyTitleDescription(t *testing.T) {
 	}
 	if updated.EstimatedHalfDays != 4 || updated.PlannedStartDate == nil {
 		t.Error("更新不应触碰预估人天与预计开工")
+	}
+}
+
+// TestDemandCreateWithEstimate 创建时携带预估人天的三种落点与不变量校验
+func TestDemandCreateWithEstimate(t *testing.T) {
+	client, svc := newDemandEnv(t, "dcreateest")
+	ctx := context.Background()
+
+	// 带人天与日期创建 → pending_estimate，字段落库
+	planned := time.Date(2026, 9, 1, 0, 0, 0, 0, time.Local)
+	d, err := svc.Create(ctx, admin, "带预估", "", 4, &planned, false)
+	if err != nil {
+		t.Fatalf("带预估创建失败: %v", err)
+	}
+	d = svc.mustGet(ctx, t, d.ID)
+	if d.Status != demand.StatusPendingEstimate || d.EstimatedHalfDays != 4 {
+		t.Errorf("状态 = %s, 人天 = %d, want pending_estimate / 4", d.Status, d.EstimatedHalfDays)
+	}
+	if d.PlannedStartDate == nil || !d.PlannedStartDate.Equal(planned) {
+		t.Errorf("预计开工 = %v, want %v", d.PlannedStartDate, planned)
+	}
+	if d.EstimateConfirmedAt != nil {
+		t.Error("未勾选已确认不应写确认时间")
+	}
+
+	// 带人天 + 已确认 → confirmed，确认人为创建者
+	d2, err := svc.Create(ctx, admin, "创建即确认", "", 6, nil, true)
+	if err != nil {
+		t.Fatalf("创建即确认失败: %v", err)
+	}
+	d2 = svc.mustGet(ctx, t, d2.ID)
+	if d2.Status != demand.StatusConfirmed || d2.EstimatedHalfDays != 6 {
+		t.Errorf("状态 = %s, 人天 = %d, want confirmed / 6", d2.Status, d2.EstimatedHalfDays)
+	}
+	if d2.EstimateConfirmedAt == nil || d2.EstimateConfirmedBy == nil || *d2.EstimateConfirmedBy != admin.ID {
+		t.Errorf("确认时间 = %v, 确认人 = %v, want 非空 / %d", d2.EstimateConfirmedAt, d2.EstimateConfirmedBy, admin.ID)
+	}
+
+	// 创建即确认应补写一条 demand.confirm_estimate 审计，时间线完整
+	if n := client.AuditLog.Query().Where(auditlog.Action("demand.confirm_estimate")).CountX(ctx); n != 1 {
+		t.Errorf("confirm_estimate 审计条数 = %d, want 1", n)
+	}
+
+	// 勾选已确认但人天为 0 → 拒绝
+	if _, err = svc.Create(ctx, admin, "缺人天", "", 0, nil, true); err == nil {
+		t.Error("已确认但人天为 0 应拒绝")
+	}
+
+	// 人天为负 → 拒绝
+	if _, err = svc.Create(ctx, admin, "负人天", "", -2, nil, false); err == nil {
+		t.Error("负人天应拒绝")
+	}
+
+	// 不带预估 → 保持 draft，行为与现状一致
+	d3, err := svc.Create(ctx, admin, "普通创建", "", 0, nil, false)
+	if err != nil {
+		t.Fatalf("普通创建失败: %v", err)
+	}
+	d3 = svc.mustGet(ctx, t, d3.ID)
+	if d3.Status != demand.StatusDraft || d3.EstimatedHalfDays != 0 {
+		t.Errorf("状态 = %s, 人天 = %d, want draft / 0", d3.Status, d3.EstimatedHalfDays)
 	}
 }

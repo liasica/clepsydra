@@ -59,7 +59,7 @@ func TestBillItemDisplayRowsNotLimited(t *testing.T) {
 	ctx := context.Background()
 
 	// 进行中需求作为展示行
-	d, _ := demandSvc.Create(ctx, admin, "进行中需求", "")
+	d, _ := demandSvc.Create(ctx, admin, "进行中需求", "", 0, nil, false)
 	_ = demandSvc.SubmitEstimate(ctx, admin, d.ID, 4, nil)
 	_ = demandSvc.ConfirmEstimate(ctx, clientActor, d.ID)
 	_ = demandSvc.Start(ctx, admin, d.ID, time.Date(2026, 7, 25, 0, 0, 0, 0, time.Local))

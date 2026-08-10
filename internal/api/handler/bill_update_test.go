@@ -33,7 +33,7 @@ func newBillUpdateEnv(t *testing.T, name string) (*ent.Client, *Bill, *service.B
 	billSvc := service.NewBill(client, settingSvc, demandSvc, audit)
 
 	act := service.Actor{ID: 1, Name: "管理员"}
-	d, _ := demandSvc.Create(ctx, act, "结算需求", "")
+	d, _ := demandSvc.Create(ctx, act, "结算需求", "", 0, nil, false)
 	_ = demandSvc.SubmitEstimate(ctx, act, d.ID, 4, nil)
 	_ = demandSvc.ConfirmEstimate(ctx, act, d.ID)
 	start := time.Date(2026, 7, 10, 0, 0, 0, 0, time.Local)

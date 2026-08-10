@@ -45,7 +45,7 @@ func TestDemandSkipStageRejected(t *testing.T) {
 	_, svc := newDemandEnv(t, "dskip")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false)
 
 	// draft 不能直接确认预估（跳过 submit_estimate）
 	if err := svc.ConfirmEstimate(ctx, clientActor, d.ID); err == nil {
@@ -86,7 +86,7 @@ func TestDemandTransitConcurrentSafety(t *testing.T) {
 	_, svc := newDemandEnv(t, "dconcurrent")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false)
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, 2, nil)
 
 	const n = 10
@@ -126,7 +126,7 @@ func TestDemandUpdateStatusGuard(t *testing.T) {
 	client, svc := newDemandEnv(t, "dupdateguard")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false)
 
 	// draft 状态允许更新
 	if _, err := svc.Update(ctx, admin, d.ID, "新标题", "新描述"); err != nil {
@@ -165,7 +165,7 @@ func TestDemandFinishDeadlineCalculation(t *testing.T) {
 	client, svc := newDemandEnv(t, "ddeadline")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false)
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, 2, nil)
 	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
 	_ = svc.Start(ctx, admin, d.ID, time.Now())
@@ -202,7 +202,7 @@ func TestDemandConfirmEstimateRecordsActor(t *testing.T) {
 	_, svc := newDemandEnv(t, "dconfirmactor")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false)
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, 2, nil)
 	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
 
@@ -220,7 +220,7 @@ func TestDemandAcceptAutoLockedFlags(t *testing.T) {
 	_, svc := newDemandEnv(t, "dacceptflags")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false)
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, 2, nil)
 	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
 	_ = svc.Start(ctx, admin, d.ID, time.Now())
@@ -258,8 +258,8 @@ func TestDemandListFilterByStatus(t *testing.T) {
 	_, svc := newDemandEnv(t, "dlistfilter")
 	ctx := context.Background()
 
-	d1, _ := svc.Create(ctx, admin, "需求一", "")
-	d2, _ := svc.Create(ctx, admin, "需求二", "")
+	d1, _ := svc.Create(ctx, admin, "需求一", "", 0, nil, false)
+	d2, _ := svc.Create(ctx, admin, "需求二", "", 0, nil, false)
 	_ = svc.SubmitEstimate(ctx, admin, d2.ID, 2, nil)
 
 	drafts, err := svc.List(ctx, "draft")
@@ -286,7 +286,7 @@ func TestDemandFinishAllowsFutureDate(t *testing.T) {
 	_, svc := newDemandEnv(t, "dfinishfuture")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false)
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, 2, nil)
 	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
 	_ = svc.Start(ctx, admin, d.ID, time.Now())
@@ -303,7 +303,7 @@ func TestDemandFinishIgnoresBills(t *testing.T) {
 	client, svc := newDemandEnv(t, "dfinishopen")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false)
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, 2, nil)
 	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
 	start := time.Date(2026, 7, 5, 0, 0, 0, 0, time.Local)
