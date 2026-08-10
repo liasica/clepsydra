@@ -70,6 +70,19 @@ const form = reactive({
 /** 项目多选选项，弹窗每次打开时刷新 */
 const projectOptions = ref<{ label: string; value: number }[]>([]);
 
+/**
+ * 弹窗打开时记录的初始项目标签指纹（排序后 join 成串）
+ *
+ * 保存时与当前选择比对（顺序无关），标签未变化就不调用 updateDemandProjects，
+ * 避免编辑保存无条件重写关联并落一条冗余的 demand.update_projects 审计
+ */
+const initialProjectIdsKey = ref('');
+
+/** 将项目 ID 数组归一化成排序后的指纹串，用于比对是否发生变化 */
+function projectIdsKey(ids: number[]) {
+  return ids.toSorted((a, b) => a - b).join(',');
+}
+
 /** 加载项目选项，失败不阻塞表单其余部分 */
 async function loadProjectOptions() {
   try {
@@ -122,6 +135,7 @@ const [Modal, modalApi] = useVbenModal({
     form.plannedStartDate = undefined;
     form.confirmed = false;
     form.projectIds = (target?.edges?.projects ?? []).map((p) => p.id);
+    initialProjectIdsKey.value = projectIdsKey(form.projectIds);
     void loadProjectOptions();
     formRef.value?.clearValidate();
     modalApi.setState({ title: target ? '编辑需求' : '新建需求' });
@@ -162,8 +176,10 @@ async function save() {
     }
     if (demand.value) {
       await updateDemand(demand.value.id, params);
-      // 标签走独立接口，与标题描述的状态锁定解耦
-      await updateDemandProjects(demand.value.id, form.projectIds);
+      // 标签走独立接口，与标题描述的状态锁定解耦；未变化则不调用，避免冗余审计
+      if (projectIdsKey(form.projectIds) !== initialProjectIdsKey.value) {
+        await updateDemandProjects(demand.value.id, form.projectIds);
+      }
     } else {
       params.project_ids =
         form.projectIds.length > 0 ? form.projectIds : undefined;
