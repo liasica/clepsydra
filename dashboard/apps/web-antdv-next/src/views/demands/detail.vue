@@ -34,6 +34,7 @@ import { isStatusConflict, showSuccess } from '#/utils/http/error';
 import DemandEstimateDialog from './components/DemandEstimateDialog.vue';
 import DemandFinishDialog from './components/DemandFinishDialog.vue';
 import DemandFormDialog from './components/DemandFormDialog.vue';
+import DemandProjectsDialog from './components/DemandProjectsDialog.vue';
 import DemandStartDialog from './components/DemandStartDialog.vue';
 
 /**
@@ -88,6 +89,9 @@ const [StartModal, startModalApi] = useVbenModal({
 });
 const [FinishModal, finishModalApi] = useVbenModal({
   connectedComponent: DemandFinishDialog,
+});
+const [ProjectsModal, projectsModalApi] = useVbenModal({
+  connectedComponent: DemandProjectsDialog,
 });
 
 /** 加载详情 */
@@ -259,6 +263,22 @@ onMounted(load);
             <DescriptionsItem label="更新时间">
               {{ formatDateTime(demand.updated_at) }}
             </DescriptionsItem>
+            <DescriptionsItem :span="2" label="项目">
+              <Tag
+                v-for="p in demand.edges?.projects ?? []"
+                :key="p.id"
+                :color="p.color || undefined"
+              >
+                {{ p.name }}
+              </Tag>
+              <Button
+                size="small"
+                type="link"
+                @click="projectsModalApi.setData({ demand }).open()"
+              >
+                编辑标签
+              </Button>
+            </DescriptionsItem>
           </Descriptions>
 
           <Space v-if="actions.length > 0" class="mt-4">
@@ -285,5 +305,6 @@ onMounted(load);
     <EstimateModal @conflict="load" @success="load" />
     <StartModal @conflict="load" @success="load" />
     <FinishModal @conflict="load" @success="load" />
+    <ProjectsModal @success="load" />
   </Page>
 </template>

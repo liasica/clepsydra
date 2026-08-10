@@ -14,9 +14,11 @@ import {
   FormItem,
   Input,
   InputNumber,
+  Select,
 } from 'antdv-next';
 
-import { createDemand, updateDemand } from '#/api/demand';
+import { createDemand, updateDemand, updateDemandProjects } from '#/api/demand';
+import { fetchProjects } from '#/api/project';
 import { MarkdownEditor } from '#/components/markdown';
 import { mandayToHalfDays } from '#/utils/clepsydra/manday';
 import { isStatusConflict, showSuccess } from '#/utils/http/error';
@@ -61,8 +63,25 @@ const form = reactive({
   description: '',
   manday: undefined as null | number | undefined,
   plannedStartDate: undefined as Dayjs | undefined,
+  projectIds: [] as number[],
   title: '',
 });
+
+/** 项目多选选项，弹窗每次打开时刷新 */
+const projectOptions = ref<{ label: string; value: number }[]>([]);
+
+/** 加载项目选项，失败不阻塞表单其余部分 */
+async function loadProjectOptions() {
+  try {
+    const projects = await fetchProjects();
+    projectOptions.value = projects.map((p) => ({
+      label: p.name,
+      value: p.id,
+    }));
+  } catch {
+    // 错误提示已由请求拦截器统一弹出
+  }
+}
 
 const rules: FormProps['rules'] = {
   manday: [
@@ -102,6 +121,8 @@ const [Modal, modalApi] = useVbenModal({
     form.manday = undefined;
     form.plannedStartDate = undefined;
     form.confirmed = false;
+    form.projectIds = (target?.edges?.projects ?? []).map((p) => p.id);
+    void loadProjectOptions();
     formRef.value?.clearValidate();
     modalApi.setState({ title: target ? '编辑需求' : '新建需求' });
     editorMounted.value = true;
@@ -139,9 +160,15 @@ async function save() {
       params.planned_start_date = form.plannedStartDate?.format('YYYY-MM-DD');
       params.confirmed = form.confirmed || undefined;
     }
-    await (demand.value
-      ? updateDemand(demand.value.id, params)
-      : createDemand(params));
+    if (demand.value) {
+      await updateDemand(demand.value.id, params);
+      // 标签走独立接口，与标题描述的状态锁定解耦
+      await updateDemandProjects(demand.value.id, form.projectIds);
+    } else {
+      params.project_ids =
+        form.projectIds.length > 0 ? form.projectIds : undefined;
+      await createDemand(params);
+    }
     showSuccess('已保存');
     emit('success');
     modalApi.close();
@@ -173,6 +200,15 @@ async function save() {
           :maxlength="200"
           placeholder="一句话说明这个需求要做什么"
           show-count
+        />
+      </FormItem>
+      <FormItem label="项目" name="projectIds">
+        <Select
+          v-model:value="form.projectIds"
+          :options="projectOptions"
+          allow-clear
+          mode="multiple"
+          placeholder="选择所属项目（可多选，可留空）"
         />
       </FormItem>
       <template v-if="showEstimate">

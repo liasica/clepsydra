@@ -11,6 +11,7 @@ import { Page, useVbenModal } from '@vben/common-ui';
 import { Button, Select, Table, Tag } from 'antdv-next';
 
 import { fetchDemands } from '#/api/demand';
+import { fetchProjects } from '#/api/project';
 import { formatDate, formatDateTime } from '#/utils/clepsydra/date';
 import { DEMAND_STATUS, tagColor } from '#/utils/clepsydra/dict';
 import { formatManday } from '#/utils/clepsydra/manday';
@@ -40,6 +41,10 @@ const statusOptions = Object.entries(DEMAND_STATUS).map(([value, meta]) => ({
   value,
 }));
 
+/** 项目筛选，undefined 表示全部 */
+const projectId = ref<number | undefined>(undefined);
+const projectOptions = ref<{ label: string; value: number }[]>([]);
+
 const columns: TableColumnsType<Api.Demand.Item> = [
   { dataIndex: 'id', key: 'id', title: 'ID', width: 72 },
   {
@@ -49,6 +54,7 @@ const columns: TableColumnsType<Api.Demand.Item> = [
     minWidth: 220,
     title: '标题',
   },
+  { key: 'projects', title: '项目', width: 180 },
   { key: 'estimated', title: '预估人天', width: 100 },
   { key: 'actual', title: '实际人天', width: 100 },
   // 日期列宽需容下「2026-08-20」「2026-08-05 18:30」加单元格左右内边距，否则会折行
@@ -65,7 +71,10 @@ const [FormModal, formModalApi] = useVbenModal({
 async function load() {
   loading.value = true;
   try {
-    list.value = await fetchDemands({ status: status.value });
+    list.value = await fetchDemands({
+      project_id: projectId.value,
+      status: status.value,
+    });
   } finally {
     loading.value = false;
   }
@@ -88,20 +97,42 @@ function onRow(record: Api.Demand.Item) {
   };
 }
 
-onMounted(load);
+onMounted(() => {
+  void load();
+  fetchProjects()
+    .then((projects) => {
+      projectOptions.value = projects.map((p) => ({
+        label: p.name,
+        value: p.id,
+      }));
+    })
+    .catch(() => {
+      // 错误提示已由请求拦截器统一弹出
+    });
+});
 </script>
 
 <template>
   <Page>
     <div class="mb-4 flex items-center justify-between">
-      <Select
-        v-model:value="status"
-        :options="statusOptions"
-        allow-clear
-        class="w-45"
-        placeholder="全部状态"
-        @change="load"
-      />
+      <div class="flex items-center gap-2">
+        <Select
+          v-model:value="status"
+          :options="statusOptions"
+          allow-clear
+          class="w-45"
+          placeholder="全部状态"
+          @change="load"
+        />
+        <Select
+          v-model:value="projectId"
+          :options="projectOptions"
+          allow-clear
+          class="w-45"
+          placeholder="全部项目"
+          @change="load"
+        />
+      </div>
       <Button type="primary" @click="openCreate">新建需求</Button>
     </div>
 
@@ -115,7 +146,16 @@ onMounted(load);
       row-key="id"
     >
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'estimated'">
+        <template v-if="column.key === 'projects'">
+          <Tag
+            v-for="p in record.edges?.projects ?? []"
+            :key="p.id"
+            :color="p.color || undefined"
+          >
+            {{ p.name }}
+          </Tag>
+        </template>
+        <template v-else-if="column.key === 'estimated'">
           {{ formatManday(record.estimated_half_days) }}
         </template>
         <template v-else-if="column.key === 'actual'">
