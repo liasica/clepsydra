@@ -11,6 +11,7 @@ import (
 	"clepsydra/internal/ent/bill"
 	"clepsydra/internal/ent/billitem"
 	"clepsydra/internal/ent/demand"
+	"clepsydra/internal/ent/schema"
 	"clepsydra/internal/workday"
 )
 
@@ -664,6 +665,38 @@ func (s *Bill) RemoveItem(ctx context.Context, actor Actor, billID, itemID int) 
 type SelectableDemands struct {
 	Billable []*ent.Demand // 已验收且未被计费，加入后为计费行
 	Display  []*ent.Demand // 已确认待开工/进行中，加入后为展示行
+}
+
+// ItemProjects 按明细行的 demand_id 批量取需求的项目标签，key 为 demand_id
+// 项目是实时关联而非快照；用 SkipSoftDelete 查询，已软删需求的明细行也能追溯项目
+func (s *Bill) ItemProjects(ctx context.Context, items []*ent.BillItem) (map[int][]*ent.Project, error) {
+	if len(items) == 0 {
+		return map[int][]*ent.Project{}, nil
+	}
+
+	seen := make(map[int]bool, len(items))
+	ids := make([]int, 0, len(items))
+	for _, it := range items {
+		if !seen[it.DemandID] {
+			seen[it.DemandID] = true
+			ids = append(ids, it.DemandID)
+		}
+	}
+
+	rows, err := s.client.Demand.Query().
+		Where(demand.IDIn(ids...)).
+		WithProjects().
+		All(schema.SkipSoftDelete(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	m := make(map[int][]*ent.Project, len(rows))
+	for _, d := range rows {
+		m[d.ID] = d.Edges.Projects
+	}
+
+	return m, nil
 }
 
 // SelectableDemands 查询可加入账单的需求，excludeBillID 大于 0 时排除已在该账单中的需求

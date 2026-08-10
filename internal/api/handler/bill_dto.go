@@ -31,17 +31,25 @@ type billDTO struct {
 
 // billItemDTO 账单明细响应结构，字段与 openapi.yaml 的 BillItem schema 逐一对齐
 type billItemDTO struct {
-	ID               int        `json:"id"`
-	DemandID         int        `json:"demand_id"`
-	DemandTitle      string     `json:"demand_title"`
-	DemandStatus     string     `json:"demand_status"`
-	HalfDays         int        `json:"half_days"`
-	Amount           int        `json:"amount"`
-	Billable         bool       `json:"billable"`
-	Waived           bool       `json:"waived"`
-	PlannedStartDate *time.Time `json:"planned_start_date"`
-	Note             string     `json:"note"`
-	CreatedAt        time.Time  `json:"created_at"`
+	ID               int             `json:"id"`
+	DemandID         int             `json:"demand_id"`
+	DemandTitle      string          `json:"demand_title"`
+	DemandStatus     string          `json:"demand_status"`
+	HalfDays         int             `json:"half_days"`
+	Amount           int             `json:"amount"`
+	Billable         bool            `json:"billable"`
+	Waived           bool            `json:"waived"`
+	PlannedStartDate *time.Time      `json:"planned_start_date"`
+	Note             string          `json:"note"`
+	CreatedAt        time.Time       `json:"created_at"`
+	Projects         []projectRefDTO `json:"projects"`
+}
+
+// projectRefDTO 明细行携带的项目标签精简引用
+type projectRefDTO struct {
+	ID    int    `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
 }
 
 // newBillDTO 将 ent.Bill 映射为不含明细的响应结构，供列表接口使用
@@ -67,8 +75,13 @@ func newBillDTO(b *ent.Bill) billDTO {
 	}
 }
 
-// newBillItemDTO 将 ent.BillItem 映射为响应结构
-func newBillItemDTO(it *ent.BillItem) billItemDTO {
+// newBillItemDTO 将 ent.BillItem 映射为响应结构，projects 为该明细所属需求的项目标签
+func newBillItemDTO(it *ent.BillItem, projects []*ent.Project) billItemDTO {
+	refs := make([]projectRefDTO, 0, len(projects))
+	for _, p := range projects {
+		refs = append(refs, projectRefDTO{ID: p.ID, Name: p.Name, Color: p.Color})
+	}
+
 	return billItemDTO{
 		ID:               it.ID,
 		DemandID:         it.DemandID,
@@ -81,17 +94,19 @@ func newBillItemDTO(it *ent.BillItem) billItemDTO {
 		PlannedStartDate: it.PlannedStartDate,
 		Note:             it.Note,
 		CreatedAt:        it.CreatedAt,
+		Projects:         refs,
 	}
 }
 
 // newBillDetailDTO 将 ent.Bill 映射为含顶层 items 的详情响应结构
 // 明细取自 b.Edges.Items，调用方需确保查询时已 WithItems 预加载
-func newBillDetailDTO(b *ent.Bill) billDTO {
+// projects 为按 demand_id 索引的项目标签集合，通常来自 (*service.Bill).ItemProjects
+func newBillDetailDTO(b *ent.Bill, projects map[int][]*ent.Project) billDTO {
 	dto := newBillDTO(b)
 
 	items := make([]billItemDTO, 0, len(b.Edges.Items))
 	for _, it := range b.Edges.Items {
-		items = append(items, newBillItemDTO(it))
+		items = append(items, newBillItemDTO(it, projects[it.DemandID]))
 	}
 	dto.Items = items
 

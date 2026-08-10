@@ -1964,6 +1964,11 @@ components:
           type: string
           format: date-time
           description: 创建时间
+        projects:
+          type: array
+          description: 所属需求的项目标签，实时关联（非快照），需求软删后仍可追溯
+          items:
+            $ref: '#/components/schemas/Project'
 
     BillGenerateRequest:
       type: object

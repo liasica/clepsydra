@@ -7,6 +7,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"clepsydra/internal/api"
+	"clepsydra/internal/ent"
 	"clepsydra/internal/service"
 )
 
@@ -23,6 +24,16 @@ func NewBill(svc *service.Bill) *Bill {
 // generateRequest 生成账单请求体
 type generateRequest struct {
 	Period string `json:"period"`
+}
+
+// detail 组装含明细项目标签的账单详情响应
+func (h *Bill) detail(c echo.Context, b *ent.Bill) error {
+	projects, err := h.svc.ItemProjects(c.Request().Context(), b.Edges.Items)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, newBillDetailDTO(b, projects))
 }
 
 // parseItemID 解析路径中的账单明细 ID
@@ -62,7 +73,7 @@ func (h *Bill) Get(c echo.Context) error {
 		return api.Fail(c, err)
 	}
 
-	return api.OK(c, newBillDetailDTO(b))
+	return h.detail(c, b)
 }
 
 // Generate POST /api/bills/generate
@@ -82,7 +93,7 @@ func (h *Bill) Generate(c echo.Context) error {
 		return api.Fail(c, err)
 	}
 
-	return api.OK(c, newBillDetailDTO(full))
+	return h.detail(c, full)
 }
 
 // ToggleWaive POST /api/bills/:id/items/:itemId/waive
@@ -147,7 +158,7 @@ func (h *Bill) CreateManual(c echo.Context) error {
 		return api.Fail(c, err)
 	}
 
-	return api.OK(c, newBillDetailDTO(full))
+	return h.detail(c, full)
 }
 
 // SelectableDemands GET /api/bills/selectable-demands?exclude_bill=<id>

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"clepsydra/internal/ent"
 	"clepsydra/internal/ent/billitem"
 )
 
@@ -81,5 +82,47 @@ func TestBillRemoveItemNotFound(t *testing.T) {
 
 	if err := billSvc.RemoveItem(ctx, admin, b.ID, 9999); err != ErrNotFound {
 		t.Errorf("移除不存在明细 err = %v, want ErrNotFound", err)
+	}
+}
+
+// newBillItemsEnv 构建账单明细测试环境，仅需 client 与账单服务
+func newBillItemsEnv(t *testing.T, name string) (*ent.Client, *Bill) {
+	t.Helper()
+
+	client, _, billSvc := newBillEnv(t, name)
+
+	return client, billSvc
+}
+
+// TestBillItemProjects 明细行项目组装：有关联、无关联与已软删需求
+func TestBillItemProjects(t *testing.T) {
+	client, billSvc := newBillItemsEnv(t, "bitem-proj")
+	ctx := context.Background()
+
+	p := client.Project.Create().SetName("官网").SetColor("blue").SaveX(ctx)
+	d1 := client.Demand.Create().SetTitle("有标签").SetEstimatedHalfDays(0).AddProjectIDs(p.ID).SaveX(ctx)
+	d2 := client.Demand.Create().SetTitle("无标签").SetEstimatedHalfDays(0).SaveX(ctx)
+	d3 := client.Demand.Create().SetTitle("将被软删").SetEstimatedHalfDays(0).AddProjectIDs(p.ID).SaveX(ctx)
+	client.Demand.DeleteOneID(d3.ID).ExecX(ctx)
+
+	items := []*ent.BillItem{
+		{DemandID: d1.ID},
+		{DemandID: d2.ID},
+		{DemandID: d3.ID},
+	}
+
+	m, err := billSvc.ItemProjects(ctx, items)
+	if err != nil {
+		t.Fatalf("组装失败: %v", err)
+	}
+	if len(m[d1.ID]) != 1 || m[d1.ID][0].Name != "官网" {
+		t.Errorf("d1 项目异常: %+v", m[d1.ID])
+	}
+	if len(m[d2.ID]) != 0 {
+		t.Errorf("d2 应无项目: %+v", m[d2.ID])
+	}
+	// 已软删需求的明细行仍能追溯项目（账单可追溯语义）
+	if len(m[d3.ID]) != 1 {
+		t.Errorf("软删需求的明细行应仍能取到项目: %+v", m[d3.ID])
 	}
 }
