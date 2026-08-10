@@ -137,3 +137,98 @@ func (s *Bill) Update(ctx context.Context, actor Actor, id int, patch BillUpdate
 
 	return nil
 }
+
+// BillItemPatch 明细行编辑入参，nil 字段表示不修改
+type BillItemPatch struct {
+	HalfDays *int
+	Amount   *int
+	Note     *string
+}
+
+// validate 校验明细编辑入参
+func (p BillItemPatch) validate() error {
+	if p.HalfDays == nil && p.Amount == nil && p.Note == nil {
+		return ErrBadRequest("没有需要修改的内容")
+	}
+	if p.HalfDays != nil && *p.HalfDays < 0 {
+		return ErrBadRequest("人天必须为非负整数")
+	}
+	if p.Amount != nil && *p.Amount < 0 {
+		return ErrBadRequest("金额必须为非负整数")
+	}
+
+	return nil
+}
+
+// UpdateItem 编辑账单明细行并重算合计，已支付账单拒绝
+// 计费未减免行只改人天时按账单快照单价联动重算金额，显式给金额则以给定值为准；
+// 减免行金额恒为 0 不可修改，人天与备注可改
+func (s *Bill) UpdateItem(ctx context.Context, actor Actor, billID, itemID int, patch BillItemPatch) error {
+	if err := patch.validate(); err != nil {
+		return err
+	}
+
+	b, err := s.Get(ctx, billID)
+	if err != nil {
+		return err
+	}
+	if b.Status == bill.StatusPaid {
+		return ErrBadRequest("已支付账单不可调整")
+	}
+
+	var item *ent.BillItem
+	item, err = s.client.BillItem.Query().
+		Where(billitem.ID(itemID), billitem.HasBillWith(bill.ID(billID))).
+		Only(ctx)
+	if ent.IsNotFound(err) {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if item.Waived && patch.Amount != nil && *patch.Amount != 0 {
+		return ErrBadRequest("已减免明细的金额不可修改")
+	}
+
+	var tx *ent.Tx
+	tx, err = s.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+
+	changes := map[string]any{"item_id": itemID}
+	upd := tx.BillItem.UpdateOneID(itemID)
+	if patch.HalfDays != nil && *patch.HalfDays != item.HalfDays {
+		upd.SetHalfDays(*patch.HalfDays)
+		change(changes, "half_days", item.HalfDays, *patch.HalfDays)
+		// 计费未减免行只改人天时按账单快照单价联动重算金额
+		if patch.Amount == nil && item.Billable && !item.Waived {
+			if amount := *patch.HalfDays * b.DailyRate / 2; amount != item.Amount {
+				upd.SetAmount(amount)
+				change(changes, "amount", item.Amount, amount)
+			}
+		}
+	}
+	if patch.Amount != nil && *patch.Amount != item.Amount {
+		upd.SetAmount(*patch.Amount)
+		change(changes, "amount", item.Amount, *patch.Amount)
+	}
+	if patch.Note != nil && *patch.Note != item.Note {
+		upd.SetNote(*patch.Note)
+		change(changes, "note", item.Note, *patch.Note)
+	}
+
+	if _, err = upd.Save(ctx); err != nil {
+		return rollback(tx, err)
+	}
+	if err = txRecalcTotals(ctx, tx, billID); err != nil {
+		return rollback(tx, err)
+	}
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
+	s.audit.Record(ctx, actor, "bill.update_item", "bill", billID, changes)
+
+	return nil
+}

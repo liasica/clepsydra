@@ -149,3 +149,110 @@ func TestBillUpdateValidation(t *testing.T) {
 		t.Error("已支付账单应拒绝修改")
 	}
 }
+
+func TestBillUpdateItem(t *testing.T) {
+	client, demandSvc, billSvc := newBillEnv(t, "bupditem")
+	ctx := context.Background()
+
+	id1 := prepareAccepted(t, demandSvc, "需求一", 4)
+	b, _ := billSvc.CreateManual(ctx, admin, "结算单", []int{id1})
+	item := client.BillItem.Query().Where(billitem.DemandID(id1)).OnlyX(ctx)
+
+	// 只改人天：金额按账单快照单价联动重算（6 × 600 = 3600）
+	halfDays := 6
+	if err := billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{HalfDays: &halfDays}); err != nil {
+		t.Fatalf("更新人天失败: %v", err)
+	}
+	got := client.BillItem.GetX(ctx, item.ID)
+	if got.HalfDays != 6 || got.Amount != 3600 {
+		t.Errorf("联动后 halfDays=%d amount=%d, want 6 / 3600", got.HalfDays, got.Amount)
+	}
+	b, _ = billSvc.Get(ctx, b.ID)
+	if b.TotalHalfDays != 6 || b.TotalAmount != 3600 {
+		t.Errorf("合计 = %d 半天 / %d 元, want 6 / 3600", b.TotalHalfDays, b.TotalAmount)
+	}
+
+	// 同时给人天与金额：显式金额优先，不做联动
+	halfDays2, amount := 4, 5000
+	if err := billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{HalfDays: &halfDays2, Amount: &amount}); err != nil {
+		t.Fatalf("更新失败: %v", err)
+	}
+	got = client.BillItem.GetX(ctx, item.ID)
+	if got.HalfDays != 4 || got.Amount != 5000 {
+		t.Errorf("显式金额 halfDays=%d amount=%d, want 4 / 5000", got.HalfDays, got.Amount)
+	}
+
+	// 备注写入
+	note := "特批调整"
+	if err := billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{Note: &note}); err != nil {
+		t.Fatalf("更新备注失败: %v", err)
+	}
+	if got = client.BillItem.GetX(ctx, item.ID); got.Note != "特批调整" {
+		t.Errorf("备注 = %q, want 特批调整", got.Note)
+	}
+
+	// 审计留痕
+	n := client.AuditLog.Query().Where(auditlog.Action("bill.update_item")).CountX(ctx)
+	if n != 3 {
+		t.Errorf("bill.update_item 审计条数 = %d, want 3", n)
+	}
+}
+
+func TestBillUpdateItemWaived(t *testing.T) {
+	client, demandSvc, billSvc := newBillEnv(t, "bupditemw")
+	ctx := context.Background()
+
+	id1 := prepareAccepted(t, demandSvc, "需求一", 4)
+	b, _ := billSvc.CreateManual(ctx, admin, "结算单", []int{id1})
+	item := client.BillItem.Query().Where(billitem.DemandID(id1)).OnlyX(ctx)
+	_ = billSvc.ToggleWaive(ctx, admin, b.ID, item.ID)
+
+	// 减免行金额不可改，人天可改且金额保持 0
+	amount := 100
+	if err := billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{Amount: &amount}); err == nil {
+		t.Error("减免行金额应拒绝修改")
+	}
+	halfDays := 2
+	if err := billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{HalfDays: &halfDays}); err != nil {
+		t.Fatalf("减免行人天更新失败: %v", err)
+	}
+	got := client.BillItem.GetX(ctx, item.ID)
+	if got.HalfDays != 2 || got.Amount != 0 {
+		t.Errorf("减免行 halfDays=%d amount=%d, want 2 / 0", got.HalfDays, got.Amount)
+	}
+	b, _ = billSvc.Get(ctx, b.ID)
+	if b.TotalHalfDays != 2 {
+		t.Errorf("人天合计 = %d, want 2（含减免行）", b.TotalHalfDays)
+	}
+}
+
+func TestBillUpdateItemValidation(t *testing.T) {
+	client, demandSvc, billSvc := newBillEnv(t, "bupditemv")
+	ctx := context.Background()
+
+	id1 := prepareAccepted(t, demandSvc, "需求一", 2)
+	b, _ := billSvc.CreateManual(ctx, admin, "结算单", []int{id1})
+	item := client.BillItem.Query().Where(billitem.DemandID(id1)).OnlyX(ctx)
+
+	neg := -1
+	if err := billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{}); err == nil {
+		t.Error("空请求应拒绝")
+	}
+	if err := billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{HalfDays: &neg}); err == nil {
+		t.Error("人天为负应拒绝")
+	}
+	if err := billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{Amount: &neg}); err == nil {
+		t.Error("金额为负应拒绝")
+	}
+	note := "备注"
+	if err := billSvc.UpdateItem(ctx, admin, b.ID, 9999, BillItemPatch{Note: &note}); err != ErrNotFound {
+		t.Errorf("明细不存在 err = %v, want ErrNotFound", err)
+	}
+
+	// 已支付账单锁定
+	_ = billSvc.Confirm(ctx, clientActor, b.ID, false)
+	_ = billSvc.Pay(ctx, admin, b.ID)
+	if err := billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{Note: &note}); err == nil {
+		t.Error("已支付账单应拒绝修改明细")
+	}
+}
