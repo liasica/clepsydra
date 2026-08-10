@@ -321,7 +321,7 @@ func (s *Bill) ToggleWaive(ctx context.Context, actor Actor, billID, itemID int)
 		return rollback(tx, err)
 	}
 
-	if err = txRecalcTotals(ctx, tx, b); err != nil {
+	if err = txRecalcTotals(ctx, tx, b.ID); err != nil {
 		return rollback(tx, err)
 	}
 
@@ -487,9 +487,17 @@ func (s *Bill) CreateManual(ctx context.Context, actor Actor, name string, deman
 
 // txRecalcTotals 在事务内按明细重算账单合计并条件更新
 // 合计口径：人天为全部计费行（含已减免），金额为基础费加计费行金额（减免行金额恒为 0）
+// 总额被手工指定（total_override）时只更新人天合计，不再触碰总额
+// 账单字段（基础费、覆盖标记）在事务内重新读取，保证拿到同事务先行更新后的最新值
 // 账单在事务期间被并发流转到已支付时更新影响 0 行，返回 ErrInvalidTransition 触发调用方回滚
-func txRecalcTotals(ctx context.Context, tx *ent.Tx, b *ent.Bill) error {
-	items, err := tx.BillItem.Query().Where(billitem.HasBillWith(bill.ID(b.ID))).All(ctx)
+func txRecalcTotals(ctx context.Context, tx *ent.Tx, billID int) error {
+	b, err := tx.Bill.Get(ctx, billID)
+	if err != nil {
+		return err
+	}
+
+	var items []*ent.BillItem
+	items, err = tx.BillItem.Query().Where(billitem.HasBillWith(bill.ID(billID))).All(ctx)
 	if err != nil {
 		return err
 	}
@@ -503,12 +511,15 @@ func txRecalcTotals(ctx context.Context, tx *ent.Tx, b *ent.Bill) error {
 		amount += it.Amount
 	}
 
+	upd := tx.Bill.Update().
+		Where(bill.ID(billID), bill.StatusNEQ(bill.StatusPaid)).
+		SetTotalHalfDays(halfDays)
+	if !b.TotalOverride {
+		upd.SetTotalAmount(amount)
+	}
+
 	var n int
-	n, err = tx.Bill.Update().
-		Where(bill.ID(b.ID), bill.StatusNEQ(bill.StatusPaid)).
-		SetTotalHalfDays(halfDays).
-		SetTotalAmount(amount).
-		Save(ctx)
+	n, err = upd.Save(ctx)
 	if err != nil {
 		return err
 	}
@@ -591,7 +602,7 @@ func (s *Bill) AddItem(ctx context.Context, actor Actor, billID, demandID int) e
 		return rollback(tx, billableConflict(err))
 	}
 
-	if err = txRecalcTotals(ctx, tx, b); err != nil {
+	if err = txRecalcTotals(ctx, tx, b.ID); err != nil {
 		return rollback(tx, err)
 	}
 	if err = tx.Commit(); err != nil {
@@ -635,7 +646,7 @@ func (s *Bill) RemoveItem(ctx context.Context, actor Actor, billID, itemID int) 
 	if err = tx.BillItem.DeleteOneID(item.ID).Exec(ctx); err != nil {
 		return rollback(tx, err)
 	}
-	if err = txRecalcTotals(ctx, tx, b); err != nil {
+	if err = txRecalcTotals(ctx, tx, b.ID); err != nil {
 		return rollback(tx, err)
 	}
 	if err = tx.Commit(); err != nil {

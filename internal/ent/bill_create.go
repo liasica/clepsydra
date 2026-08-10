@@ -79,6 +79,20 @@ func (_c *BillCreate) SetTotalAmount(v int) *BillCreate {
 	return _c
 }
 
+// SetTotalOverride sets the "total_override" field.
+func (_c *BillCreate) SetTotalOverride(v bool) *BillCreate {
+	_c.mutation.SetTotalOverride(v)
+	return _c
+}
+
+// SetNillableTotalOverride sets the "total_override" field if the given value is not nil.
+func (_c *BillCreate) SetNillableTotalOverride(v *bool) *BillCreate {
+	if v != nil {
+		_c.SetTotalOverride(*v)
+	}
+	return _c
+}
+
 // SetConfirmDeadline sets the "confirm_deadline" field.
 func (_c *BillCreate) SetConfirmDeadline(v time.Time) *BillCreate {
 	_c.mutation.SetConfirmDeadline(v)
@@ -245,6 +259,10 @@ func (_c *BillCreate) defaults() {
 		v := bill.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.TotalOverride(); !ok {
+		v := bill.DefaultTotalOverride
+		_c.mutation.SetTotalOverride(v)
+	}
 	if _, ok := _c.mutation.ConfirmAuto(); !ok {
 		v := bill.DefaultConfirmAuto
 		_c.mutation.SetConfirmAuto(v)
@@ -283,6 +301,9 @@ func (_c *BillCreate) check() error {
 	}
 	if _, ok := _c.mutation.TotalAmount(); !ok {
 		return &ValidationError{Name: "total_amount", err: errors.New(`ent: missing required field "Bill.total_amount"`)}
+	}
+	if _, ok := _c.mutation.TotalOverride(); !ok {
+		return &ValidationError{Name: "total_override", err: errors.New(`ent: missing required field "Bill.total_override"`)}
 	}
 	if _, ok := _c.mutation.ConfirmAuto(); !ok {
 		return &ValidationError{Name: "confirm_auto", err: errors.New(`ent: missing required field "Bill.confirm_auto"`)}
@@ -346,6 +367,10 @@ func (_c *BillCreate) createSpec() (*Bill, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.TotalAmount(); ok {
 		_spec.SetField(bill.FieldTotalAmount, field.TypeInt, value)
 		_node.TotalAmount = value
+	}
+	if value, ok := _c.mutation.TotalOverride(); ok {
+		_spec.SetField(bill.FieldTotalOverride, field.TypeBool, value)
+		_node.TotalOverride = value
 	}
 	if value, ok := _c.mutation.ConfirmDeadline(); ok {
 		_spec.SetField(bill.FieldConfirmDeadline, field.TypeTime, value)

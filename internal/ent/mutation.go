@@ -797,6 +797,7 @@ type BillMutation struct {
 	addtotal_half_days *int
 	total_amount       *int
 	addtotal_amount    *int
+	total_override     *bool
 	confirm_deadline   *time.Time
 	confirmed_at       *time.Time
 	confirmed_by       *int
@@ -1257,6 +1258,42 @@ func (m *BillMutation) AddedTotalAmount() (r int, exists bool) {
 func (m *BillMutation) ResetTotalAmount() {
 	m.total_amount = nil
 	m.addtotal_amount = nil
+}
+
+// SetTotalOverride sets the "total_override" field.
+func (m *BillMutation) SetTotalOverride(b bool) {
+	m.total_override = &b
+}
+
+// TotalOverride returns the value of the "total_override" field in the mutation.
+func (m *BillMutation) TotalOverride() (r bool, exists bool) {
+	v := m.total_override
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalOverride returns the old "total_override" field's value of the Bill entity.
+// If the Bill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BillMutation) OldTotalOverride(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalOverride is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalOverride requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalOverride: %w", err)
+	}
+	return oldValue.TotalOverride, nil
+}
+
+// ResetTotalOverride resets all changes to the "total_override" field.
+func (m *BillMutation) ResetTotalOverride() {
+	m.total_override = nil
 }
 
 // SetConfirmDeadline sets the "confirm_deadline" field.
@@ -1742,7 +1779,7 @@ func (m *BillMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BillMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.name != nil {
 		fields = append(fields, bill.FieldName)
 	}
@@ -1763,6 +1800,9 @@ func (m *BillMutation) Fields() []string {
 	}
 	if m.total_amount != nil {
 		fields = append(fields, bill.FieldTotalAmount)
+	}
+	if m.total_override != nil {
+		fields = append(fields, bill.FieldTotalOverride)
 	}
 	if m.confirm_deadline != nil {
 		fields = append(fields, bill.FieldConfirmDeadline)
@@ -1810,6 +1850,8 @@ func (m *BillMutation) Field(name string) (ent.Value, bool) {
 		return m.TotalHalfDays()
 	case bill.FieldTotalAmount:
 		return m.TotalAmount()
+	case bill.FieldTotalOverride:
+		return m.TotalOverride()
 	case bill.FieldConfirmDeadline:
 		return m.ConfirmDeadline()
 	case bill.FieldConfirmedAt:
@@ -1849,6 +1891,8 @@ func (m *BillMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldTotalHalfDays(ctx)
 	case bill.FieldTotalAmount:
 		return m.OldTotalAmount(ctx)
+	case bill.FieldTotalOverride:
+		return m.OldTotalOverride(ctx)
 	case bill.FieldConfirmDeadline:
 		return m.OldConfirmDeadline(ctx)
 	case bill.FieldConfirmedAt:
@@ -1922,6 +1966,13 @@ func (m *BillMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetTotalAmount(v)
+		return nil
+	case bill.FieldTotalOverride:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalOverride(v)
 		return nil
 	case bill.FieldConfirmDeadline:
 		v, ok := value.(time.Time)
@@ -2162,6 +2213,9 @@ func (m *BillMutation) ResetField(name string) error {
 		return nil
 	case bill.FieldTotalAmount:
 		m.ResetTotalAmount()
+		return nil
+	case bill.FieldTotalOverride:
+		m.ResetTotalOverride()
 		return nil
 	case bill.FieldConfirmDeadline:
 		m.ResetConfirmDeadline()

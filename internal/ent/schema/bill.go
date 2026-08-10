@@ -21,7 +21,8 @@ func (Bill) Fields() []ent.Field {
 		field.Int("daily_rate"), // 生成时快照，单位元
 		field.Int("base_fee"),   // 生成时快照，单位元，手动账单为 0
 		field.Int("total_half_days"),
-		field.Int("total_amount"), // 单位元
+		field.Int("total_amount"),                   // 单位元
+		field.Bool("total_override").Default(false), // 总额被手工指定后置位，此后重算只更新人天合计不再触碰总额
 		field.Time("confirm_deadline").Optional().Nillable(),
 		field.Time("confirmed_at").Optional().Nillable(),
 		field.Int("confirmed_by").Optional().Nillable(),

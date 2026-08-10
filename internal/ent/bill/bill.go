@@ -29,6 +29,8 @@ const (
 	FieldTotalHalfDays = "total_half_days"
 	// FieldTotalAmount holds the string denoting the total_amount field in the database.
 	FieldTotalAmount = "total_amount"
+	// FieldTotalOverride holds the string denoting the total_override field in the database.
+	FieldTotalOverride = "total_override"
 	// FieldConfirmDeadline holds the string denoting the confirm_deadline field in the database.
 	FieldConfirmDeadline = "confirm_deadline"
 	// FieldConfirmedAt holds the string denoting the confirmed_at field in the database.
@@ -68,6 +70,7 @@ var Columns = []string{
 	FieldBaseFee,
 	FieldTotalHalfDays,
 	FieldTotalAmount,
+	FieldTotalOverride,
 	FieldConfirmDeadline,
 	FieldConfirmedAt,
 	FieldConfirmedBy,
@@ -89,6 +92,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultTotalOverride holds the default value on creation for the "total_override" field.
+	DefaultTotalOverride bool
 	// DefaultConfirmAuto holds the default value on creation for the "confirm_auto" field.
 	DefaultConfirmAuto bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
@@ -167,6 +172,11 @@ func ByTotalHalfDays(opts ...sql.OrderTermOption) OrderOption {
 // ByTotalAmount orders the results by the total_amount field.
 func ByTotalAmount(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTotalAmount, opts...).ToFunc()
+}
+
+// ByTotalOverride orders the results by the total_override field.
+func ByTotalOverride(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTotalOverride, opts...).ToFunc()
 }
 
 // ByConfirmDeadline orders the results by the confirm_deadline field.

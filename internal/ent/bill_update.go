@@ -161,6 +161,20 @@ func (_u *BillUpdate) AddTotalAmount(v int) *BillUpdate {
 	return _u
 }
 
+// SetTotalOverride sets the "total_override" field.
+func (_u *BillUpdate) SetTotalOverride(v bool) *BillUpdate {
+	_u.mutation.SetTotalOverride(v)
+	return _u
+}
+
+// SetNillableTotalOverride sets the "total_override" field if the given value is not nil.
+func (_u *BillUpdate) SetNillableTotalOverride(v *bool) *BillUpdate {
+	if v != nil {
+		_u.SetTotalOverride(*v)
+	}
+	return _u
+}
+
 // SetConfirmDeadline sets the "confirm_deadline" field.
 func (_u *BillUpdate) SetConfirmDeadline(v time.Time) *BillUpdate {
 	_u.mutation.SetConfirmDeadline(v)
@@ -430,6 +444,9 @@ func (_u *BillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedTotalAmount(); ok {
 		_spec.AddField(bill.FieldTotalAmount, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.TotalOverride(); ok {
+		_spec.SetField(bill.FieldTotalOverride, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.ConfirmDeadline(); ok {
 		_spec.SetField(bill.FieldConfirmDeadline, field.TypeTime, value)
 	}
@@ -666,6 +683,20 @@ func (_u *BillUpdateOne) SetNillableTotalAmount(v *int) *BillUpdateOne {
 // AddTotalAmount adds value to the "total_amount" field.
 func (_u *BillUpdateOne) AddTotalAmount(v int) *BillUpdateOne {
 	_u.mutation.AddTotalAmount(v)
+	return _u
+}
+
+// SetTotalOverride sets the "total_override" field.
+func (_u *BillUpdateOne) SetTotalOverride(v bool) *BillUpdateOne {
+	_u.mutation.SetTotalOverride(v)
+	return _u
+}
+
+// SetNillableTotalOverride sets the "total_override" field if the given value is not nil.
+func (_u *BillUpdateOne) SetNillableTotalOverride(v *bool) *BillUpdateOne {
+	if v != nil {
+		_u.SetTotalOverride(*v)
+	}
 	return _u
 }
 
@@ -967,6 +998,9 @@ func (_u *BillUpdateOne) sqlSave(ctx context.Context) (_node *Bill, err error) {
 	}
 	if value, ok := _u.mutation.AddedTotalAmount(); ok {
 		_spec.AddField(bill.FieldTotalAmount, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.TotalOverride(); ok {
+		_spec.SetField(bill.FieldTotalOverride, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.ConfirmDeadline(); ok {
 		_spec.SetField(bill.FieldConfirmDeadline, field.TypeTime, value)

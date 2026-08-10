@@ -24,16 +24,20 @@ func init() {
 	auditlog.DefaultCreatedAt = auditlogDescCreatedAt.Default.(func() time.Time)
 	billFields := schema.Bill{}.Fields()
 	_ = billFields
+	// billDescTotalOverride is the schema descriptor for total_override field.
+	billDescTotalOverride := billFields[7].Descriptor()
+	// bill.DefaultTotalOverride holds the default value on creation for the total_override field.
+	bill.DefaultTotalOverride = billDescTotalOverride.Default.(bool)
 	// billDescConfirmAuto is the schema descriptor for confirm_auto field.
-	billDescConfirmAuto := billFields[10].Descriptor()
+	billDescConfirmAuto := billFields[11].Descriptor()
 	// bill.DefaultConfirmAuto holds the default value on creation for the confirm_auto field.
 	bill.DefaultConfirmAuto = billDescConfirmAuto.Default.(bool)
 	// billDescCreatedAt is the schema descriptor for created_at field.
-	billDescCreatedAt := billFields[13].Descriptor()
+	billDescCreatedAt := billFields[14].Descriptor()
 	// bill.DefaultCreatedAt holds the default value on creation for the created_at field.
 	bill.DefaultCreatedAt = billDescCreatedAt.Default.(func() time.Time)
 	// billDescUpdatedAt is the schema descriptor for updated_at field.
-	billDescUpdatedAt := billFields[14].Descriptor()
+	billDescUpdatedAt := billFields[15].Descriptor()
 	// bill.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	bill.DefaultUpdatedAt = billDescUpdatedAt.Default.(func() time.Time)
 	// bill.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

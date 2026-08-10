@@ -43,6 +43,7 @@ var (
 		{Name: "base_fee", Type: field.TypeInt},
 		{Name: "total_half_days", Type: field.TypeInt},
 		{Name: "total_amount", Type: field.TypeInt},
+		{Name: "total_override", Type: field.TypeBool, Default: false},
 		{Name: "confirm_deadline", Type: field.TypeTime, Nullable: true},
 		{Name: "confirmed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "confirmed_by", Type: field.TypeInt, Nullable: true},

@@ -31,6 +31,8 @@ type Bill struct {
 	TotalHalfDays int `json:"total_half_days,omitempty"`
 	// TotalAmount holds the value of the "total_amount" field.
 	TotalAmount int `json:"total_amount,omitempty"`
+	// TotalOverride holds the value of the "total_override" field.
+	TotalOverride bool `json:"total_override,omitempty"`
 	// ConfirmDeadline holds the value of the "confirm_deadline" field.
 	ConfirmDeadline *time.Time `json:"confirm_deadline,omitempty"`
 	// ConfirmedAt holds the value of the "confirmed_at" field.
@@ -76,7 +78,7 @@ func (*Bill) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case bill.FieldConfirmAuto:
+		case bill.FieldTotalOverride, bill.FieldConfirmAuto:
 			values[i] = new(sql.NullBool)
 		case bill.FieldID, bill.FieldDailyRate, bill.FieldBaseFee, bill.FieldTotalHalfDays, bill.FieldTotalAmount, bill.FieldConfirmedBy, bill.FieldPaidBy:
 			values[i] = new(sql.NullInt64)
@@ -147,6 +149,12 @@ func (_m *Bill) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field total_amount", values[i])
 			} else if value.Valid {
 				_m.TotalAmount = int(value.Int64)
+			}
+		case bill.FieldTotalOverride:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field total_override", values[i])
+			} else if value.Valid {
+				_m.TotalOverride = value.Bool
 			}
 		case bill.FieldConfirmDeadline:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -264,6 +272,9 @@ func (_m *Bill) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("total_amount=")
 	builder.WriteString(fmt.Sprintf("%v", _m.TotalAmount))
+	builder.WriteString(", ")
+	builder.WriteString("total_override=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TotalOverride))
 	builder.WriteString(", ")
 	if v := _m.ConfirmDeadline; v != nil {
 		builder.WriteString("confirm_deadline=")

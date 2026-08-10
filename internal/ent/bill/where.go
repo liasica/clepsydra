@@ -85,6 +85,11 @@ func TotalAmount(v int) predicate.Bill {
 	return predicate.Bill(sql.FieldEQ(FieldTotalAmount, v))
 }
 
+// TotalOverride applies equality check predicate on the "total_override" field. It's identical to TotalOverrideEQ.
+func TotalOverride(v bool) predicate.Bill {
+	return predicate.Bill(sql.FieldEQ(FieldTotalOverride, v))
+}
+
 // ConfirmDeadline applies equality check predicate on the "confirm_deadline" field. It's identical to ConfirmDeadlineEQ.
 func ConfirmDeadline(v time.Time) predicate.Bill {
 	return predicate.Bill(sql.FieldEQ(FieldConfirmDeadline, v))
@@ -443,6 +448,16 @@ func TotalAmountLT(v int) predicate.Bill {
 // TotalAmountLTE applies the LTE predicate on the "total_amount" field.
 func TotalAmountLTE(v int) predicate.Bill {
 	return predicate.Bill(sql.FieldLTE(FieldTotalAmount, v))
+}
+
+// TotalOverrideEQ applies the EQ predicate on the "total_override" field.
+func TotalOverrideEQ(v bool) predicate.Bill {
+	return predicate.Bill(sql.FieldEQ(FieldTotalOverride, v))
+}
+
+// TotalOverrideNEQ applies the NEQ predicate on the "total_override" field.
+func TotalOverrideNEQ(v bool) predicate.Bill {
+	return predicate.Bill(sql.FieldNEQ(FieldTotalOverride, v))
 }
 
 // ConfirmDeadlineEQ applies the EQ predicate on the "confirm_deadline" field.
