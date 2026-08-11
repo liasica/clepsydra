@@ -27,13 +27,18 @@ import {
 } from '#/api/demand';
 import { MarkdownViewer } from '#/components/markdown';
 import { formatDate, formatDateTime } from '#/utils/clepsydra/date';
-import { DEMAND_STATUS, tagColor } from '#/utils/clepsydra/dict';
+import {
+  DEMAND_PRIORITY,
+  DEMAND_STATUS,
+  tagColor,
+} from '#/utils/clepsydra/dict';
 import { formatManday } from '#/utils/clepsydra/manday';
 import { isStatusConflict, showSuccess } from '#/utils/http/error';
 
 import DemandEstimateDialog from './components/DemandEstimateDialog.vue';
 import DemandFinishDialog from './components/DemandFinishDialog.vue';
 import DemandFormDialog from './components/DemandFormDialog.vue';
+import DemandPriorityDialog from './components/DemandPriorityDialog.vue';
 import DemandProjectsDialog from './components/DemandProjectsDialog.vue';
 import DemandStartDialog from './components/DemandStartDialog.vue';
 
@@ -92,6 +97,9 @@ const [FinishModal, finishModalApi] = useVbenModal({
 });
 const [ProjectsModal, projectsModalApi] = useVbenModal({
   connectedComponent: DemandProjectsDialog,
+});
+const [PriorityModal, priorityModalApi] = useVbenModal({
+  connectedComponent: DemandPriorityDialog,
 });
 
 /** 加载详情 */
@@ -263,6 +271,23 @@ onMounted(load);
             <DescriptionsItem label="更新时间">
               {{ formatDateTime(demand.updated_at) }}
             </DescriptionsItem>
+            <DescriptionsItem :span="2" label="优先级">
+              <div class="flex flex-wrap items-center gap-2">
+                <Tag
+                  :color="DEMAND_PRIORITY[demand.priority].color"
+                  class="me-0"
+                >
+                  {{ DEMAND_PRIORITY[demand.priority].label }}
+                </Tag>
+                <Button
+                  size="small"
+                  type="link"
+                  @click="priorityModalApi.setData({ demand }).open()"
+                >
+                  调整优先级
+                </Button>
+              </div>
+            </DescriptionsItem>
             <DescriptionsItem :span="2" label="项目">
               <div class="flex flex-wrap items-center gap-2">
                 <Tag
@@ -309,5 +334,6 @@ onMounted(load);
     <StartModal @conflict="load" @success="load" />
     <FinishModal @conflict="load" @success="load" />
     <ProjectsModal @success="load" />
+    <PriorityModal @success="load" />
   </Page>
 </template>

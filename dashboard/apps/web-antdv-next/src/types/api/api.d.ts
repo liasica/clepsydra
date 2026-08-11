@@ -84,6 +84,7 @@ declare namespace Api {
   /** 需求 */
   namespace Demand {
     type Status = import('#/utils/clepsydra/dict').DemandStatus;
+    type Priority = import('#/utils/clepsydra/dict').DemandPriority;
 
     /** 需求实体 */
     interface Item {
@@ -98,6 +99,8 @@ declare namespace Api {
       actual_end_date: null | string;
       actual_half_days: null | number;
       status: Status;
+      /** 优先级，排期参考元数据，默认 normal */
+      priority: Priority;
       accept_deadline: null | string;
       accepted_at: null | string;
       accepted_by: null | number;
@@ -130,6 +133,8 @@ declare namespace Api {
       confirmed?: boolean;
       /** 关联的项目 ID 列表，可选 */
       project_ids?: number[];
+      /** 优先级，可选，缺省 normal */
+      priority?: Priority;
     }
 
     /** 提交预估人天请求体，pending_estimate 状态下可重复提交修正预估 */

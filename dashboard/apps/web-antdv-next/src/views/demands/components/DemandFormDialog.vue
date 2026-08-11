@@ -17,9 +17,15 @@ import {
   Select,
 } from 'antdv-next';
 
-import { createDemand, updateDemand, updateDemandProjects } from '#/api/demand';
+import {
+  createDemand,
+  updateDemand,
+  updateDemandPriority,
+  updateDemandProjects,
+} from '#/api/demand';
 import { fetchProjects } from '#/api/project';
 import { MarkdownEditor } from '#/components/markdown';
+import { DEMAND_PRIORITY } from '#/utils/clepsydra/dict';
 import { mandayToHalfDays } from '#/utils/clepsydra/manday';
 import { isStatusConflict, showSuccess } from '#/utils/http/error';
 
@@ -63,12 +69,26 @@ const form = reactive({
   description: '',
   manday: undefined as null | number | undefined,
   plannedStartDate: undefined as Dayjs | undefined,
+  priority: 'normal' as Api.Demand.Priority,
   projectIds: [] as number[],
   title: '',
 });
 
 /** 项目多选选项，弹窗每次打开时刷新 */
 const projectOptions = ref<{ label: string; value: number }[]>([]);
+
+/** 优先级选项，字典键序即展示序（紧急 → 低） */
+const priorityOptions = Object.entries(DEMAND_PRIORITY).map(
+  ([value, meta]) => ({ label: meta.label, value }),
+);
+
+/**
+ * 弹窗打开时记录的初始优先级
+ *
+ * 保存时与当前选择比对，未变化就不调用 updateDemandPriority，
+ * 跟随项目标签「未变化不重写关联」的既有优化
+ */
+const initialPriority = ref<Api.Demand.Priority>('normal');
 
 /**
  * 弹窗打开时记录的初始项目标签指纹（排序后 join 成串）
@@ -136,6 +156,8 @@ const [Modal, modalApi] = useVbenModal({
     form.confirmed = false;
     form.projectIds = (target?.edges?.projects ?? []).map((p) => p.id);
     initialProjectIdsKey.value = projectIdsKey(form.projectIds);
+    form.priority = target?.priority ?? 'normal';
+    initialPriority.value = form.priority;
     void loadProjectOptions();
     formRef.value?.clearValidate();
     modalApi.setState({ title: target ? '编辑需求' : '新建需求' });
@@ -176,13 +198,17 @@ async function save() {
     }
     if (demand.value) {
       await updateDemand(demand.value.id, params);
-      // 标签走独立接口，与标题描述的状态锁定解耦；未变化则不调用，避免冗余审计
+      // 标签与优先级走独立接口，与标题描述的状态锁定解耦；未变化则不调用，避免冗余审计
       if (projectIdsKey(form.projectIds) !== initialProjectIdsKey.value) {
         await updateDemandProjects(demand.value.id, form.projectIds);
+      }
+      if (form.priority !== initialPriority.value) {
+        await updateDemandPriority(demand.value.id, form.priority);
       }
     } else {
       params.project_ids =
         form.projectIds.length > 0 ? form.projectIds : undefined;
+      params.priority = form.priority === 'normal' ? undefined : form.priority;
       await createDemand(params);
     }
     showSuccess('已保存');
@@ -226,6 +252,9 @@ async function save() {
           mode="multiple"
           placeholder="选择所属项目（可多选，可留空）"
         />
+      </FormItem>
+      <FormItem label="优先级" name="priority">
+        <Select v-model:value="form.priority" :options="priorityOptions" />
       </FormItem>
       <template v-if="showEstimate">
         <FormItem label="预估人天" name="manday">

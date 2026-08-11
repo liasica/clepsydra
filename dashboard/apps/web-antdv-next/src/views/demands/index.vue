@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { TableColumnsType } from 'antdv-next';
 
-import type { DemandStatus } from '#/utils/clepsydra/dict';
+import type { DemandPriority, DemandStatus } from '#/utils/clepsydra/dict';
 
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -13,7 +13,11 @@ import { Button, Select, Table, Tag } from 'antdv-next';
 import { fetchDemands } from '#/api/demand';
 import { fetchProjects } from '#/api/project';
 import { formatDate, formatDateTime } from '#/utils/clepsydra/date';
-import { DEMAND_STATUS, tagColor } from '#/utils/clepsydra/dict';
+import {
+  DEMAND_PRIORITY,
+  DEMAND_STATUS,
+  tagColor,
+} from '#/utils/clepsydra/dict';
 import { formatManday } from '#/utils/clepsydra/manday';
 
 import DemandFormDialog from './components/DemandFormDialog.vue';
@@ -45,6 +49,12 @@ const statusOptions = Object.entries(DEMAND_STATUS).map(([value, meta]) => ({
 const projectId = ref<number | undefined>(undefined);
 const projectOptions = ref<{ label: string; value: number }[]>([]);
 
+/** 优先级筛选，undefined 表示全部 */
+const priority = ref<DemandPriority | undefined>(undefined);
+const priorityOptions = Object.entries(DEMAND_PRIORITY).map(
+  ([value, meta]) => ({ label: meta.label, value }),
+);
+
 const columns: TableColumnsType<Api.Demand.Item> = [
   { dataIndex: 'id', key: 'id', title: 'ID', width: 72 },
   {
@@ -55,6 +65,7 @@ const columns: TableColumnsType<Api.Demand.Item> = [
     title: '标题',
   },
   { key: 'projects', title: '项目', width: 180 },
+  { key: 'priority', title: '优先级', width: 88 },
   { key: 'estimated', title: '预估人天', width: 100 },
   { key: 'actual', title: '实际人天', width: 100 },
   // 日期列宽需容下「2026-08-20」「2026-08-05 18:30」加单元格左右内边距，否则会折行
@@ -72,6 +83,7 @@ async function load() {
   loading.value = true;
   try {
     list.value = await fetchDemands({
+      priority: priority.value,
       project_id: projectId.value,
       status: status.value,
     });
@@ -132,6 +144,14 @@ onMounted(() => {
           placeholder="全部项目"
           @change="load"
         />
+        <Select
+          v-model:value="priority"
+          :options="priorityOptions"
+          allow-clear
+          class="w-32"
+          placeholder="全部优先级"
+          @change="load"
+        />
       </div>
       <Button type="primary" @click="openCreate">新建需求</Button>
     </div>
@@ -157,6 +177,11 @@ onMounted(() => {
               {{ p.name }}
             </Tag>
           </div>
+        </template>
+        <template v-else-if="column.key === 'priority'">
+          <Tag :color="DEMAND_PRIORITY[record.priority].color" class="me-0">
+            {{ DEMAND_PRIORITY[record.priority].label }}
+          </Tag>
         </template>
         <template v-else-if="column.key === 'estimated'">
           {{ formatManday(record.estimated_half_days) }}

@@ -1,7 +1,8 @@
 import { requestClient } from '#/api/request';
 
-/** 查询需求列表，可按状态与项目筛选，缺省返回全部 */
+/** 查询需求列表，可按状态、项目与优先级筛选，缺省返回全部 */
 export function fetchDemands(params?: {
+  priority?: Api.Demand.Priority;
   project_id?: number;
   status?: Api.Demand.Status;
 }) {
@@ -71,5 +72,12 @@ export function acceptDemand(id: number): Promise<void> {
 export function updateDemandProjects(id: number, projectIds: number[]) {
   return requestClient.put<Api.Demand.Item>(`/api/demands/${id}/projects`, {
     project_ids: projectIds,
+  });
+}
+
+/** 调整需求优先级；优先级是排期参考元数据，任何状态可用，登录即可操作 */
+export function updateDemandPriority(id: number, priority: Api.Demand.Priority) {
+  return requestClient.put<Api.Demand.Item>(`/api/demands/${id}/priority`, {
+    priority,
   });
 }

@@ -18,6 +18,8 @@ export type DemandStatus =
 
 export type BillStatus = 'paid' | 'pending' | 'unpaid';
 
+export type DemandPriority = 'high' | 'low' | 'normal' | 'urgent';
+
 export type DemandAction =
   | 'accept'
   | 'confirmEstimate'
@@ -58,6 +60,20 @@ export function tagColor(type: TagType): string {
   };
   return map[type];
 }
+
+/**
+ * 需求优先级字典，color 为 antdv-next Tag 预设色
+ * 键序即展示序（紧急 → 低），下拉选项与列表排序共用此定义
+ */
+export const DEMAND_PRIORITY: Record<
+  DemandPriority,
+  { color: string; label: string }
+> = {
+  urgent: { label: '紧急', color: 'red' },
+  high: { label: '高', color: 'orange' },
+  normal: { label: '普通', color: 'blue' },
+  low: { label: '低', color: 'default' },
+};
 
 export const DEMAND_STATUS: Record<DemandStatus, StatusMeta<DemandAction>> = {
   draft: {
