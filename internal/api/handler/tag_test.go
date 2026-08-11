@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	_ "github.com/mattn/go-sqlite3"
 
+	"clepsydra/internal/api"
 	"clepsydra/internal/config"
 	"clepsydra/internal/ent/enttest"
 	"clepsydra/internal/service"
@@ -88,5 +89,28 @@ func TestTagHandlerCRUD(t *testing.T) {
 	rec = do(http.MethodDelete, "/api/tags/"+id, "")
 	if !strings.Contains(rec.Body.String(), `"code":0`) {
 		t.Errorf("删除响应异常: %s", rec.Body.String())
+	}
+}
+
+// TestTagHandlerCreateForbiddenForClient 校验非超管角色调用创建标签接口时，经 RequireAdmin 中间件包装后应被拦截并返回 403
+func TestTagHandlerCreateForbiddenForClient(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:htagperm?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	h := NewTag(service.NewTag(client, service.NewAudit(client)))
+	e := echo.New()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/tags", strings.NewReader(`{"name":"优化"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &service.Claims{UserID: 2, Role: "client", Name: "需求方"})
+
+	// 非超管角色经 RequireAdmin 中间件包装后应被直接拦截，不进入 h.Create 业务逻辑
+	if err := api.RequireAdmin(h.Create)(c); err == nil {
+		t.Error("非超管创建标签应被拒绝")
+	}
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("非超管创建标签应返回 403，实际 %d：%s", rec.Code, rec.Body.String())
 	}
 }
