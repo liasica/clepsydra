@@ -19,7 +19,7 @@ export function createDemand(params: Api.Demand.CreateParams) {
   return requestClient.post<Api.Demand.Item>('/api/demands', params);
 }
 
-/** 更新需求标题与描述，draft 与 pending_estimate 状态允许，人天确认后锁定；需求方也可修改 */
+/** 更新需求标题与描述；超级管理员任何状态可编辑，需求方仅 draft 与 pending_estimate（人天确认后锁定） */
 export function updateDemand(id: number, params: Api.Demand.SaveParams) {
   return requestClient.put<Api.Demand.Item>(`/api/demands/${id}`, params);
 }

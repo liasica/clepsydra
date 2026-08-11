@@ -90,25 +90,27 @@ export const DEMAND_STATUS: Record<DemandStatus, StatusMeta<DemandAction>> = {
       client: ['edit', 'confirmEstimate'],
     },
   },
+  // 人天确认后的四个状态：标题与描述对超管保持可编辑（后端按角色放开状态锁），
+  // edit 排在主流转操作之后、delete 之前；需求方仍被锁定，client 不给 edit
   confirmed: {
     label: '已确认待开工',
     type: 'primary',
-    actions: { admin: ['start', 'delete'], client: [] },
+    actions: { admin: ['start', 'edit', 'delete'], client: [] },
   },
   in_progress: {
     label: '进行中',
     type: 'primary',
-    actions: { admin: ['finish', 'delete'], client: [] },
+    actions: { admin: ['finish', 'edit', 'delete'], client: [] },
   },
   pending_acceptance: {
     label: '完成待确认',
     type: 'warning',
-    actions: { admin: ['accept', 'delete'], client: ['accept'] },
+    actions: { admin: ['accept', 'edit', 'delete'], client: ['accept'] },
   },
   accepted: {
     label: '已确认',
     type: 'success',
-    actions: { admin: ['delete'], client: [] },
+    actions: { admin: ['edit', 'delete'], client: [] },
   },
 };
 

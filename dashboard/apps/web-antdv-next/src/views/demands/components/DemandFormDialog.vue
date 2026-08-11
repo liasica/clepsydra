@@ -34,8 +34,8 @@ import { isStatusConflict, showSuccess } from '#/utils/http/error';
  *
  * 表单基础项只有标题与描述；创建模式下超管额外可见预估三项（预估人天 / 预计开工 / 已确认），
  * 这是创建 + 提交预估（+ 代确认）的一步式快捷路径。编辑模式不出现预估项：人天的后续修改
- * 走「提交人天确认」入口，人天确认后（confirmed 及之后）标题与描述都会被后端锁定，
- * 因此本弹窗只在 draft / pending_estimate 两个状态下可达
+ * 走「提交人天确认」入口。人天确认后（confirmed 及之后）标题与描述对需求方锁定，
+ * 超管任何状态可编辑——弹窗可达性由 DEMAND_STATUS 的 actions 字典按角色控制
  */
 defineOptions({ name: 'DemandFormDialog' });
 
