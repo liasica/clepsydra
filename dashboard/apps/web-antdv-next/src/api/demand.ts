@@ -1,9 +1,10 @@
 import { requestClient } from '#/api/request';
 
-/** 查询需求列表，可按状态与项目筛选，缺省返回全部 */
+/** 查询需求列表，可按状态、项目与性质标签筛选，缺省返回全部 */
 export function fetchDemands(params?: {
   project_id?: number;
   status?: Api.Demand.Status;
+  tag_id?: number;
 }) {
   return requestClient.get<Api.Demand.Item[]>('/api/demands', { params });
 }
@@ -71,5 +72,12 @@ export function acceptDemand(id: number): Promise<void> {
 export function updateDemandProjects(id: number, projectIds: number[]) {
   return requestClient.put<Api.Demand.Item>(`/api/demands/${id}/projects`, {
     project_ids: projectIds,
+  });
+}
+
+/** 全量覆盖需求的性质标签，传空数组即清空；任何状态可用，登录即可操作 */
+export function updateDemandTags(id: number, tagIds: number[]) {
+  return requestClient.put<Api.Demand.Item>(`/api/demands/${id}/tags`, {
+    tag_ids: tagIds,
   });
 }

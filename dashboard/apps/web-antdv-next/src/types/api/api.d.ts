@@ -81,6 +81,31 @@ declare namespace Api {
     }
   }
 
+  /** 性质标签 */
+  namespace Tag {
+    /** 标签实体，demand_count 仅列表接口有效；颜色由后端按名称生成并固化 */
+    interface Item {
+      id: number;
+      name: string;
+      color: string;
+      demand_count: number;
+      created_at: string;
+      updated_at: string;
+    }
+
+    /** 需求上携带的精简引用；需求走 ent 序列化，可选字段带 omitempty */
+    interface Ref {
+      id: number;
+      name: string;
+      color?: string;
+    }
+
+    /** 创建 / 更新请求体，仅名称，颜色由后端生成，不可指定 */
+    interface SaveParams {
+      name: string;
+    }
+  }
+
   /** 需求 */
   namespace Demand {
     type Status = import('#/utils/clepsydra/dict').DemandStatus;
@@ -105,9 +130,10 @@ declare namespace Api {
       accept_locked: boolean;
       created_at: string;
       updated_at: string;
-      /** ent 关联预加载结果，目前仅项目标签 */
+      /** ent 关联预加载结果：项目与性质标签 */
       edges?: {
         projects?: Api.Project.Ref[];
+        tags?: Api.Tag.Ref[];
       };
     }
 
@@ -130,6 +156,8 @@ declare namespace Api {
       confirmed?: boolean;
       /** 关联的项目 ID 列表，可选 */
       project_ids?: number[];
+      /** 关联的性质标签 ID 列表，可选 */
+      tag_ids?: number[];
     }
 
     /** 提交预估人天请求体，pending_estimate 状态下可重复提交修正预估 */
