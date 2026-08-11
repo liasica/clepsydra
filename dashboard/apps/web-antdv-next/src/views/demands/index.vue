@@ -8,7 +8,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { Page, useVbenModal } from '@vben/common-ui';
 
-import { Button, Select, Table, Tag } from 'antdv-next';
+import { Button, Select, Table, Tag, Tooltip } from 'antdv-next';
 
 import { fetchDemands } from '#/api/demand';
 import { fetchProjects } from '#/api/project';
@@ -102,6 +102,11 @@ function statusOf(record: Api.Demand.Item) {
   return DEMAND_STATUS[record.status];
 }
 
+/** 取行的项目标签列表，折叠展示与 Tooltip 全量展示共用 */
+function projectsOf(record: Api.Demand.Item): Api.Project.Ref[] {
+  return record.edges?.projects ?? [];
+}
+
 /** 行点击进入详情，antdv-next 沿用 React 版的 onRow 命名而非 ant-design-vue 的 customRow */
 function onRow(record: Api.Demand.Item) {
   return {
@@ -166,16 +171,35 @@ onMounted(() => {
       row-key="id"
     >
       <template #bodyCell="{ column, record }">
+        <!-- 多标签折叠成「首个 + N」单行展示，避免竖排堆叠撑高行高；悬停角标看全部 -->
         <template v-if="column.key === 'projects'">
-          <div class="flex flex-wrap items-center gap-2">
+          <div
+            v-if="projectsOf(record).length > 0"
+            class="flex items-center gap-1"
+          >
             <Tag
-              v-for="p in record.edges?.projects ?? []"
-              :key="p.id"
-              :color="p.color || undefined"
-              class="me-0"
+              :color="projectsOf(record)[0]?.color || undefined"
+              class="me-0 max-w-full truncate"
             >
-              {{ p.name }}
+              {{ projectsOf(record)[0]?.name }}
             </Tag>
+            <Tooltip v-if="projectsOf(record).length > 1">
+              <template #title>
+                <div class="flex max-w-60 flex-wrap gap-1 py-0.5">
+                  <Tag
+                    v-for="p in projectsOf(record)"
+                    :key="p.id"
+                    :color="p.color || undefined"
+                    class="me-0"
+                  >
+                    {{ p.name }}
+                  </Tag>
+                </div>
+              </template>
+              <Tag class="me-0 shrink-0">
+                +{{ projectsOf(record).length - 1 }}
+              </Tag>
+            </Tooltip>
           </div>
         </template>
         <template v-else-if="column.key === 'priority'">
