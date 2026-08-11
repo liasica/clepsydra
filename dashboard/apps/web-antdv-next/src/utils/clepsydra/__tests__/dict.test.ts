@@ -28,17 +28,41 @@ describe('状态字典', () => {
       'edit',
       'confirmEstimate',
     ]);
-    expect(DEMAND_STATUS.confirmed.actions.admin).toEqual(['start', 'delete']);
+    expect(DEMAND_STATUS.confirmed.actions.admin).toEqual([
+      'start',
+      'edit',
+      'delete',
+    ]);
     expect(DEMAND_STATUS.in_progress.actions.admin).toEqual([
       'finish',
+      'edit',
       'delete',
     ]);
     expect(DEMAND_STATUS.pending_acceptance.actions.admin).toEqual([
       'accept',
+      'edit',
       'delete',
     ]);
     expect(DEMAND_STATUS.pending_acceptance.actions.client).toEqual(['accept']);
-    expect(DEMAND_STATUS.accepted.actions.admin).toEqual(['delete']);
+    expect(DEMAND_STATUS.accepted.actions.admin).toEqual(['edit', 'delete']);
+  });
+
+  it('锁定状态编辑为超管专属：人天确认后需求方不再可编辑', () => {
+    const locked = [
+      'confirmed',
+      'in_progress',
+      'pending_acceptance',
+      'accepted',
+    ] as const;
+    for (const status of locked) {
+      expect(DEMAND_STATUS[status].actions.admin, `需求 ${status}`).toContain(
+        'edit',
+      );
+      expect(
+        DEMAND_STATUS[status].actions.client,
+        `需求 ${status}`,
+      ).not.toContain('edit');
+    }
   });
 
   it('删除为超管专属，任何状态都不开放给需求方', () => {

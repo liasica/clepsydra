@@ -10,9 +10,10 @@ import (
 	"clepsydra/internal/ent/demand"
 )
 
-// TestDemandCreateWithPriority 创建需求携带优先级：缺省落默认 normal、非法值被拒绝
+// TestDemandCreateWithPriority 创建需求携带优先级：缺省落默认 normal、非法值被拒绝，
+// 审计详情仅在非默认优先级时携带 priority 键
 func TestDemandCreateWithPriority(t *testing.T) {
-	_, svc := newDemandEnv(t, "dprio-create")
+	client, svc := newDemandEnv(t, "dprio-create")
 	ctx := context.Background()
 
 	d, err := svc.Create(ctx, admin, "需求一", "", 0, nil, false, nil, "urgent")
@@ -22,6 +23,13 @@ func TestDemandCreateWithPriority(t *testing.T) {
 	if d.Priority != demand.PriorityUrgent {
 		t.Errorf("优先级 = %s, want urgent", d.Priority)
 	}
+	// 非默认优先级创建的审计详情应携带 priority=urgent
+	entry := client.AuditLog.Query().
+		Where(auditlog.Action("demand.create"), auditlog.TargetID(d.ID)).
+		OnlyX(ctx)
+	if got := entry.Detail["priority"]; got != "urgent" {
+		t.Errorf("创建审计 priority = %v, want urgent", got)
+	}
 
 	d, err = svc.Create(ctx, admin, "需求二", "", 0, nil, false, nil, "")
 	if err != nil {
@@ -29,6 +37,13 @@ func TestDemandCreateWithPriority(t *testing.T) {
 	}
 	if d.Priority != demand.PriorityNormal {
 		t.Errorf("缺省优先级 = %s, want normal", d.Priority)
+	}
+	// 默认优先级创建的审计详情不携带 priority 键，避免全量记录默认值噪音
+	entry = client.AuditLog.Query().
+		Where(auditlog.Action("demand.create"), auditlog.TargetID(d.ID)).
+		OnlyX(ctx)
+	if _, ok := entry.Detail["priority"]; ok {
+		t.Errorf("默认优先级创建审计不应携带 priority 键: %v", entry.Detail)
 	}
 
 	if _, err = svc.Create(ctx, admin, "需求三", "", 0, nil, false, nil, "p0"); err == nil {
@@ -54,12 +69,12 @@ func TestDemandUpdatePriority(t *testing.T) {
 		t.Errorf("优先级 = %s, want high", got.Priority)
 	}
 
-	// 调整应落审计
-	n := client.AuditLog.Query().
+	// 调整应落审计，详情携带调整后的优先级值
+	entry := client.AuditLog.Query().
 		Where(auditlog.Action("demand.update_priority"), auditlog.TargetID(d.ID)).
-		CountX(ctx)
-	if n != 1 {
-		t.Errorf("审计条数 = %d, want 1", n)
+		OnlyX(ctx)
+	if got := entry.Detail["priority"]; got != "high" {
+		t.Errorf("审计 priority = %v, want high", got)
 	}
 
 	if _, err = svc.UpdatePriority(ctx, admin, d.ID, "p0"); err == nil {
