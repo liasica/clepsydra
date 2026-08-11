@@ -35,11 +35,17 @@ type demandCreateRequest struct {
 	PlannedStartDate  string `json:"planned_start_date"`
 	Confirmed         bool   `json:"confirmed"`
 	ProjectIDs        []int  `json:"project_ids"`
+	TagIDs            []int  `json:"tag_ids"`
 }
 
 // demandProjectsRequest 项目标签全量覆盖请求体
 type demandProjectsRequest struct {
 	ProjectIDs []int `json:"project_ids"`
+}
+
+// demandTagsRequest 性质标签全量覆盖请求体
+type demandTagsRequest struct {
+	TagIDs []int `json:"tag_ids"`
 }
 
 // estimateRequest 提交人天确认请求体
@@ -90,12 +96,13 @@ func actor(c echo.Context) service.Actor {
 	return service.Actor{ID: claims.UserID, Name: claims.Name}
 }
 
-// List GET /api/demands?status=&project_id=
+// List GET /api/demands?status=&project_id=&tag_id=
 func (h *Demand) List(c echo.Context) error {
 	status := c.QueryParam("status")
 	projectID, _ := strconv.Atoi(c.QueryParam("project_id")) // 非法或缺省按 0 处理，即不筛选
+	tagID, _ := strconv.Atoi(c.QueryParam("tag_id"))         // 同上
 
-	demands, err := h.svc.List(c.Request().Context(), status, projectID, 0)
+	demands, err := h.svc.List(c.Request().Context(), status, projectID, tagID)
 	if err != nil {
 		return api.Fail(c, err)
 	}
@@ -142,7 +149,7 @@ func (h *Demand) Create(c echo.Context) error {
 	}
 
 	d, err := h.svc.Create(c.Request().Context(), actor(c), req.Title, req.Description,
-		req.EstimatedHalfDays, planned, req.Confirmed, req.ProjectIDs, nil)
+		req.EstimatedHalfDays, planned, req.Confirmed, req.ProjectIDs, req.TagIDs)
 	if err != nil {
 		return api.Fail(c, err)
 	}
@@ -185,6 +192,27 @@ func (h *Demand) UpdateProjects(c echo.Context) error {
 	}
 
 	d, err := h.svc.UpdateProjects(c.Request().Context(), actor(c), id, req.ProjectIDs)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, d)
+}
+
+// UpdateTags PUT /api/demands/:id/tags
+// 任何状态可用：标签是归类元数据，不影响人天与账单金额
+func (h *Demand) UpdateTags(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	var req demandTagsRequest
+	if err = c.Bind(&req); err != nil {
+		return api.Fail(c, service.ErrBadRequest("参数错误"))
+	}
+
+	d, err := h.svc.UpdateTags(c.Request().Context(), actor(c), id, req.TagIDs)
 	if err != nil {
 		return api.Fail(c, err)
 	}

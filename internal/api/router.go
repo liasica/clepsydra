@@ -42,6 +42,7 @@ type DemandHandler interface {
 	Create(c echo.Context) error
 	Update(c echo.Context) error
 	UpdateProjects(c echo.Context) error
+	UpdateTags(c echo.Context) error
 	Delete(c echo.Context) error
 	SubmitEstimate(c echo.Context) error
 	ConfirmEstimate(c echo.Context) error
@@ -136,6 +137,7 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	authed.POST("/demands", h.Demand.Create)
 	authed.PUT("/demands/:id", h.Demand.Update)
 	authed.PUT("/demands/:id/projects", h.Demand.UpdateProjects)
+	authed.PUT("/demands/:id/tags", h.Demand.UpdateTags)
 	authed.POST("/demands/:id/confirm-estimate", h.Demand.ConfirmEstimate)
 	authed.POST("/demands/:id/accept", h.Demand.Accept)
 	authed.GET("/projects", h.Project.List)
