@@ -15,6 +15,8 @@ tags:
     description: 开发需求（项目）管理，登录即可查看，写操作仅超级管理员
   - name: Projects
     description: 项目标签管理，需求可多选项目归类，登录即可查看，写操作仅超级管理员
+  - name: Tags
+    description: 需求性质标签管理，登录即可查看，写操作仅超级管理员
   - name: Bills
     description: 月度账单管理，登录即可查看与确认，其余写操作仅超级管理员
   - name: Settings
@@ -142,6 +144,12 @@ paths:
           schema:
             type: integer
           description: 按项目筛选，缺省不筛选
+        - name: tag_id
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: 按性质标签筛选，缺省不筛选
       responses:
         '200':
           description: 查询成功
@@ -282,6 +290,49 @@ paths:
                 project_ids:
                   type: array
                   description: 关联的项目 ID 列表，传空数组即清空
+                  items:
+                    type: integer
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Demand'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/demands/{id}/tags:
+    put:
+      tags: [Demands]
+      operationId: demandsUpdateTags
+      summary: 更新需求的性质标签
+      description: 全量覆盖式更新，传空数组即清空；任何状态可用，登录即可操作
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tag_ids:
+                  type: array
+                  description: 关联的标签 ID 列表，传空数组即清空
                   items:
                     type: integer
       responses:
@@ -475,6 +526,131 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Envelope'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/tags:
+    get:
+      tags: [Tags]
+      operationId: tagsList
+      summary: 查询标签列表
+      description: 全部性质标签及各自关联需求数（不含已软删需求），登录即可访问，供管理页、下拉与筛选使用
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Tag'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Tags]
+      operationId: tagsCreate
+      summary: 创建标签
+      description: 创建需求性质标签，名称必填且唯一；颜色由服务端按名称生成并固化，不接受外部传入（仅超级管理员）
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagSave'
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Tag'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/tags/{id}:
+    put:
+      tags: [Tags]
+      operationId: tagsUpdate
+      summary: 更新标签
+      description: 更新标签名称，名称必填且唯一；颜色保持创建时的固化值不变（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TagID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TagSave'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Tag'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags: [Tags]
+      operationId: tagsDelete
+      summary: 删除标签
+      description: 物理删除并自动解除与需求的关联，需求本身不受影响（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TagID'
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1430,6 +1606,13 @@ components:
       description: 项目 ID
       schema:
         type: integer
+    TagID:
+      name: id
+      in: path
+      required: true
+      description: 标签 ID
+      schema:
+        type: integer
 
   responses:
     BadRequest:
@@ -1736,6 +1919,11 @@ components:
               description: 关联的项目标签
               items:
                 $ref: '#/components/schemas/Project'
+            tags:
+              type: array
+              description: 关联的性质标签
+              items:
+                $ref: '#/components/schemas/Tag'
 
     DemandRequest:
       type: object
@@ -1773,6 +1961,11 @@ components:
         project_ids:
           type: array
           description: 关联的项目 ID 列表，可选；含不存在的 ID 返回业务错误
+          items:
+            type: integer
+        tag_ids:
+          type: array
+          description: 关联的性质标签 ID 列表，可选
           items:
             type: integer
 
@@ -1856,6 +2049,40 @@ components:
         remark:
           type: string
           description: 备注，可空
+
+    Tag:
+      type: object
+      description: 需求性质标签，颜色创建时按名称生成并固化
+      properties:
+        id:
+          type: integer
+          description: 标签 ID
+        name:
+          type: string
+          description: 标签名称，唯一
+        color:
+          type: string
+          description: "十六进制色值（如 #3b82f6），由服务端生成"
+        demand_count:
+          type: integer
+          description: 关联需求数（不含已软删需求），仅标签列表接口有效
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新时间
+
+    TagSave:
+      type: object
+      description: 标签创建 / 更新请求体，仅名称，颜色由服务端生成
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: 标签名称，唯一
 
     Bill:
       type: object
