@@ -250,18 +250,25 @@ func (s *Demand) normalizeProjectIDs(ctx context.Context, ids []int) ([]int, err
 	return uniq, nil
 }
 
-// Update 更新需求标题与描述（markdown 原文），仅 draft 与 pending_estimate 状态允许
-func (s *Demand) Update(ctx context.Context, actor Actor, id int, title, description string) (*ent.Demand, error) {
+// Update 更新需求标题与描述（markdown 原文）
+//
+// anyStatus 为 false 时仅 draft 与 pending_estimate 状态允许（需求方语义，人天确认后锁定）；
+// 为 true 时任意状态可更新（超管语义，随时修正标题与描述）。
+// 软删除 mixin 的 update hook 会挡住已删除记录，两种语义下都保持 404
+func (s *Demand) Update(ctx context.Context, actor Actor, id int, title, description string, anyStatus bool) (*ent.Demand, error) {
 	if title == "" {
 		return nil, ErrBadRequest("标题不能为空")
 	}
 
 	// 状态检查随 UPDATE 语句条件化（Where 带状态谓词 + n==0 判定），避免 Get 后无条件写入的 TOCTOU
-	n, err := s.client.Demand.Update().
-		Where(demand.ID(id), demand.StatusIn(demand.StatusDraft, demand.StatusPendingEstimate)).
+	update := s.client.Demand.Update().
+		Where(demand.ID(id)).
 		SetTitle(title).
-		SetDescription(description).
-		Save(ctx)
+		SetDescription(description)
+	if !anyStatus {
+		update.Where(demand.StatusIn(demand.StatusDraft, demand.StatusPendingEstimate))
+	}
+	n, err := update.Save(ctx)
 	if err != nil {
 		return nil, err
 	}

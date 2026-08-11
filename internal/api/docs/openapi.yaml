@@ -235,7 +235,7 @@ paths:
       tags: [Demands]
       operationId: demandsUpdate
       summary: 更新需求
-      description: 更新需求标题与描述（markdown 原文），仅 draft 与 pending_estimate 状态允许，人天确认后锁定；登录即可操作，需求方也可修改
+      description: 更新需求标题与描述（markdown 原文）；超级管理员任何状态可编辑，需求方仅 draft 与 pending_estimate（人天确认后锁定，返回 422）
       security:
         - bearerAuth: []
       parameters:

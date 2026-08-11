@@ -121,7 +121,8 @@ func TestDemandTransitConcurrentSafety(t *testing.T) {
 	}
 }
 
-// TestDemandUpdateStatusGuard Update 仅允许 draft/pending_estimate，其余状态一律拒绝，且成功更新均写审计
+// TestDemandUpdateStatusGuard Update 默认仅允许 draft/pending_estimate，其余状态一律拒绝，
+// anyStatus 放开状态锁（超管语义），且成功更新均写审计
 func TestDemandUpdateStatusGuard(t *testing.T) {
 	client, svc := newDemandEnv(t, "dupdateguard")
 	ctx := context.Background()
@@ -129,34 +130,63 @@ func TestDemandUpdateStatusGuard(t *testing.T) {
 	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false, nil, "")
 
 	// draft 状态允许更新
-	if _, err := svc.Update(ctx, admin, d.ID, "新标题", "新描述"); err != nil {
+	if _, err := svc.Update(ctx, admin, d.ID, "新标题", "新描述", false); err != nil {
 		t.Fatalf("draft 状态更新失败: %v", err)
 	}
 
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, 2, nil)
 
 	// pending_estimate 状态允许更新
-	if _, err := svc.Update(ctx, admin, d.ID, "再次修改", ""); err != nil {
+	if _, err := svc.Update(ctx, admin, d.ID, "再次修改", "", false); err != nil {
 		t.Fatalf("pending_estimate 状态更新失败: %v", err)
 	}
 
 	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
 
 	// confirmed 状态禁止更新
-	if _, err := svc.Update(ctx, admin, d.ID, "不应成功", ""); err == nil {
+	if _, err := svc.Update(ctx, admin, d.ID, "不应成功", "", false); err == nil {
 		t.Error("confirmed 状态更新应拒绝")
 	}
 
 	_ = svc.Start(ctx, admin, d.ID, time.Now())
 
 	// in_progress 状态禁止更新
-	if _, err := svc.Update(ctx, admin, d.ID, "不应成功", ""); err == nil {
+	if _, err := svc.Update(ctx, admin, d.ID, "不应成功", "", false); err == nil {
 		t.Error("in_progress 状态更新应拒绝")
 	}
 
-	// 两次成功更新（draft、pending_estimate）均应写入审计日志，被拒绝的两次不写
-	if n := client.AuditLog.Query().Where(auditlog.Action("demand.update")).CountX(ctx); n != 2 {
-		t.Errorf("demand.update 审计日志数 = %d, want 2", n)
+	// anyStatus 放开状态锁：同一 in_progress 需求超管语义下可更新
+	if _, err := svc.Update(ctx, admin, d.ID, "超管修改", "", true); err != nil {
+		t.Errorf("anyStatus 更新 in_progress 需求失败: %v", err)
+	}
+
+	// 三次成功更新（draft、pending_estimate、anyStatus）均应写入审计日志，被拒绝的两次不写
+	if n := client.AuditLog.Query().Where(auditlog.Action("demand.update")).CountX(ctx); n != 3 {
+		t.Errorf("demand.update 审计日志数 = %d, want 3", n)
+	}
+}
+
+// TestDemandUpdateAnyStatus anyStatus 语义覆盖终态与软删除边界
+func TestDemandUpdateAnyStatus(t *testing.T) {
+	client, svc := newDemandEnv(t, "dupdateany")
+	ctx := context.Background()
+
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false, nil, "")
+
+	// 直接改库到 accepted 终态，anyStatus 仍可更新
+	client.Demand.UpdateOneID(d.ID).SetStatus("accepted").ExecX(ctx)
+	got, err := svc.Update(ctx, admin, d.ID, "终态修改", "新描述", true)
+	if err != nil {
+		t.Fatalf("anyStatus 更新 accepted 需求失败: %v", err)
+	}
+	if got.Title != "终态修改" || got.Description != "新描述" {
+		t.Errorf("更新结果异常: %s / %s", got.Title, got.Description)
+	}
+
+	// 软删除后 anyStatus 也不能更新，保持 404
+	_ = svc.Delete(ctx, admin, d.ID)
+	if _, err = svc.Update(ctx, admin, d.ID, "不应成功", "", true); err != ErrNotFound {
+		t.Errorf("软删除后更新应返回 ErrNotFound, got %v", err)
 	}
 }
 

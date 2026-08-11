@@ -192,7 +192,7 @@ func TestDemandUpdateOnlyTitleDescription(t *testing.T) {
 	planned := time.Date(2026, 9, 1, 0, 0, 0, 0, time.Local)
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, 4, &planned)
 
-	updated, err := svc.Update(ctx, admin, d.ID, "新标题", "新描述")
+	updated, err := svc.Update(ctx, admin, d.ID, "新标题", "新描述", false)
 	if err != nil {
 		t.Fatalf("更新失败: %v", err)
 	}

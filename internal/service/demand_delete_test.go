@@ -91,7 +91,7 @@ func TestDeletedDemandRejectsUpdateAndTransition(t *testing.T) {
 		t.Fatalf("删除失败: %v", err)
 	}
 
-	if _, err := svc.Update(ctx, admin, d.ID, "改名", ""); err == nil {
+	if _, err := svc.Update(ctx, admin, d.ID, "改名", "", false); err == nil {
 		t.Error("已删除的需求不应能编辑")
 	}
 

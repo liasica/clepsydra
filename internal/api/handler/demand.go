@@ -158,6 +158,7 @@ func (h *Demand) Create(c echo.Context) error {
 }
 
 // Update PUT /api/demands/:id
+// 超级管理员任何状态可编辑标题与描述；需求方仅 draft 与 pending_estimate，人天确认后锁定
 func (h *Demand) Update(c echo.Context) error {
 	id, err := parseID(c)
 	if err != nil {
@@ -170,7 +171,8 @@ func (h *Demand) Update(c echo.Context) error {
 	}
 
 	var d *ent.Demand
-	d, err = h.svc.Update(c.Request().Context(), actor(c), id, req.Title, req.Description)
+	d, err = h.svc.Update(c.Request().Context(), actor(c), id, req.Title, req.Description,
+		api.Claims(c).Role == "admin")
 	if err != nil {
 		return api.Fail(c, err)
 	}
