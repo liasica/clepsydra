@@ -178,6 +178,20 @@ var (
 		Columns:    SettingsColumns,
 		PrimaryKey: []*schema.Column{SettingsColumns[0]},
 	}
+	// TagsColumns holds the columns for the "tags" table.
+	TagsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "color", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// TagsTable holds the schema information for the "tags" table.
+	TagsTable = &schema.Table{
+		Name:       "tags",
+		Columns:    TagsColumns,
+		PrimaryKey: []*schema.Column{TagsColumns[0]},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -220,6 +234,31 @@ var (
 			},
 		},
 	}
+	// TagDemandsColumns holds the columns for the "tag_demands" table.
+	TagDemandsColumns = []*schema.Column{
+		{Name: "tag_id", Type: field.TypeInt},
+		{Name: "demand_id", Type: field.TypeInt},
+	}
+	// TagDemandsTable holds the schema information for the "tag_demands" table.
+	TagDemandsTable = &schema.Table{
+		Name:       "tag_demands",
+		Columns:    TagDemandsColumns,
+		PrimaryKey: []*schema.Column{TagDemandsColumns[0], TagDemandsColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "tag_demands_tag_id",
+				Columns:    []*schema.Column{TagDemandsColumns[0]},
+				RefColumns: []*schema.Column{TagsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "tag_demands_demand_id",
+				Columns:    []*schema.Column{TagDemandsColumns[1]},
+				RefColumns: []*schema.Column{DemandsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AuditLogsTable,
@@ -229,8 +268,10 @@ var (
 		HolidaysTable,
 		ProjectsTable,
 		SettingsTable,
+		TagsTable,
 		UsersTable,
 		ProjectDemandsTable,
+		TagDemandsTable,
 	}
 )
 
@@ -238,4 +279,6 @@ func init() {
 	BillItemsTable.ForeignKeys[0].RefTable = BillsTable
 	ProjectDemandsTable.ForeignKeys[0].RefTable = ProjectsTable
 	ProjectDemandsTable.ForeignKeys[1].RefTable = DemandsTable
+	TagDemandsTable.ForeignKeys[0].RefTable = TagsTable
+	TagDemandsTable.ForeignKeys[1].RefTable = DemandsTable
 }

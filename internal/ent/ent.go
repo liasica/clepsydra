@@ -10,6 +10,7 @@ import (
 	"clepsydra/internal/ent/holiday"
 	"clepsydra/internal/ent/project"
 	"clepsydra/internal/ent/setting"
+	"clepsydra/internal/ent/tag"
 	"clepsydra/internal/ent/user"
 	"context"
 	"errors"
@@ -87,6 +88,7 @@ func checkColumn(t, c string) error {
 			holiday.Table:  holiday.ValidColumn,
 			project.Table:  project.ValidColumn,
 			setting.Table:  setting.ValidColumn,
+			tag.Table:      tag.ValidColumn,
 			user.Table:     user.ValidColumn,
 		})
 	})

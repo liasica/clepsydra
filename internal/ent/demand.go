@@ -63,9 +63,11 @@ type Demand struct {
 type DemandEdges struct {
 	// Projects holds the value of the projects edge.
 	Projects []*Project `json:"projects,omitempty"`
+	// Tags holds the value of the tags edge.
+	Tags []*Tag `json:"tags,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // ProjectsOrErr returns the Projects value or an error if the edge
@@ -75,6 +77,15 @@ func (e DemandEdges) ProjectsOrErr() ([]*Project, error) {
 		return e.Projects, nil
 	}
 	return nil, &NotLoadedError{edge: "projects"}
+}
+
+// TagsOrErr returns the Tags value or an error if the edge
+// was not loaded in eager-loading.
+func (e DemandEdges) TagsOrErr() ([]*Tag, error) {
+	if e.loadedTypes[1] {
+		return e.Tags, nil
+	}
+	return nil, &NotLoadedError{edge: "tags"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -245,6 +256,11 @@ func (_m *Demand) Value(name string) (ent.Value, error) {
 // QueryProjects queries the "projects" edge of the Demand entity.
 func (_m *Demand) QueryProjects() *ProjectQuery {
 	return NewDemandClient(_m.config).QueryProjects(_m)
+}
+
+// QueryTags queries the "tags" edge of the Demand entity.
+func (_m *Demand) QueryTags() *TagQuery {
+	return NewDemandClient(_m.config).QueryTags(_m)
 }
 
 // Update returns a builder for updating this Demand.
