@@ -36,6 +36,7 @@ import DemandFinishDialog from './components/DemandFinishDialog.vue';
 import DemandFormDialog from './components/DemandFormDialog.vue';
 import DemandProjectsDialog from './components/DemandProjectsDialog.vue';
 import DemandStartDialog from './components/DemandStartDialog.vue';
+import DemandTagsDialog from './components/DemandTagsDialog.vue';
 
 /**
  * 需求详情
@@ -92,6 +93,9 @@ const [FinishModal, finishModalApi] = useVbenModal({
 });
 const [ProjectsModal, projectsModalApi] = useVbenModal({
   connectedComponent: DemandProjectsDialog,
+});
+const [TagsModal, tagsModalApi] = useVbenModal({
+  connectedComponent: DemandTagsDialog,
 });
 
 /** 加载详情 */
@@ -282,6 +286,25 @@ onMounted(load);
                 </Button>
               </div>
             </DescriptionsItem>
+            <DescriptionsItem :span="2" label="标签">
+              <div class="flex flex-wrap items-center gap-2">
+                <Tag
+                  v-for="tg in demand.edges?.tags ?? []"
+                  :key="tg.id"
+                  :color="tg.color || undefined"
+                  class="me-0"
+                >
+                  {{ tg.name }}
+                </Tag>
+                <Button
+                  size="small"
+                  type="link"
+                  @click="tagsModalApi.setData({ demand }).open()"
+                >
+                  编辑标签
+                </Button>
+              </div>
+            </DescriptionsItem>
           </Descriptions>
 
           <Space v-if="actions.length > 0" class="mt-4">
@@ -309,5 +332,6 @@ onMounted(load);
     <StartModal @conflict="load" @success="load" />
     <FinishModal @conflict="load" @success="load" />
     <ProjectsModal @success="load" />
+    <TagsModal @success="load" />
   </Page>
 </template>

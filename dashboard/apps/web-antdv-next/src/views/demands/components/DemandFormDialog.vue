@@ -17,8 +17,14 @@ import {
   Select,
 } from 'antdv-next';
 
-import { createDemand, updateDemand, updateDemandProjects } from '#/api/demand';
+import {
+  createDemand,
+  updateDemand,
+  updateDemandProjects,
+  updateDemandTags,
+} from '#/api/demand';
 import { fetchProjects } from '#/api/project';
+import { fetchTags } from '#/api/tag';
 import { MarkdownEditor } from '#/components/markdown';
 import { mandayToHalfDays } from '#/utils/clepsydra/manday';
 import { isStatusConflict, showSuccess } from '#/utils/http/error';
@@ -64,11 +70,15 @@ const form = reactive({
   manday: undefined as null | number | undefined,
   plannedStartDate: undefined as Dayjs | undefined,
   projectIds: [] as number[],
+  tagIds: [] as number[],
   title: '',
 });
 
 /** 项目多选选项，弹窗每次打开时刷新 */
 const projectOptions = ref<{ label: string; value: number }[]>([]);
+
+/** 标签多选选项，弹窗每次打开时刷新 */
+const tagOptions = ref<{ label: string; value: number }[]>([]);
 
 /**
  * 弹窗打开时记录的初始项目标签指纹（排序后 join 成串）
@@ -78,8 +88,11 @@ const projectOptions = ref<{ label: string; value: number }[]>([]);
  */
 const initialProjectIdsKey = ref('');
 
-/** 将项目 ID 数组归一化成排序后的指纹串，用于比对是否发生变化 */
-function projectIdsKey(ids: number[]) {
+/** 弹窗打开时记录的初始性质标签指纹，作用同 initialProjectIdsKey */
+const initialTagIdsKey = ref('');
+
+/** 将 ID 数组归一化成排序后的指纹串，用于比对是否发生变化 */
+function idsKey(ids: number[]) {
   return ids.toSorted((a, b) => a - b).join(',');
 }
 
@@ -90,6 +103,19 @@ async function loadProjectOptions() {
     projectOptions.value = projects.map((p) => ({
       label: p.name,
       value: p.id,
+    }));
+  } catch {
+    // 错误提示已由请求拦截器统一弹出
+  }
+}
+
+/** 加载标签选项，失败不阻塞表单其余部分 */
+async function loadTagOptions() {
+  try {
+    const tags = await fetchTags();
+    tagOptions.value = tags.map((t) => ({
+      label: t.name,
+      value: t.id,
     }));
   } catch {
     // 错误提示已由请求拦截器统一弹出
@@ -135,8 +161,11 @@ const [Modal, modalApi] = useVbenModal({
     form.plannedStartDate = undefined;
     form.confirmed = false;
     form.projectIds = (target?.edges?.projects ?? []).map((p) => p.id);
-    initialProjectIdsKey.value = projectIdsKey(form.projectIds);
+    initialProjectIdsKey.value = idsKey(form.projectIds);
     void loadProjectOptions();
+    form.tagIds = (target?.edges?.tags ?? []).map((t) => t.id);
+    initialTagIdsKey.value = idsKey(form.tagIds);
+    void loadTagOptions();
     formRef.value?.clearValidate();
     modalApi.setState({ title: target ? '编辑需求' : '新建需求' });
     editorMounted.value = true;
@@ -177,12 +206,16 @@ async function save() {
     if (demand.value) {
       await updateDemand(demand.value.id, params);
       // 标签走独立接口，与标题描述的状态锁定解耦；未变化则不调用，避免冗余审计
-      if (projectIdsKey(form.projectIds) !== initialProjectIdsKey.value) {
+      if (idsKey(form.projectIds) !== initialProjectIdsKey.value) {
         await updateDemandProjects(demand.value.id, form.projectIds);
+      }
+      if (idsKey(form.tagIds) !== initialTagIdsKey.value) {
+        await updateDemandTags(demand.value.id, form.tagIds);
       }
     } else {
       params.project_ids =
         form.projectIds.length > 0 ? form.projectIds : undefined;
+      params.tag_ids = form.tagIds.length > 0 ? form.tagIds : undefined;
       await createDemand(params);
     }
     showSuccess('已保存');
@@ -225,6 +258,15 @@ async function save() {
           allow-clear
           mode="multiple"
           placeholder="选择所属项目（可多选，可留空）"
+        />
+      </FormItem>
+      <FormItem label="标签" name="tagIds">
+        <Select
+          v-model:value="form.tagIds"
+          :options="tagOptions"
+          allow-clear
+          mode="multiple"
+          placeholder="选择性质标签（可多选，可留空）"
         />
       </FormItem>
       <template v-if="showEstimate">

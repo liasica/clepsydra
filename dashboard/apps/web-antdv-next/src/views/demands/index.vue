@@ -12,6 +12,7 @@ import { Button, Select, Table, Tag } from 'antdv-next';
 
 import { fetchDemands } from '#/api/demand';
 import { fetchProjects } from '#/api/project';
+import { fetchTags } from '#/api/tag';
 import { formatDate, formatDateTime } from '#/utils/clepsydra/date';
 import { DEMAND_STATUS, tagColor } from '#/utils/clepsydra/dict';
 import { formatManday } from '#/utils/clepsydra/manday';
@@ -45,6 +46,10 @@ const statusOptions = Object.entries(DEMAND_STATUS).map(([value, meta]) => ({
 const projectId = ref<number | undefined>(undefined);
 const projectOptions = ref<{ label: string; value: number }[]>([]);
 
+/** 标签筛选，undefined 表示全部 */
+const tagId = ref<number | undefined>(undefined);
+const tagOptions = ref<{ label: string; value: number }[]>([]);
+
 const columns: TableColumnsType<Api.Demand.Item> = [
   { dataIndex: 'id', key: 'id', title: 'ID', width: 72 },
   {
@@ -55,6 +60,7 @@ const columns: TableColumnsType<Api.Demand.Item> = [
     title: '标题',
   },
   { key: 'projects', title: '项目', width: 180 },
+  { key: 'tags', title: '标签', width: 160 },
   { key: 'estimated', title: '预估人天', width: 100 },
   { key: 'actual', title: '实际人天', width: 100 },
   // 日期列宽需容下「2026-08-20」「2026-08-05 18:30」加单元格左右内边距，否则会折行
@@ -74,6 +80,7 @@ async function load() {
     list.value = await fetchDemands({
       project_id: projectId.value,
       status: status.value,
+      tag_id: tagId.value,
     });
   } finally {
     loading.value = false;
@@ -109,6 +116,16 @@ onMounted(() => {
     .catch(() => {
       // 错误提示已由请求拦截器统一弹出
     });
+  fetchTags()
+    .then((tags) => {
+      tagOptions.value = tags.map((t) => ({
+        label: t.name,
+        value: t.id,
+      }));
+    })
+    .catch(() => {
+      // 错误提示已由请求拦截器统一弹出
+    });
 });
 </script>
 
@@ -130,6 +147,14 @@ onMounted(() => {
           allow-clear
           class="w-45"
           placeholder="全部项目"
+          @change="load"
+        />
+        <Select
+          v-model:value="tagId"
+          :options="tagOptions"
+          allow-clear
+          class="w-45"
+          placeholder="全部标签"
           @change="load"
         />
       </div>
@@ -155,6 +180,18 @@ onMounted(() => {
               class="me-0"
             >
               {{ p.name }}
+            </Tag>
+          </div>
+        </template>
+        <template v-else-if="column.key === 'tags'">
+          <div class="flex flex-wrap items-center gap-2">
+            <Tag
+              v-for="tg in record.edges?.tags ?? []"
+              :key="tg.id"
+              :color="tg.color || undefined"
+              class="me-0"
+            >
+              {{ tg.name }}
             </Tag>
           </div>
         </template>
