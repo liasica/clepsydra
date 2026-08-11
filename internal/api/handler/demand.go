@@ -35,11 +35,17 @@ type demandCreateRequest struct {
 	PlannedStartDate  string `json:"planned_start_date"`
 	Confirmed         bool   `json:"confirmed"`
 	ProjectIDs        []int  `json:"project_ids"`
+	Priority          string `json:"priority"`
 }
 
 // demandProjectsRequest 项目标签全量覆盖请求体
 type demandProjectsRequest struct {
 	ProjectIDs []int `json:"project_ids"`
+}
+
+// demandPriorityRequest 优先级调整请求体
+type demandPriorityRequest struct {
+	Priority string `json:"priority"`
 }
 
 // estimateRequest 提交人天确认请求体
@@ -90,12 +96,13 @@ func actor(c echo.Context) service.Actor {
 	return service.Actor{ID: claims.UserID, Name: claims.Name}
 }
 
-// List GET /api/demands?status=&project_id=
+// List GET /api/demands?status=&project_id=&priority=
 func (h *Demand) List(c echo.Context) error {
 	status := c.QueryParam("status")
 	projectID, _ := strconv.Atoi(c.QueryParam("project_id")) // 非法或缺省按 0 处理，即不筛选
+	priority := c.QueryParam("priority")
 
-	demands, err := h.svc.List(c.Request().Context(), status, projectID)
+	demands, err := h.svc.List(c.Request().Context(), status, projectID, priority)
 	if err != nil {
 		return api.Fail(c, err)
 	}
@@ -142,7 +149,7 @@ func (h *Demand) Create(c echo.Context) error {
 	}
 
 	d, err := h.svc.Create(c.Request().Context(), actor(c), req.Title, req.Description,
-		req.EstimatedHalfDays, planned, req.Confirmed, req.ProjectIDs)
+		req.EstimatedHalfDays, planned, req.Confirmed, req.ProjectIDs, req.Priority)
 	if err != nil {
 		return api.Fail(c, err)
 	}
@@ -185,6 +192,27 @@ func (h *Demand) UpdateProjects(c echo.Context) error {
 	}
 
 	d, err := h.svc.UpdateProjects(c.Request().Context(), actor(c), id, req.ProjectIDs)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	return api.OK(c, d)
+}
+
+// UpdatePriority PUT /api/demands/:id/priority
+// 任何状态可用：优先级是排期参考元数据，不影响人天与账单金额
+func (h *Demand) UpdatePriority(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return api.Fail(c, err)
+	}
+
+	var req demandPriorityRequest
+	if err = c.Bind(&req); err != nil {
+		return api.Fail(c, service.ErrBadRequest("参数错误"))
+	}
+
+	d, err := h.svc.UpdatePriority(c.Request().Context(), actor(c), id, req.Priority)
 	if err != nil {
 		return api.Fail(c, err)
 	}

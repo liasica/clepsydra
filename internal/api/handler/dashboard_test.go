@@ -27,7 +27,7 @@ func TestDashboardTodosHandler(t *testing.T) {
 	demandSvc := service.NewDemand(client, settingSvc, audit)
 
 	act := service.Actor{ID: 1, Name: "管理员"}
-	d, err := demandSvc.Create(ctx, act, "待确认", "", 0, nil, false, nil)
+	d, err := demandSvc.Create(ctx, act, "待确认", "", 0, nil, false, nil, "")
 	if err != nil {
 		t.Fatalf("创建需求失败: %v", err)
 	}

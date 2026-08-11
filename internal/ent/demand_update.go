@@ -252,6 +252,20 @@ func (_u *DemandUpdate) SetNillableStatus(v *demand.Status) *DemandUpdate {
 	return _u
 }
 
+// SetPriority sets the "priority" field.
+func (_u *DemandUpdate) SetPriority(v demand.Priority) *DemandUpdate {
+	_u.mutation.SetPriority(v)
+	return _u
+}
+
+// SetNillablePriority sets the "priority" field if the given value is not nil.
+func (_u *DemandUpdate) SetNillablePriority(v *demand.Priority) *DemandUpdate {
+	if v != nil {
+		_u.SetPriority(*v)
+	}
+	return _u
+}
+
 // SetAcceptDeadline sets the "accept_deadline" field.
 func (_u *DemandUpdate) SetAcceptDeadline(v time.Time) *DemandUpdate {
 	_u.mutation.SetAcceptDeadline(v)
@@ -448,6 +462,11 @@ func (_u *DemandUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Demand.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Priority(); ok {
+		if err := demand.PriorityValidator(v); err != nil {
+			return &ValidationError{Name: "priority", err: fmt.Errorf(`ent: validator failed for field "Demand.priority": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -528,6 +547,9 @@ func (_u *DemandUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(demand.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Priority(); ok {
+		_spec.SetField(demand.FieldPriority, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.AcceptDeadline(); ok {
 		_spec.SetField(demand.FieldAcceptDeadline, field.TypeTime, value)
@@ -847,6 +869,20 @@ func (_u *DemandUpdateOne) SetNillableStatus(v *demand.Status) *DemandUpdateOne 
 	return _u
 }
 
+// SetPriority sets the "priority" field.
+func (_u *DemandUpdateOne) SetPriority(v demand.Priority) *DemandUpdateOne {
+	_u.mutation.SetPriority(v)
+	return _u
+}
+
+// SetNillablePriority sets the "priority" field if the given value is not nil.
+func (_u *DemandUpdateOne) SetNillablePriority(v *demand.Priority) *DemandUpdateOne {
+	if v != nil {
+		_u.SetPriority(*v)
+	}
+	return _u
+}
+
 // SetAcceptDeadline sets the "accept_deadline" field.
 func (_u *DemandUpdateOne) SetAcceptDeadline(v time.Time) *DemandUpdateOne {
 	_u.mutation.SetAcceptDeadline(v)
@@ -1056,6 +1092,11 @@ func (_u *DemandUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Demand.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.Priority(); ok {
+		if err := demand.PriorityValidator(v); err != nil {
+			return &ValidationError{Name: "priority", err: fmt.Errorf(`ent: validator failed for field "Demand.priority": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -1153,6 +1194,9 @@ func (_u *DemandUpdateOne) sqlSave(ctx context.Context) (_node *Demand, err erro
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(demand.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.Priority(); ok {
+		_spec.SetField(demand.FieldPriority, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.AcceptDeadline(); ok {
 		_spec.SetField(demand.FieldAcceptDeadline, field.TypeTime, value)

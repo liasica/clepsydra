@@ -42,14 +42,31 @@ func canTransit(from, to demand.Status) bool {
 	return false
 }
 
-// List 按状态与项目筛选需求，status 为空、projectID 为 0 表示不筛选；预加载项目标签
-func (s *Demand) List(ctx context.Context, status string, projectID int) ([]*ent.Demand, error) {
+// normalizePriority 校验优先级合法性，空串按默认 normal 处理
+func normalizePriority(priority string) (demand.Priority, error) {
+	if priority == "" {
+		return demand.PriorityNormal, nil
+	}
+
+	p := demand.Priority(priority)
+	if err := demand.PriorityValidator(p); err != nil {
+		return "", ErrBadRequest("优先级不合法")
+	}
+
+	return p, nil
+}
+
+// List 按状态、项目与优先级筛选需求，status/priority 为空、projectID 为 0 表示不筛选；预加载项目标签
+func (s *Demand) List(ctx context.Context, status string, projectID int, priority string) ([]*ent.Demand, error) {
 	q := s.client.Demand.Query().WithProjects().Order(ent.Desc(demand.FieldID))
 	if status != "" {
 		q = q.Where(demand.StatusEQ(demand.Status(status)))
 	}
 	if projectID > 0 {
 		q = q.Where(demand.HasProjectsWith(project.ID(projectID)))
+	}
+	if priority != "" {
+		q = q.Where(demand.PriorityEQ(demand.Priority(priority)))
 	}
 
 	return q.All(ctx)
@@ -73,7 +90,7 @@ func (s *Demand) Get(ctx context.Context, id int) (*ent.Demand, error) {
 // confirmed 再直达 confirmed（等价超管代确认，确认人记为创建者本人）。
 // INSERT 一次性写入终态，无并发流转问题，故不经过 transit 状态机。
 // 角色权限与「日期 / 已确认必须依附人天」由 handler 层校验，这里只保留业务不变量防御
-func (s *Demand) Create(ctx context.Context, actor Actor, title, description string, estimatedHalfDays int, plannedStart *time.Time, confirmed bool, projectIDs []int) (*ent.Demand, error) {
+func (s *Demand) Create(ctx context.Context, actor Actor, title, description string, estimatedHalfDays int, plannedStart *time.Time, confirmed bool, projectIDs []int, priority string) (*ent.Demand, error) {
 	if title == "" {
 		return nil, ErrBadRequest("标题不能为空")
 	}
@@ -82,6 +99,11 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 	}
 	if confirmed && estimatedHalfDays == 0 {
 		return nil, ErrBadRequest("勾选已确认时预估人天必须为正")
+	}
+
+	prio, err := normalizePriority(priority)
+	if err != nil {
+		return nil, err
 	}
 
 	ids, err := s.normalizeProjectIDs(ctx, projectIDs)
@@ -93,6 +115,7 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 		SetTitle(title).
 		SetDescription(description).
 		SetEstimatedHalfDays(estimatedHalfDays).
+		SetPriority(prio).
 		AddProjectIDs(ids...)
 
 	now := time.Now()
@@ -122,6 +145,9 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 		"title":               title,
 		"estimated_half_days": estimatedHalfDays,
 		"confirmed":           confirmed,
+	}
+	if prio != demand.DefaultPriority {
+		payload["priority"] = string(prio)
 	}
 	if plannedStart != nil {
 		payload["planned_start_date"] = plannedStart.Format("2006-01-02")
@@ -164,6 +190,35 @@ func (s *Demand) UpdateProjects(ctx context.Context, actor Actor, id int, projec
 
 	s.audit.Record(ctx, actor, "demand.update_projects", "demand", id, map[string]any{
 		"project_ids": ids,
+	})
+
+	return s.Get(ctx, id)
+}
+
+// UpdatePriority 调整需求优先级，任何状态均可：
+// 优先级是排期参考元数据，不影响人天与账单金额
+func (s *Demand) UpdatePriority(ctx context.Context, actor Actor, id int, priority string) (*ent.Demand, error) {
+	if priority == "" {
+		return nil, ErrBadRequest("优先级不能为空")
+	}
+
+	prio, err := normalizePriority(priority)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.client.Demand.UpdateOneID(id).
+		SetPriority(prio).
+		Exec(ctx)
+	if ent.IsNotFound(err) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	s.audit.Record(ctx, actor, "demand.update_priority", "demand", id, map[string]any{
+		"priority": string(prio),
 	})
 
 	return s.Get(ctx, id)

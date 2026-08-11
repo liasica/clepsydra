@@ -38,6 +38,8 @@ const (
 	FieldActualHalfDays = "actual_half_days"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldPriority holds the string denoting the priority field in the database.
+	FieldPriority = "priority"
 	// FieldAcceptDeadline holds the string denoting the accept_deadline field in the database.
 	FieldAcceptDeadline = "accept_deadline"
 	// FieldAcceptedAt holds the string denoting the accepted_at field in the database.
@@ -77,6 +79,7 @@ var Columns = []string{
 	FieldActualEndDate,
 	FieldActualHalfDays,
 	FieldStatus,
+	FieldPriority,
 	FieldAcceptDeadline,
 	FieldAcceptedAt,
 	FieldAcceptedBy,
@@ -154,6 +157,34 @@ func StatusValidator(s Status) error {
 	}
 }
 
+// Priority defines the type for the "priority" enum field.
+type Priority string
+
+// PriorityNormal is the default value of the Priority enum.
+const DefaultPriority = PriorityNormal
+
+// Priority values.
+const (
+	PriorityLow    Priority = "low"
+	PriorityNormal Priority = "normal"
+	PriorityHigh   Priority = "high"
+	PriorityUrgent Priority = "urgent"
+)
+
+func (pr Priority) String() string {
+	return string(pr)
+}
+
+// PriorityValidator is a validator for the "priority" field enum values. It is called by the builders before save.
+func PriorityValidator(pr Priority) error {
+	switch pr {
+	case PriorityLow, PriorityNormal, PriorityHigh, PriorityUrgent:
+		return nil
+	default:
+		return fmt.Errorf("demand: invalid enum value for priority field: %q", pr)
+	}
+}
+
 // OrderOption defines the ordering options for the Demand queries.
 type OrderOption func(*sql.Selector)
 
@@ -215,6 +246,11 @@ func ByActualHalfDays(opts ...sql.OrderTermOption) OrderOption {
 // ByStatus orders the results by the status field.
 func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldStatus, opts...).ToFunc()
+}
+
+// ByPriority orders the results by the priority field.
+func ByPriority(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPriority, opts...).ToFunc()
 }
 
 // ByAcceptDeadline orders the results by the accept_deadline field.

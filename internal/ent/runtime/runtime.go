@@ -66,19 +66,19 @@ func init() {
 	// demand.EstimatedHalfDaysValidator is a validator for the "estimated_half_days" field. It is called by the builders before save.
 	demand.EstimatedHalfDaysValidator = demandDescEstimatedHalfDays.Validators[0].(func(int) error)
 	// demandDescAcceptAuto is the schema descriptor for accept_auto field.
-	demandDescAcceptAuto := demandFields[13].Descriptor()
+	demandDescAcceptAuto := demandFields[14].Descriptor()
 	// demand.DefaultAcceptAuto holds the default value on creation for the accept_auto field.
 	demand.DefaultAcceptAuto = demandDescAcceptAuto.Default.(bool)
 	// demandDescAcceptLocked is the schema descriptor for accept_locked field.
-	demandDescAcceptLocked := demandFields[14].Descriptor()
+	demandDescAcceptLocked := demandFields[15].Descriptor()
 	// demand.DefaultAcceptLocked holds the default value on creation for the accept_locked field.
 	demand.DefaultAcceptLocked = demandDescAcceptLocked.Default.(bool)
 	// demandDescCreatedAt is the schema descriptor for created_at field.
-	demandDescCreatedAt := demandFields[15].Descriptor()
+	demandDescCreatedAt := demandFields[16].Descriptor()
 	// demand.DefaultCreatedAt holds the default value on creation for the created_at field.
 	demand.DefaultCreatedAt = demandDescCreatedAt.Default.(func() time.Time)
 	// demandDescUpdatedAt is the schema descriptor for updated_at field.
-	demandDescUpdatedAt := demandFields[16].Descriptor()
+	demandDescUpdatedAt := demandFields[17].Descriptor()
 	// demand.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	demand.DefaultUpdatedAt = demandDescUpdatedAt.Default.(func() time.Time)
 	// demand.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

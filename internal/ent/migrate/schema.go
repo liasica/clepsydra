@@ -112,6 +112,7 @@ var (
 		{Name: "actual_end_date", Type: field.TypeTime, Nullable: true},
 		{Name: "actual_half_days", Type: field.TypeInt, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "pending_estimate", "confirmed", "in_progress", "pending_acceptance", "accepted"}, Default: "draft"},
+		{Name: "priority", Type: field.TypeEnum, Enums: []string{"low", "normal", "high", "urgent"}, Default: "normal"},
 		{Name: "accept_deadline", Type: field.TypeTime, Nullable: true},
 		{Name: "accepted_at", Type: field.TypeTime, Nullable: true},
 		{Name: "accepted_by", Type: field.TypeInt, Nullable: true},
@@ -130,6 +131,11 @@ var (
 				Name:    "demand_status",
 				Unique:  false,
 				Columns: []*schema.Column{DemandsColumns[11]},
+			},
+			{
+				Name:    "demand_priority",
+				Unique:  false,
+				Columns: []*schema.Column{DemandsColumns[12]},
 			},
 			{
 				Name:    "demand_actual_end_date",

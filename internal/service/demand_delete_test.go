@@ -15,11 +15,11 @@ func TestDeleteHidesDemandEverywhere(t *testing.T) {
 	client, svc := newDemandEnv(t, "ddelete")
 	ctx := context.Background()
 
-	kept, err := svc.Create(ctx, admin, "保留的需求", "", 0, nil, false, nil)
+	kept, err := svc.Create(ctx, admin, "保留的需求", "", 0, nil, false, nil, "")
 	if err != nil {
 		t.Fatalf("创建失败: %v", err)
 	}
-	removed, err := svc.Create(ctx, admin, "待删除的需求", "", 0, nil, false, nil)
+	removed, err := svc.Create(ctx, admin, "待删除的需求", "", 0, nil, false, nil, "")
 	if err != nil {
 		t.Fatalf("创建失败: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestDeleteHidesDemandEverywhere(t *testing.T) {
 	}
 
 	// 列表里不再出现
-	list, err := svc.List(ctx, "", 0)
+	list, err := svc.List(ctx, "", 0, "")
 	if err != nil {
 		t.Fatalf("列表查询失败: %v", err)
 	}
@@ -67,7 +67,7 @@ func TestDeleteIsIdempotentlyRejected(t *testing.T) {
 	_, svc := newDemandEnv(t, "ddelete2")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false, nil)
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false, nil, "")
 	if err := svc.Delete(ctx, admin, d.ID); err != nil {
 		t.Fatalf("首次删除失败: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestDeletedDemandRejectsUpdateAndTransition(t *testing.T) {
 	_, svc := newDemandEnv(t, "ddelete3")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false, nil)
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false, nil, "")
 	if err := svc.Delete(ctx, admin, d.ID); err != nil {
 		t.Fatalf("删除失败: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestDeletedDemandExcludedFromDashboardAndBilling(t *testing.T) {
 	settingSvc := NewSetting(client)
 	dashboardSvc := NewDashboard(client, settingSvc)
 
-	d, _ := svc.Create(ctx, admin, "待确认人天的需求", "", 0, nil, false, nil)
+	d, _ := svc.Create(ctx, admin, "待确认人天的需求", "", 0, nil, false, nil, "")
 	if err := svc.SubmitEstimate(ctx, admin, d.ID, 4, nil); err != nil {
 		t.Fatalf("提交预估失败: %v", err)
 	}
@@ -149,7 +149,7 @@ func TestDeletedDemandExcludedFromNewBill(t *testing.T) {
 	// 两条同账期的已验收需求，删掉其中一条
 	ids := make([]int, 0, 2)
 	for _, title := range []string{"保留计费的需求", "删除计费的需求"} {
-		d, err := svc.Create(ctx, admin, title, "", 0, nil, false, nil)
+		d, err := svc.Create(ctx, admin, title, "", 0, nil, false, nil, "")
 		if err != nil {
 			t.Fatalf("创建失败: %v", err)
 		}
@@ -206,7 +206,7 @@ func TestDeleteKeepsGeneratedBillIntact(t *testing.T) {
 	start := time.Date(2026, 7, 6, 0, 0, 0, 0, time.Local)
 	end := time.Date(2026, 7, 10, 0, 0, 0, 0, time.Local)
 
-	d, _ := svc.Create(ctx, admin, "已完成的需求", "", 0, nil, false, nil)
+	d, _ := svc.Create(ctx, admin, "已完成的需求", "", 0, nil, false, nil, "")
 	if err := svc.SubmitEstimate(ctx, admin, d.ID, 4, nil); err != nil {
 		t.Fatalf("提交预估失败: %v", err)
 	}

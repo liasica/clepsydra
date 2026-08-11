@@ -36,6 +36,10 @@ func (Demand) Fields() []ent.Field {
 		field.Enum("status").
 			Values("draft", "pending_estimate", "confirmed", "in_progress", "pending_acceptance", "accepted").
 			Default("draft"),
+		// 优先级是排期参考元数据，不影响人天与账单金额，任何状态可调
+		field.Enum("priority").
+			Values("low", "normal", "high", "urgent").
+			Default("normal"),
 		field.Time("accept_deadline").Optional().Nillable(),
 		field.Time("accepted_at").Optional().Nillable(),
 		field.Int("accepted_by").Optional().Nillable(),
@@ -56,6 +60,7 @@ func (Demand) Edges() []ent.Edge {
 func (Demand) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("status"),
+		index.Fields("priority"),
 		index.Fields("actual_end_date"),
 	}
 }

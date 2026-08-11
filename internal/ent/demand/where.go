@@ -690,6 +690,26 @@ func StatusNotIn(vs ...Status) predicate.Demand {
 	return predicate.Demand(sql.FieldNotIn(FieldStatus, vs...))
 }
 
+// PriorityEQ applies the EQ predicate on the "priority" field.
+func PriorityEQ(v Priority) predicate.Demand {
+	return predicate.Demand(sql.FieldEQ(FieldPriority, v))
+}
+
+// PriorityNEQ applies the NEQ predicate on the "priority" field.
+func PriorityNEQ(v Priority) predicate.Demand {
+	return predicate.Demand(sql.FieldNEQ(FieldPriority, v))
+}
+
+// PriorityIn applies the In predicate on the "priority" field.
+func PriorityIn(vs ...Priority) predicate.Demand {
+	return predicate.Demand(sql.FieldIn(FieldPriority, vs...))
+}
+
+// PriorityNotIn applies the NotIn predicate on the "priority" field.
+func PriorityNotIn(vs ...Priority) predicate.Demand {
+	return predicate.Demand(sql.FieldNotIn(FieldPriority, vs...))
+}
+
 // AcceptDeadlineEQ applies the EQ predicate on the "accept_deadline" field.
 func AcceptDeadlineEQ(v time.Time) predicate.Demand {
 	return predicate.Demand(sql.FieldEQ(FieldAcceptDeadline, v))

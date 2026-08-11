@@ -3373,6 +3373,7 @@ type DemandMutation struct {
 	actual_half_days         *int
 	addactual_half_days      *int
 	status                   *demand.Status
+	priority                 *demand.Priority
 	accept_deadline          *time.Time
 	accepted_at              *time.Time
 	accepted_by              *int
@@ -4050,6 +4051,42 @@ func (m *DemandMutation) ResetStatus() {
 	m.status = nil
 }
 
+// SetPriority sets the "priority" field.
+func (m *DemandMutation) SetPriority(d demand.Priority) {
+	m.priority = &d
+}
+
+// Priority returns the value of the "priority" field in the mutation.
+func (m *DemandMutation) Priority() (r demand.Priority, exists bool) {
+	v := m.priority
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPriority returns the old "priority" field's value of the Demand entity.
+// If the Demand object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DemandMutation) OldPriority(ctx context.Context) (v demand.Priority, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPriority is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPriority requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPriority: %w", err)
+	}
+	return oldValue.Priority, nil
+}
+
+// ResetPriority resets all changes to the "priority" field.
+func (m *DemandMutation) ResetPriority() {
+	m.priority = nil
+}
+
 // SetAcceptDeadline sets the "accept_deadline" field.
 func (m *DemandMutation) SetAcceptDeadline(t time.Time) {
 	m.accept_deadline = &t
@@ -4450,7 +4487,7 @@ func (m *DemandMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DemandMutation) Fields() []string {
-	fields := make([]string, 0, 18)
+	fields := make([]string, 0, 19)
 	if m.deleted_at != nil {
 		fields = append(fields, demand.FieldDeletedAt)
 	}
@@ -4483,6 +4520,9 @@ func (m *DemandMutation) Fields() []string {
 	}
 	if m.status != nil {
 		fields = append(fields, demand.FieldStatus)
+	}
+	if m.priority != nil {
+		fields = append(fields, demand.FieldPriority)
 	}
 	if m.accept_deadline != nil {
 		fields = append(fields, demand.FieldAcceptDeadline)
@@ -4535,6 +4575,8 @@ func (m *DemandMutation) Field(name string) (ent.Value, bool) {
 		return m.ActualHalfDays()
 	case demand.FieldStatus:
 		return m.Status()
+	case demand.FieldPriority:
+		return m.Priority()
 	case demand.FieldAcceptDeadline:
 		return m.AcceptDeadline()
 	case demand.FieldAcceptedAt:
@@ -4580,6 +4622,8 @@ func (m *DemandMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldActualHalfDays(ctx)
 	case demand.FieldStatus:
 		return m.OldStatus(ctx)
+	case demand.FieldPriority:
+		return m.OldPriority(ctx)
 	case demand.FieldAcceptDeadline:
 		return m.OldAcceptDeadline(ctx)
 	case demand.FieldAcceptedAt:
@@ -4679,6 +4723,13 @@ func (m *DemandMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case demand.FieldPriority:
+		v, ok := value.(demand.Priority)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPriority(v)
 		return nil
 	case demand.FieldAcceptDeadline:
 		v, ok := value.(time.Time)
@@ -4930,6 +4981,9 @@ func (m *DemandMutation) ResetField(name string) error {
 		return nil
 	case demand.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case demand.FieldPriority:
+		m.ResetPriority()
 		return nil
 	case demand.FieldAcceptDeadline:
 		m.ResetAcceptDeadline()

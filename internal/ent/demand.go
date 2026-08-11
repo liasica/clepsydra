@@ -39,6 +39,8 @@ type Demand struct {
 	ActualHalfDays *int `json:"actual_half_days,omitempty"`
 	// Status holds the value of the "status" field.
 	Status demand.Status `json:"status,omitempty"`
+	// Priority holds the value of the "priority" field.
+	Priority demand.Priority `json:"priority,omitempty"`
 	// AcceptDeadline holds the value of the "accept_deadline" field.
 	AcceptDeadline *time.Time `json:"accept_deadline,omitempty"`
 	// AcceptedAt holds the value of the "accepted_at" field.
@@ -86,7 +88,7 @@ func (*Demand) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case demand.FieldID, demand.FieldEstimatedHalfDays, demand.FieldEstimateConfirmedBy, demand.FieldActualHalfDays, demand.FieldAcceptedBy:
 			values[i] = new(sql.NullInt64)
-		case demand.FieldTitle, demand.FieldDescription, demand.FieldStatus:
+		case demand.FieldTitle, demand.FieldDescription, demand.FieldStatus, demand.FieldPriority:
 			values[i] = new(sql.NullString)
 		case demand.FieldDeletedAt, demand.FieldEstimateConfirmedAt, demand.FieldPlannedStartDate, demand.FieldActualStartDate, demand.FieldActualEndDate, demand.FieldAcceptDeadline, demand.FieldAcceptedAt, demand.FieldCreatedAt, demand.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -183,6 +185,12 @@ func (_m *Demand) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				_m.Status = demand.Status(value.String)
+			}
+		case demand.FieldPriority:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field priority", values[i])
+			} else if value.Valid {
+				_m.Priority = demand.Priority(value.String)
 			}
 		case demand.FieldAcceptDeadline:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -316,6 +324,9 @@ func (_m *Demand) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	builder.WriteString("priority=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Priority))
 	builder.WriteString(", ")
 	if v := _m.AcceptDeadline; v != nil {
 		builder.WriteString("accept_deadline=")

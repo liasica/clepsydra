@@ -44,7 +44,7 @@ func finishDemand(t *testing.T, svc *service.Demand, title string) int {
 	t.Helper()
 
 	ctx := context.Background()
-	d, _ := svc.Create(ctx, admin, title, "", 0, nil, false, nil)
+	d, _ := svc.Create(ctx, admin, title, "", 0, nil, false, nil, "")
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, 4, nil)
 	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
 	_ = svc.Start(ctx, admin, d.ID, time.Now().AddDate(0, 0, -10))
@@ -90,10 +90,10 @@ func TestBillDue(t *testing.T) {
 		now  time.Time
 		want bool
 	}{
-		{time.Date(2026, 8, 9, 23, 59, 0, 0, time.Local), false},  // 未到 10 日
-		{time.Date(2026, 8, 10, 1, 59, 0, 0, time.Local), false},  // 10 日未到 02:00
-		{time.Date(2026, 8, 10, 2, 0, 0, 0, time.Local), true},    // 出账时点整
-		{time.Date(2026, 8, 25, 8, 0, 0, 0, time.Local), true},    // 已过出账时点
+		{time.Date(2026, 8, 9, 23, 59, 0, 0, time.Local), false}, // 未到 10 日
+		{time.Date(2026, 8, 10, 1, 59, 0, 0, time.Local), false}, // 10 日未到 02:00
+		{time.Date(2026, 8, 10, 2, 0, 0, 0, time.Local), true},   // 出账时点整
+		{time.Date(2026, 8, 25, 8, 0, 0, 0, time.Local), true},   // 已过出账时点
 	}
 	for _, tc := range cases {
 		if got := billDue(tc.now); got != tc.want {

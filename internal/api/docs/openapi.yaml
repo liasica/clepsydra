@@ -142,6 +142,13 @@ paths:
           schema:
             type: integer
           description: 按项目筛选，缺省不筛选
+        - name: priority
+          in: query
+          required: false
+          description: 按优先级筛选，为空表示不筛选
+          schema:
+            type: string
+            enum: [low, normal, high, urgent]
       responses:
         '200':
           description: 查询成功
@@ -284,6 +291,49 @@ paths:
                   description: 关联的项目 ID 列表，传空数组即清空
                   items:
                     type: integer
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Demand'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/demands/{id}/priority:
+    put:
+      tags: [Demands]
+      operationId: demandsUpdatePriority
+      summary: 调整需求优先级
+      description: 优先级是排期参考元数据，不影响人天与账单金额；任何状态可用，登录即可操作
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [priority]
+              properties:
+                priority:
+                  type: string
+                  description: 优先级
+                  enum: [low, normal, high, urgent]
       responses:
         '200':
           description: 更新成功
@@ -1702,6 +1752,10 @@ components:
           type: string
           enum: [draft, pending_estimate, confirmed, in_progress, pending_acceptance, accepted]
           description: 需求状态
+        priority:
+          type: string
+          enum: [low, normal, high, urgent]
+          description: 优先级，排期参考元数据，默认 normal
         accept_deadline:
           type: ["string", "null"]
           format: date-time
@@ -1775,6 +1829,10 @@ components:
           description: 关联的项目 ID 列表，可选；含不存在的 ID 返回业务错误
           items:
             type: integer
+        priority:
+          type: string
+          enum: [low, normal, high, urgent]
+          description: 优先级，可选，缺省 normal
 
     DemandEstimateRequest:
       type: object

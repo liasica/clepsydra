@@ -159,6 +159,20 @@ func (_c *DemandCreate) SetNillableStatus(v *demand.Status) *DemandCreate {
 	return _c
 }
 
+// SetPriority sets the "priority" field.
+func (_c *DemandCreate) SetPriority(v demand.Priority) *DemandCreate {
+	_c.mutation.SetPriority(v)
+	return _c
+}
+
+// SetNillablePriority sets the "priority" field if the given value is not nil.
+func (_c *DemandCreate) SetNillablePriority(v *demand.Priority) *DemandCreate {
+	if v != nil {
+		_c.SetPriority(*v)
+	}
+	return _c
+}
+
 // SetAcceptDeadline sets the "accept_deadline" field.
 func (_c *DemandCreate) SetAcceptDeadline(v time.Time) *DemandCreate {
 	_c.mutation.SetAcceptDeadline(v)
@@ -313,6 +327,10 @@ func (_c *DemandCreate) defaults() error {
 		v := demand.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.Priority(); !ok {
+		v := demand.DefaultPriority
+		_c.mutation.SetPriority(v)
+	}
 	if _, ok := _c.mutation.AcceptAuto(); !ok {
 		v := demand.DefaultAcceptAuto
 		_c.mutation.SetAcceptAuto(v)
@@ -357,6 +375,14 @@ func (_c *DemandCreate) check() error {
 	if v, ok := _c.mutation.Status(); ok {
 		if err := demand.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Demand.status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.Priority(); !ok {
+		return &ValidationError{Name: "priority", err: errors.New(`ent: missing required field "Demand.priority"`)}
+	}
+	if v, ok := _c.mutation.Priority(); ok {
+		if err := demand.PriorityValidator(v); err != nil {
+			return &ValidationError{Name: "priority", err: fmt.Errorf(`ent: validator failed for field "Demand.priority": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.AcceptAuto(); !ok {
@@ -440,6 +466,10 @@ func (_c *DemandCreate) createSpec() (*Demand, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(demand.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
+	}
+	if value, ok := _c.mutation.Priority(); ok {
+		_spec.SetField(demand.FieldPriority, field.TypeEnum, value)
+		_node.Priority = value
 	}
 	if value, ok := _c.mutation.AcceptDeadline(); ok {
 		_spec.SetField(demand.FieldAcceptDeadline, field.TypeTime, value)
