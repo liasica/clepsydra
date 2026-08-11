@@ -10,9 +10,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// expectedRouteCount 与 router.go 的业务路由数量保持一致：1 条公开 login + 12 条登录组（含 auth/me）+ 27 条 admin 组，
-// docs 自身的两条路由不计入 spec，因此不计入此数
-const expectedRouteCount = 40
+// expectedRouteCount 与 router.go 登记在 spec 里的业务路由数量保持一致：1 条公开 login（root 组）+
+// 16 条登录组业务路由（含 auth/me）+ 28 条 admin 组业务路由，docs 自身的两条路由、root 组的 1 条 uploads
+// 读取（GET /uploads/:name）与登录组的 1 条图片上传（POST /uploads）均未纳入 spec 文档，因此均不计入此数
+const expectedRouteCount = 45
 
 // httpMethods 用于从 path item 中筛出真正的操作，排除 parameters 等非方法字段
 var httpMethods = map[string]bool{
@@ -107,13 +108,13 @@ func TestOpenAPIPathsCountMatchesRouter(t *testing.T) {
 	}
 }
 
-// TestOpenAPITagsCoverNineModules 校验 tags 集合恰为用户要求的 8 个模块加本任务新增的项目模块
-func TestOpenAPITagsCoverNineModules(t *testing.T) {
+// TestOpenAPITagsCoverTenModules 校验 tags 集合恰为用户要求的 8 个模块加项目模块与标签模块
+func TestOpenAPITagsCoverTenModules(t *testing.T) {
 	doc := loadDoc(t)
 
 	want := map[string]bool{
 		"Auth": true, "Users": true, "Demands": true, "Projects": true, "Bills": true,
-		"Settings": true, "Holidays": true, "AuditLogs": true, "Dashboard": true,
+		"Settings": true, "Holidays": true, "AuditLogs": true, "Dashboard": true, "Tags": true,
 	}
 
 	got := make(map[string]bool, len(doc.Tags))

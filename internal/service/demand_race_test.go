@@ -19,7 +19,7 @@ func TestDemandUpdateProjectsConcurrentDeleteMapsToBadRequest(t *testing.T) {
 	ctx := context.Background()
 
 	p := client.Project.Create().SetName("并发删除项目").SaveX(ctx)
-	d, err := svc.Create(ctx, admin, "需求", "", 0, nil, false, nil, "")
+	d, err := svc.Create(ctx, admin, "需求", "", 0, nil, false, nil, nil, "")
 	if err != nil {
 		t.Fatalf("创建失败: %v", err)
 	}
@@ -56,9 +56,9 @@ func TestDemandCreateConcurrentDeleteMapsToBadRequest(t *testing.T) {
 		})
 	})
 
-	_, err := svc.Create(ctx, admin, "需求", "", 0, nil, false, []int{p.ID}, "")
+	_, err := svc.Create(ctx, admin, "需求", "", 0, nil, false, []int{p.ID}, nil, "")
 	var svcErr *Error
-	if !errors.As(err, &svcErr) || svcErr.Code != 40000 || svcErr.Message != "项目不存在" {
-		t.Fatalf("外键约束冲突应映射为 ErrBadRequest(项目不存在), got %v", err)
+	if !errors.As(err, &svcErr) || svcErr.Code != 40000 || svcErr.Message != "项目或标签不存在" {
+		t.Fatalf("外键约束冲突应映射为 ErrBadRequest(项目或标签不存在), got %v", err)
 	}
 }

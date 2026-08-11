@@ -42,7 +42,7 @@ func TestDemandPriorityHandler(t *testing.T) {
 		t.Fatalf("创建响应应携带优先级: %s", rec.Body.String())
 	}
 
-	rows, _ := svc.List(ctx, "", 0, "")
+	rows, _ := svc.List(ctx, "", 0, 0, "")
 	id := strconv.Itoa(rows[0].ID)
 
 	// 独立接口调整优先级（需求方也可操作）

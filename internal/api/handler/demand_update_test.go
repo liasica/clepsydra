@@ -49,7 +49,7 @@ func TestDemandUpdateRoleGate(t *testing.T) {
 	h := NewDemand(svc)
 
 	admin := service.Actor{ID: 1, Name: "超级管理员"}
-	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false, nil, "")
+	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false, nil, nil, "")
 	// 直接改库到锁定状态，绕开完整流转
 	client.Demand.UpdateOneID(d.ID).SetStatus("confirmed").ExecX(ctx)
 

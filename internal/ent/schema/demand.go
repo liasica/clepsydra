@@ -50,10 +50,11 @@ func (Demand) Fields() []ent.Field {
 	}
 }
 
-// Edges 需求与项目的多对多关联：项目是轻量归类标签，不影响人天与账单金额
+// Edges 需求与项目 / 标签的多对多关联：均为轻量归类元数据，不影响人天与账单金额
 func (Demand) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("projects", Project.Type).Ref("demands"),
+		edge.From("tags", Tag.Type).Ref("demands"),
 	}
 }
 

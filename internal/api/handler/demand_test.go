@@ -47,7 +47,7 @@ func TestDemandCreateHandler(t *testing.T) {
 		t.Errorf("响应异常: %s", rec.Body.String())
 	}
 
-	rows, err := svc.List(ctx, "", 0, "")
+	rows, err := svc.List(ctx, "", 0, 0, "")
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("创建后查询列表失败: %v, len=%d", err, len(rows))
 	}
@@ -107,7 +107,7 @@ func TestDemandLifecycleHandlers(t *testing.T) {
 		t.Fatalf("创建 HTTP 状态 = %d, body = %s", rec.Code, rec.Body.String())
 	}
 
-	rows, err := svc.List(ctx, "", 0, "")
+	rows, err := svc.List(ctx, "", 0, 0, "")
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("创建后查询列表失败: %v, len=%d", err, len(rows))
 	}
@@ -293,7 +293,7 @@ func TestDemandCreateWithEstimateHandler(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("HTTP 状态 = %d, body = %s", rec.Code, rec.Body.String())
 	}
-	rows, err := svc.List(ctx, "confirmed", 0, "")
+	rows, err := svc.List(ctx, "confirmed", 0, 0, "")
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("confirmed 需求数 = %d, err = %v, want 1", len(rows), err)
 	}
@@ -340,7 +340,7 @@ func TestDemandCreateWithEstimateHandler(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Errorf("需求方普通创建应成功, got %d, body = %s", rec.Code, rec.Body.String())
 	}
-	drafts, _ := svc.List(ctx, "draft", 0, "")
+	drafts, _ := svc.List(ctx, "draft", 0, 0, "")
 	if len(drafts) != 1 {
 		t.Errorf("draft 需求数 = %d, want 1", len(drafts))
 	}
@@ -375,7 +375,7 @@ func TestDemandProjectsHandler(t *testing.T) {
 		t.Fatalf("创建响应异常: %s", rec.Body.String())
 	}
 
-	rows, _ := svc.List(ctx, "", 0, "")
+	rows, _ := svc.List(ctx, "", 0, 0, "")
 	id := strconv.Itoa(rows[0].ID)
 
 	// 独立接口清空标签（需求方也可操作）
@@ -403,5 +403,65 @@ func TestDemandProjectsHandler(t *testing.T) {
 	}
 	if strings.Contains(rec.Body.String(), "需求一") {
 		t.Errorf("标签已清空，按该项目筛选不应包含需求一: %s", rec.Body.String())
+	}
+}
+
+// TestDemandTagsHandler 覆盖创建带性质标签与独立改标签接口
+func TestDemandTagsHandler(t *testing.T) {
+	client := enttest.Open(t, "sqlite3", "file:hdtag?mode=memory&cache=shared&_fk=1")
+	defer client.Close()
+
+	ctx := context.Background()
+	_ = service.Seed(ctx, client, config.Admin{Username: "a", Password: "admin123"}, nil)
+
+	tg := client.Tag.Create().SetName("优化").SetColor("#112233").SaveX(ctx)
+
+	settingSvc := service.NewSetting(client)
+	svc := service.NewDemand(client, settingSvc, service.NewAudit(client))
+	h := NewDemand(svc)
+	e := echo.New()
+
+	// 创建带标签
+	body := `{"title":"需求一","tag_ids":[` + strconv.Itoa(tg.ID) + `]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/demands", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("claims", &service.Claims{UserID: 2, Role: "client", Name: "需求方"})
+	if err := h.Create(c); err != nil {
+		t.Fatalf("创建错误: %v", err)
+	}
+	if !strings.Contains(rec.Body.String(), `"code":0`) {
+		t.Fatalf("创建响应异常: %s", rec.Body.String())
+	}
+
+	rows, _ := svc.List(ctx, "", 0, 0, "")
+	id := strconv.Itoa(rows[0].ID)
+
+	// 独立接口清空标签（需求方也可操作）
+	req = httptest.NewRequest(http.MethodPut, "/api/demands/"+id+"/tags", strings.NewReader(`{"tag_ids":[]}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues(id)
+	c.Set("claims", &service.Claims{UserID: 2, Role: "client", Name: "需求方"})
+	if err := h.UpdateTags(c); err != nil {
+		t.Fatalf("改标签错误: %v", err)
+	}
+	got, _ := svc.Get(ctx, rows[0].ID)
+	if len(got.Edges.Tags) != 0 {
+		t.Errorf("标签应已清空: %+v", got.Edges.Tags)
+	}
+
+	// 列表按标签筛选参数透传
+	req = httptest.NewRequest(http.MethodGet, "/api/demands?tag_id="+strconv.Itoa(tg.ID), nil)
+	rec = httptest.NewRecorder()
+	c = e.NewContext(req, rec)
+	if err := h.List(c); err != nil {
+		t.Fatalf("列表错误: %v", err)
+	}
+	if strings.Contains(rec.Body.String(), "需求一") {
+		t.Errorf("标签已清空，按该标签筛选不应包含需求一: %s", rec.Body.String())
 	}
 }

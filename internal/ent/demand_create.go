@@ -5,6 +5,7 @@ package ent
 import (
 	"clepsydra/internal/ent/demand"
 	"clepsydra/internal/ent/project"
+	"clepsydra/internal/ent/tag"
 	"context"
 	"errors"
 	"fmt"
@@ -286,6 +287,21 @@ func (_c *DemandCreate) AddProjects(v ...*Project) *DemandCreate {
 	return _c.AddProjectIDs(ids...)
 }
 
+// AddTagIDs adds the "tags" edge to the Tag entity by IDs.
+func (_c *DemandCreate) AddTagIDs(ids ...int) *DemandCreate {
+	_c.mutation.AddTagIDs(ids...)
+	return _c
+}
+
+// AddTags adds the "tags" edges to the Tag entity.
+func (_c *DemandCreate) AddTags(v ...*Tag) *DemandCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTagIDs(ids...)
+}
+
 // Mutation returns the DemandMutation object of the builder.
 func (_c *DemandCreate) Mutation() *DemandMutation {
 	return _c.mutation
@@ -508,6 +524,22 @@ func (_c *DemandCreate) createSpec() (*Demand, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TagsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: true,
+			Table:   demand.TagsTable,
+			Columns: demand.TagsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(tag.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

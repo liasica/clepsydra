@@ -26,6 +26,8 @@ type Tx struct {
 	Project *ProjectClient
 	// Setting is the client for interacting with the Setting builders.
 	Setting *SettingClient
+	// Tag is the client for interacting with the Tag builders.
+	Tag *TagClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -166,6 +168,7 @@ func (tx *Tx) init() {
 	tx.Holiday = NewHolidayClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)
 	tx.Setting = NewSettingClient(tx.config)
+	tx.Tag = NewTagClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

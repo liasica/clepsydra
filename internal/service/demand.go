@@ -7,6 +7,7 @@ import (
 	"clepsydra/internal/ent"
 	"clepsydra/internal/ent/demand"
 	"clepsydra/internal/ent/project"
+	"clepsydra/internal/ent/tag"
 	"clepsydra/internal/workday"
 )
 
@@ -56,14 +57,18 @@ func normalizePriority(priority string) (demand.Priority, error) {
 	return p, nil
 }
 
-// List 按状态、项目与优先级筛选需求，status/priority 为空、projectID 为 0 表示不筛选；预加载项目标签
-func (s *Demand) List(ctx context.Context, status string, projectID int, priority string) ([]*ent.Demand, error) {
-	q := s.client.Demand.Query().WithProjects().Order(ent.Desc(demand.FieldID))
+// List 按状态、项目、性质标签与优先级筛选需求，status/priority 为空、projectID/tagID 为 0 表示不筛选；
+// 预加载项目与性质标签
+func (s *Demand) List(ctx context.Context, status string, projectID, tagID int, priority string) ([]*ent.Demand, error) {
+	q := s.client.Demand.Query().WithProjects().WithTags().Order(ent.Desc(demand.FieldID))
 	if status != "" {
 		q = q.Where(demand.StatusEQ(demand.Status(status)))
 	}
 	if projectID > 0 {
 		q = q.Where(demand.HasProjectsWith(project.ID(projectID)))
+	}
+	if tagID > 0 {
+		q = q.Where(demand.HasTagsWith(tag.ID(tagID)))
 	}
 	if priority != "" {
 		q = q.Where(demand.PriorityEQ(demand.Priority(priority)))
@@ -72,11 +77,12 @@ func (s *Demand) List(ctx context.Context, status string, projectID int, priorit
 	return q.All(ctx)
 }
 
-// Get 按 ID 查询需求，预加载项目标签
+// Get 按 ID 查询需求，预加载项目与性质标签
 func (s *Demand) Get(ctx context.Context, id int) (*ent.Demand, error) {
 	d, err := s.client.Demand.Query().
 		Where(demand.ID(id)).
 		WithProjects().
+		WithTags().
 		Only(ctx)
 	if ent.IsNotFound(err) {
 		return nil, ErrNotFound
@@ -90,7 +96,7 @@ func (s *Demand) Get(ctx context.Context, id int) (*ent.Demand, error) {
 // confirmed 再直达 confirmed（等价超管代确认，确认人记为创建者本人）。
 // INSERT 一次性写入终态，无并发流转问题，故不经过 transit 状态机。
 // 角色权限与「日期 / 已确认必须依附人天」由 handler 层校验，这里只保留业务不变量防御
-func (s *Demand) Create(ctx context.Context, actor Actor, title, description string, estimatedHalfDays int, plannedStart *time.Time, confirmed bool, projectIDs []int, priority string) (*ent.Demand, error) {
+func (s *Demand) Create(ctx context.Context, actor Actor, title, description string, estimatedHalfDays int, plannedStart *time.Time, confirmed bool, projectIDs, tagIDs []int, priority string) (*ent.Demand, error) {
 	if title == "" {
 		return nil, ErrBadRequest("标题不能为空")
 	}
@@ -106,7 +112,11 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 		return nil, err
 	}
 
-	ids, err := s.normalizeProjectIDs(ctx, projectIDs)
+	pids, err := s.normalizeProjectIDs(ctx, projectIDs)
+	if err != nil {
+		return nil, err
+	}
+	tids, err := s.normalizeTagIDs(ctx, tagIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +126,8 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 		SetDescription(description).
 		SetEstimatedHalfDays(estimatedHalfDays).
 		SetPriority(prio).
-		AddProjectIDs(ids...)
+		AddProjectIDs(pids...).
+		AddTagIDs(tids...)
 
 	now := time.Now()
 	switch {
@@ -133,9 +144,9 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 
 	d, err := create.Save(ctx)
 	if err != nil {
-		// 校验通过后写入前项目被并发删除会触发外键约束冲突，转为业务错误而非 500
-		if len(ids) > 0 && ent.IsConstraintError(err) {
-			return nil, ErrBadRequest("项目不存在")
+		// 校验通过后写入前项目 / 标签被并发删除会触发外键约束冲突，转为业务错误而非 500
+		if (len(pids) > 0 || len(tids) > 0) && ent.IsConstraintError(err) {
+			return nil, ErrBadRequest("项目或标签不存在")
 		}
 
 		return nil, err
@@ -152,8 +163,11 @@ func (s *Demand) Create(ctx context.Context, actor Actor, title, description str
 	if plannedStart != nil {
 		payload["planned_start_date"] = plannedStart.Format("2006-01-02")
 	}
-	if len(ids) > 0 {
-		payload["project_ids"] = ids
+	if len(pids) > 0 {
+		payload["project_ids"] = pids
+	}
+	if len(tids) > 0 {
+		payload["tag_ids"] = tids
 	}
 	s.audit.Record(ctx, actor, "demand.create", "demand", d.ID, payload)
 	// 创建即确认补写确认审计，避免审计时间线里 confirmed 状态凭空出现
@@ -224,12 +238,39 @@ func (s *Demand) UpdatePriority(ctx context.Context, actor Actor, id int, priori
 	return s.Get(ctx, id)
 }
 
-// normalizeProjectIDs 去重并校验项目 ID 均存在，空切片直接通过
-func (s *Demand) normalizeProjectIDs(ctx context.Context, ids []int) ([]int, error) {
-	if len(ids) == 0 {
-		return nil, nil
+// UpdateTags 全量覆盖需求的性质标签，任何状态均可：
+// 标签是归类元数据，不影响人天与账单金额，存量已完成需求也要能补打标签
+func (s *Demand) UpdateTags(ctx context.Context, actor Actor, id int, tagIDs []int) (*ent.Demand, error) {
+	ids, err := s.normalizeTagIDs(ctx, tagIDs)
+	if err != nil {
+		return nil, err
 	}
 
+	err = s.client.Demand.UpdateOneID(id).
+		ClearTags().
+		AddTagIDs(ids...).
+		Exec(ctx)
+	if ent.IsNotFound(err) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		// 校验通过后写入前标签被并发删除会触发外键约束冲突，转为业务错误而非 500
+		if len(ids) > 0 && ent.IsConstraintError(err) {
+			return nil, ErrBadRequest("标签不存在")
+		}
+
+		return nil, err
+	}
+
+	s.audit.Record(ctx, actor, "demand.update_tags", "demand", id, map[string]any{
+		"tag_ids": ids,
+	})
+
+	return s.Get(ctx, id)
+}
+
+// dedupIDs 保序去重
+func dedupIDs(ids []int) []int {
 	seen := make(map[int]bool, len(ids))
 	uniq := make([]int, 0, len(ids))
 	for _, id := range ids {
@@ -239,12 +280,40 @@ func (s *Demand) normalizeProjectIDs(ctx context.Context, ids []int) ([]int, err
 		}
 	}
 
+	return uniq
+}
+
+// normalizeProjectIDs 去重并校验项目 ID 均存在，空切片直接通过
+func (s *Demand) normalizeProjectIDs(ctx context.Context, ids []int) ([]int, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	uniq := dedupIDs(ids)
 	n, err := s.client.Project.Query().Where(project.IDIn(uniq...)).Count(ctx)
 	if err != nil {
 		return nil, err
 	}
 	if n != len(uniq) {
 		return nil, ErrBadRequest("项目不存在")
+	}
+
+	return uniq, nil
+}
+
+// normalizeTagIDs 去重并校验标签 ID 均存在，空切片直接通过
+func (s *Demand) normalizeTagIDs(ctx context.Context, ids []int) ([]int, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	uniq := dedupIDs(ids)
+	n, err := s.client.Tag.Query().Where(tag.IDIn(uniq...)).Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if n != len(uniq) {
+		return nil, ErrBadRequest("标签不存在")
 	}
 
 	return uniq, nil

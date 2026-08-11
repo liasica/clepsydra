@@ -16,7 +16,7 @@ func TestDemandCreateWithPriority(t *testing.T) {
 	client, svc := newDemandEnv(t, "dprio-create")
 	ctx := context.Background()
 
-	d, err := svc.Create(ctx, admin, "需求一", "", 0, nil, false, nil, "urgent")
+	d, err := svc.Create(ctx, admin, "需求一", "", 0, nil, false, nil, nil, "urgent")
 	if err != nil {
 		t.Fatalf("创建失败: %v", err)
 	}
@@ -31,7 +31,7 @@ func TestDemandCreateWithPriority(t *testing.T) {
 		t.Errorf("创建审计 priority = %v, want urgent", got)
 	}
 
-	d, err = svc.Create(ctx, admin, "需求二", "", 0, nil, false, nil, "")
+	d, err = svc.Create(ctx, admin, "需求二", "", 0, nil, false, nil, nil, "")
 	if err != nil {
 		t.Fatalf("创建失败: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestDemandCreateWithPriority(t *testing.T) {
 		t.Errorf("默认优先级创建审计不应携带 priority 键: %v", entry.Detail)
 	}
 
-	if _, err = svc.Create(ctx, admin, "需求三", "", 0, nil, false, nil, "p0"); err == nil {
+	if _, err = svc.Create(ctx, admin, "需求三", "", 0, nil, false, nil, nil, "p0"); err == nil {
 		t.Error("非法优先级应报错")
 	}
 }
@@ -56,7 +56,7 @@ func TestDemandUpdatePriority(t *testing.T) {
 	client, svc := newDemandEnv(t, "dprio-update")
 	ctx := context.Background()
 
-	d, _ := svc.Create(ctx, admin, "需求一", "", 0, nil, false, nil, "")
+	d, _ := svc.Create(ctx, admin, "需求一", "", 0, nil, false, nil, nil, "")
 
 	// 直接改库到 accepted，验证优先级调整不受状态限制
 	client.Demand.UpdateOneID(d.ID).SetStatus("accepted").ExecX(ctx)
@@ -93,22 +93,22 @@ func TestDemandListFilterByPriority(t *testing.T) {
 	_, svc := newDemandEnv(t, "dprio-list")
 	ctx := context.Background()
 
-	_, _ = svc.Create(ctx, admin, "需求一", "", 0, nil, false, nil, "urgent")
-	_, _ = svc.Create(ctx, admin, "需求二", "", 2, nil, false, nil, "urgent")
-	_, _ = svc.Create(ctx, admin, "需求三", "", 0, nil, false, nil, "")
+	_, _ = svc.Create(ctx, admin, "需求一", "", 0, nil, false, nil, nil, "urgent")
+	_, _ = svc.Create(ctx, admin, "需求二", "", 2, nil, false, nil, nil, "urgent")
+	_, _ = svc.Create(ctx, admin, "需求三", "", 0, nil, false, nil, nil, "")
 
-	rows, err := svc.List(ctx, "", 0, "urgent")
+	rows, err := svc.List(ctx, "", 0, 0, "urgent")
 	if err != nil || len(rows) != 2 {
 		t.Fatalf("按优先级筛选异常: %v, len=%d", err, len(rows))
 	}
 
 	// 带人天创建即进入 pending_estimate，与优先级筛选叠加后只剩需求二
-	rows, _ = svc.List(ctx, "pending_estimate", 0, "urgent")
+	rows, _ = svc.List(ctx, "pending_estimate", 0, 0, "urgent")
 	if len(rows) != 1 || rows[0].Title != "需求二" {
 		t.Errorf("状态与优先级叠加筛选异常, len=%d", len(rows))
 	}
 
-	rows, _ = svc.List(ctx, "", 0, "")
+	rows, _ = svc.List(ctx, "", 0, 0, "")
 	if len(rows) != 3 {
 		t.Errorf("不筛选应返回全部, len=%d", len(rows))
 	}
