@@ -34,7 +34,7 @@ func TestBillLifecycleHandlers(t *testing.T) {
 
 	// 准备一个账期内已完成并验收的需求
 	act := service.Actor{ID: 1, Name: "管理员"}
-	d, err := demandSvc.Create(ctx, act, "联调需求", "", 0, nil, false, nil)
+	d, err := demandSvc.Create(ctx, act, "联调需求", "", 0, nil, false, nil, nil)
 	if err != nil {
 		t.Fatalf("创建需求失败: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestBillManualAndItemsHandlers(t *testing.T) {
 	// 准备两个已验收需求
 	act := service.Actor{ID: 1, Name: "管理员"}
 	mk := func(title string, halfDays int) int {
-		d, _ := demandSvc.Create(ctx, act, title, "", 0, nil, false, nil)
+		d, _ := demandSvc.Create(ctx, act, title, "", 0, nil, false, nil, nil)
 		_ = demandSvc.SubmitEstimate(ctx, act, d.ID, halfDays, nil)
 		_ = demandSvc.ConfirmEstimate(ctx, act, d.ID)
 		start := time.Date(2026, 7, 10, 0, 0, 0, 0, time.Local)

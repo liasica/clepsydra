@@ -95,7 +95,7 @@ func (h *Demand) List(c echo.Context) error {
 	status := c.QueryParam("status")
 	projectID, _ := strconv.Atoi(c.QueryParam("project_id")) // 非法或缺省按 0 处理，即不筛选
 
-	demands, err := h.svc.List(c.Request().Context(), status, projectID)
+	demands, err := h.svc.List(c.Request().Context(), status, projectID, 0)
 	if err != nil {
 		return api.Fail(c, err)
 	}
@@ -142,7 +142,7 @@ func (h *Demand) Create(c echo.Context) error {
 	}
 
 	d, err := h.svc.Create(c.Request().Context(), actor(c), req.Title, req.Description,
-		req.EstimatedHalfDays, planned, req.Confirmed, req.ProjectIDs)
+		req.EstimatedHalfDays, planned, req.Confirmed, req.ProjectIDs, nil)
 	if err != nil {
 		return api.Fail(c, err)
 	}

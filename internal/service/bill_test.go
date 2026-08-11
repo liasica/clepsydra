@@ -36,7 +36,7 @@ func prepareDemand(t *testing.T, svc *Demand, title string, halfDays int) int {
 	t.Helper()
 
 	ctx := context.Background()
-	d, _ := svc.Create(ctx, admin, title, "", 0, nil, false, nil)
+	d, _ := svc.Create(ctx, admin, title, "", 0, nil, false, nil, nil)
 	_ = svc.SubmitEstimate(ctx, admin, d.ID, halfDays, nil)
 	_ = svc.ConfirmEstimate(ctx, clientActor, d.ID)
 
@@ -62,7 +62,7 @@ func TestBillGenerate(t *testing.T) {
 	id2 := prepareDemand(t, demandSvc, "未验收需求", 4)
 
 	// 需求 3：进行中 → 展示行
-	d3, _ := demandSvc.Create(ctx, admin, "进行中需求", "", 0, nil, false, nil)
+	d3, _ := demandSvc.Create(ctx, admin, "进行中需求", "", 0, nil, false, nil, nil)
 	_ = demandSvc.SubmitEstimate(ctx, admin, d3.ID, 8, nil)
 	_ = demandSvc.ConfirmEstimate(ctx, clientActor, d3.ID)
 	_ = demandSvc.Start(ctx, admin, d3.ID, time.Date(2026, 7, 25, 0, 0, 0, 0, time.Local))

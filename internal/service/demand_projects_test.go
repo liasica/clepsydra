@@ -26,7 +26,7 @@ func TestDemandCreateWithProjects(t *testing.T) {
 	ctx := context.Background()
 	p1, p2 := projectFixtures(t, client)
 
-	d, err := svc.Create(ctx, admin, "需求一", "", 0, nil, false, []int{p1, p2, p1})
+	d, err := svc.Create(ctx, admin, "需求一", "", 0, nil, false, []int{p1, p2, p1}, nil)
 	if err != nil {
 		t.Fatalf("创建失败: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestDemandCreateWithProjects(t *testing.T) {
 		t.Errorf("关联项目数 = %d, want 2（重复 ID 应去重）", len(got.Edges.Projects))
 	}
 
-	if _, err = svc.Create(ctx, admin, "需求二", "", 0, nil, false, []int{999}); err == nil {
+	if _, err = svc.Create(ctx, admin, "需求二", "", 0, nil, false, []int{999}, nil); err == nil {
 		t.Error("不存在的项目 ID 应报错")
 	}
 }
@@ -46,7 +46,7 @@ func TestDemandUpdateProjects(t *testing.T) {
 	ctx := context.Background()
 	p1, p2 := projectFixtures(t, client)
 
-	d, _ := svc.Create(ctx, admin, "需求一", "", 0, nil, false, []int{p1})
+	d, _ := svc.Create(ctx, admin, "需求一", "", 0, nil, false, []int{p1}, nil)
 
 	// 推进到 accepted 之外的锁定态验证不受状态限制：直接改库到 accepted
 	client.Demand.UpdateOneID(d.ID).SetStatus("accepted").ExecX(ctx)
@@ -82,17 +82,17 @@ func TestDemandListFilterByProject(t *testing.T) {
 	ctx := context.Background()
 	p1, p2 := projectFixtures(t, client)
 
-	_, _ = svc.Create(ctx, admin, "需求一", "", 0, nil, false, []int{p1})
-	_, _ = svc.Create(ctx, admin, "需求二", "", 0, nil, false, []int{p2})
-	_, _ = svc.Create(ctx, admin, "需求三", "", 0, nil, false, nil)
+	_, _ = svc.Create(ctx, admin, "需求一", "", 0, nil, false, []int{p1}, nil)
+	_, _ = svc.Create(ctx, admin, "需求二", "", 0, nil, false, []int{p2}, nil)
+	_, _ = svc.Create(ctx, admin, "需求三", "", 0, nil, false, nil, nil)
 	_ = client
 
-	rows, err := svc.List(ctx, "", p1)
+	rows, err := svc.List(ctx, "", p1, 0)
 	if err != nil || len(rows) != 1 || rows[0].Title != "需求一" {
 		t.Fatalf("按项目筛选异常: %v, len=%d", err, len(rows))
 	}
 
-	rows, _ = svc.List(ctx, "", 0)
+	rows, _ = svc.List(ctx, "", 0, 0)
 	if len(rows) != 3 {
 		t.Errorf("不筛选应返回全部, len=%d", len(rows))
 	}

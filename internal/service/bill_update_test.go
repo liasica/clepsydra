@@ -287,7 +287,7 @@ func TestBillUpdateItemDisplayRow(t *testing.T) {
 	ctx := context.Background()
 
 	// 需求走到 confirmed 状态：CreateManual 生成展示行
-	d, err := demandSvc.Create(ctx, admin, "confirmed 需求", "", 0, nil, false, nil)
+	d, err := demandSvc.Create(ctx, admin, "confirmed 需求", "", 0, nil, false, nil, nil)
 	if err != nil {
 		t.Fatalf("创建需求失败: %v", err)
 	}
