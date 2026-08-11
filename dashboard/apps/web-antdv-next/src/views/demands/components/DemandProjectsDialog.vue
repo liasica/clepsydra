@@ -36,7 +36,7 @@ const [Modal, modalApi] = useVbenModal({
     const { demand } = modalApi.getData<{ demand: Api.Demand.Item }>();
     demandId.value = demand.id;
     projectIds.value = (demand.edges?.projects ?? []).map((p) => p.id);
-    modalApi.setState({ title: '编辑项目标签' });
+    modalApi.setState({ title: '编辑项目' });
 
     try {
       const projects = await fetchProjects();
@@ -71,7 +71,7 @@ async function save() {
       allow-clear
       class="w-full"
       mode="multiple"
-      placeholder="选择所属项目（可多选，清空即移除全部标签）"
+      placeholder="选择所属项目（可多选，清空即移除全部项目）"
     />
   </Modal>
 </template>

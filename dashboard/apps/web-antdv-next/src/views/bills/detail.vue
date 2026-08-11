@@ -326,13 +326,16 @@ onMounted(load);
               </Tag>
             </template>
             <template v-else-if="column.key === 'projects'">
-              <Tag
-                v-for="p in record.projects"
-                :key="p.id"
-                :color="p.color || undefined"
-              >
-                {{ p.name }}
-              </Tag>
+              <div class="flex flex-wrap items-center gap-2">
+                <Tag
+                  v-for="p in record.projects"
+                  :key="p.id"
+                  :color="p.color || undefined"
+                  class="me-0"
+                >
+                  {{ p.name }}
+                </Tag>
+              </div>
             </template>
             <template v-else-if="column.key === 'demand_status'">
               {{

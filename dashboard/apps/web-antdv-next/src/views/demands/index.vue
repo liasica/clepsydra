@@ -147,13 +147,16 @@ onMounted(() => {
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'projects'">
-          <Tag
-            v-for="p in record.edges?.projects ?? []"
-            :key="p.id"
-            :color="p.color || undefined"
-          >
-            {{ p.name }}
-          </Tag>
+          <div class="flex flex-wrap items-center gap-2">
+            <Tag
+              v-for="p in record.edges?.projects ?? []"
+              :key="p.id"
+              :color="p.color || undefined"
+              class="me-0"
+            >
+              {{ p.name }}
+            </Tag>
+          </div>
         </template>
         <template v-else-if="column.key === 'estimated'">
           {{ formatManday(record.estimated_half_days) }}

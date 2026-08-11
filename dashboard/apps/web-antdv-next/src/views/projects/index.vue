@@ -21,14 +21,7 @@ const loading = ref(false);
 
 const columns: TableColumnsType<Api.Project.Item> = [
   { dataIndex: 'id', key: 'id', title: 'ID', width: 72 },
-  { key: 'name', minWidth: 160, title: '名称' },
-  {
-    dataIndex: 'remark',
-    ellipsis: true,
-    key: 'remark',
-    minWidth: 200,
-    title: '备注',
-  },
+  { key: 'name', minWidth: 220, title: '名称' },
   {
     dataIndex: 'demand_count',
     key: 'demand_count',
@@ -36,7 +29,8 @@ const columns: TableColumnsType<Api.Project.Item> = [
     width: 100,
   },
   { key: 'created_at', title: '创建时间', width: 176 },
-  { key: 'action', title: '操作', width: 140 },
+  // 「编辑」「删除」两个链接按钮并排，列宽不足会折行把行高撑高
+  { key: 'action', title: '操作', width: 160 },
 ];
 
 const [FormModal, formModalApi] = useVbenModal({

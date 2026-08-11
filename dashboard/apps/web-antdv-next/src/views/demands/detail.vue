@@ -264,20 +264,23 @@ onMounted(load);
               {{ formatDateTime(demand.updated_at) }}
             </DescriptionsItem>
             <DescriptionsItem :span="2" label="项目">
-              <Tag
-                v-for="p in demand.edges?.projects ?? []"
-                :key="p.id"
-                :color="p.color || undefined"
-              >
-                {{ p.name }}
-              </Tag>
-              <Button
-                size="small"
-                type="link"
-                @click="projectsModalApi.setData({ demand }).open()"
-              >
-                编辑标签
-              </Button>
+              <div class="flex flex-wrap items-center gap-2">
+                <Tag
+                  v-for="p in demand.edges?.projects ?? []"
+                  :key="p.id"
+                  :color="p.color || undefined"
+                  class="me-0"
+                >
+                  {{ p.name }}
+                </Tag>
+                <Button
+                  size="small"
+                  type="link"
+                  @click="projectsModalApi.setData({ demand }).open()"
+                >
+                  编辑项目
+                </Button>
+              </div>
             </DescriptionsItem>
           </Descriptions>
 
