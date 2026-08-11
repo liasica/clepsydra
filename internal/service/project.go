@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"clepsydra/internal/ent"
+	"clepsydra/internal/ent/demand"
 	"clepsydra/internal/ent/project"
 )
 
@@ -20,9 +21,12 @@ func NewProject(client *ent.Client, audit *Audit) *Project {
 
 // List 查询全部项目，预加载关联需求供 handler 统计关联数
 // 关联需求查询会走 Demand 的软删除拦截器，已软删需求不计入
+// handler 只需要数量，预加载仅取需求 id 列，避免整行加载
 func (s *Project) List(ctx context.Context) ([]*ent.Project, error) {
 	return s.client.Project.Query().
-		WithDemands().
+		WithDemands(func(q *ent.DemandQuery) {
+			q.Select(demand.FieldID)
+		}).
 		Order(ent.Asc(project.FieldID)).
 		All(ctx)
 }
@@ -47,6 +51,11 @@ func (s *Project) Create(ctx context.Context, actor Actor, name, color, remark s
 		SetRemark(remark).
 		Save(ctx)
 	if err != nil {
+		// Exist 与 Save 之间存在并发创建窗口，命中唯一约束时转 400 而非原生错误导致的 500
+		if ent.IsConstraintError(err) {
+			return nil, ErrBadRequest("项目名称已存在")
+		}
+
 		return nil, err
 	}
 
@@ -83,6 +92,11 @@ func (s *Project) Update(ctx context.Context, actor Actor, id int, name, color, 
 		return nil, ErrNotFound
 	}
 	if err != nil {
+		// Exist 与 Save 之间存在并发改名窗口，命中唯一约束时转 400 而非原生错误导致的 500
+		if ent.IsConstraintError(err) {
+			return nil, ErrBadRequest("项目名称已存在")
+		}
+
 		return nil, err
 	}
 
