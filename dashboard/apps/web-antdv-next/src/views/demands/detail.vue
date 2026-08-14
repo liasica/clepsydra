@@ -24,6 +24,7 @@ import {
   confirmEstimate,
   deleteDemand,
   fetchDemand,
+  fetchDemandMandayHistory,
 } from '#/api/demand';
 import { MarkdownViewer } from '#/components/markdown';
 import { formatDate, formatDateTime } from '#/utils/clepsydra/date';
@@ -38,6 +39,7 @@ import { isStatusConflict, showSuccess } from '#/utils/http/error';
 import DemandEstimateDialog from './components/DemandEstimateDialog.vue';
 import DemandFinishDialog from './components/DemandFinishDialog.vue';
 import DemandFormDialog from './components/DemandFormDialog.vue';
+import DemandMandayDialog from './components/DemandMandayDialog.vue';
 import DemandPriorityDialog from './components/DemandPriorityDialog.vue';
 import DemandProjectsDialog from './components/DemandProjectsDialog.vue';
 import DemandStartDialog from './components/DemandStartDialog.vue';
@@ -61,6 +63,7 @@ const { setTabTitle } = useTabs();
 setTabTitle(`需求详情：${demandId}`);
 const demand = ref<Api.Demand.Item>();
 const loading = ref(false);
+const mandayHistory = ref<Api.AuditLog.Item[]>([]);
 
 /** 会话角色，只有超级管理员与需求方两种 */
 const role = computed<'admin' | 'client'>(() =>
@@ -105,12 +108,20 @@ const [PriorityModal, priorityModalApi] = useVbenModal({
 const [TagsModal, tagsModalApi] = useVbenModal({
   connectedComponent: DemandTagsDialog,
 });
+const [MandayModal, mandayModalApi] = useVbenModal({
+  connectedComponent: DemandMandayDialog,
+});
 
-/** 加载详情 */
+/** 加载详情与人天调整历史，历史加载失败不阻塞详情主体 */
 async function load() {
   loading.value = true;
   try {
     demand.value = await fetchDemand(demandId);
+    try {
+      mandayHistory.value = await fetchDemandMandayHistory(demandId);
+    } catch {
+      mandayHistory.value = [];
+    }
   } finally {
     loading.value = false;
   }
@@ -183,6 +194,11 @@ const ACTION_META: Record<
     primary: true,
     run: (target) => runDirect('确认验收', () => acceptDemand(target.id)),
   },
+  adjustManday: {
+    label: () => '调整人天',
+    primary: false,
+    run: (target) => mandayModalApi.setData({ demand: target }).open(),
+  },
   confirmEstimate: {
     label: () => '确认人天',
     primary: true,
@@ -216,6 +232,24 @@ const ACTION_META: Record<
     run: (target) => estimateModalApi.setData({ demand: target }).open(),
   },
 };
+
+/** 审计 detail 里的 from/to 半天数转人天变更文案，from 为空表示此前无实际人天 */
+function historyChanges(record: Api.AuditLog.Item): string[] {
+  const parts: string[] = [];
+  const est = record.detail.estimated_half_days as
+    | undefined
+    | { from: number; to: number };
+  if (est) {
+    parts.push(`预估：${formatManday(est.from)} → ${formatManday(est.to)}`);
+  }
+  const act = record.detail.actual_half_days as
+    | undefined
+    | { from: null | number; to: number };
+  if (act) {
+    parts.push(`实际：${formatManday(act.from)} → ${formatManday(act.to)}`);
+  }
+  return parts;
+}
 
 onMounted(load);
 </script>
@@ -345,6 +379,23 @@ onMounted(load);
           </Space>
         </Card>
 
+        <!-- 人天调整记录：需求方追溯超管修正的唯一入口，无记录时不渲染 -->
+        <Card v-if="mandayHistory.length > 0" class="mt-4" title="人天调整记录">
+          <div
+            v-for="record in mandayHistory"
+            :key="record.id"
+            class="flex flex-wrap items-center gap-x-4 gap-y-1 border-b py-2 last:border-b-0"
+          >
+            <span class="text-muted-foreground">
+              {{ formatDateTime(record.created_at) }}
+            </span>
+            <span>{{ record.actor_name }}</span>
+            <span v-for="change in historyChanges(record)" :key="change">
+              {{ change }}
+            </span>
+          </div>
+        </Card>
+
         <!-- 描述是大块富文本正文，独立成卡获得整卡宽度，空内容由 MarkdownViewer 的占位文案兜底 -->
         <Card class="mt-4" title="需求描述">
           <MarkdownViewer :content="demand.description" />
@@ -359,5 +410,6 @@ onMounted(load);
     <ProjectsModal @success="load" />
     <PriorityModal @success="load" />
     <TagsModal @success="load" />
+    <MandayModal @conflict="load" @success="load" />
   </Page>
 </template>
