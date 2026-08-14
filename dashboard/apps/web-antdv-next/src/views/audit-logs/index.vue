@@ -40,6 +40,7 @@ const ACTION_OPTIONS = [
   { label: '验收需求', value: 'demand.accept' },
   { label: '更新需求项目标签', value: 'demand.update_projects' },
   { label: '调整需求优先级', value: 'demand.update_priority' },
+  { label: '调整需求人天', value: 'demand.update_half_days' },
   { label: '生成账单', value: 'bill.generate' },
   { label: '手动生成账单', value: 'bill.manual_generate' },
   { label: '添加账单明细', value: 'bill.add_item' },

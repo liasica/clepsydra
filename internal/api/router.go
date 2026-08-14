@@ -50,6 +50,8 @@ type DemandHandler interface {
 	Start(c echo.Context) error
 	Finish(c echo.Context) error
 	Accept(c echo.Context) error
+	UpdateHalfDays(c echo.Context) error
+	MandayHistory(c echo.Context) error
 }
 
 // ProjectHandler 项目管理接口方法集
@@ -142,6 +144,7 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	authed.PUT("/demands/:id/priority", h.Demand.UpdatePriority)
 	authed.POST("/demands/:id/confirm-estimate", h.Demand.ConfirmEstimate)
 	authed.POST("/demands/:id/accept", h.Demand.Accept)
+	authed.GET("/demands/:id/manday-history", h.Demand.MandayHistory)
 	authed.GET("/projects", h.Project.List)
 	authed.GET("/tags", h.Tag.List)
 	authed.GET("/bills", h.Bill.List)
@@ -169,6 +172,7 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	adminGroup.POST("/demands/:id/submit-estimate", h.Demand.SubmitEstimate)
 	adminGroup.POST("/demands/:id/start", h.Demand.Start)
 	adminGroup.POST("/demands/:id/finish", h.Demand.Finish)
+	adminGroup.PUT("/demands/:id/half-days", h.Demand.UpdateHalfDays)
 	adminGroup.POST("/bills/generate", h.Bill.Generate)
 	adminGroup.POST("/bills/manual", h.Bill.CreateManual)
 	adminGroup.GET("/bills/selectable-demands", h.Bill.SelectableDemands)

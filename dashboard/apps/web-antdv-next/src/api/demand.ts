@@ -84,8 +84,29 @@ export function updateDemandTags(id: number, tagIds: number[]) {
 }
 
 /** 调整需求优先级；优先级是排期参考元数据，任何状态可用，登录即可操作 */
-export function updateDemandPriority(id: number, priority: Api.Demand.Priority) {
+export function updateDemandPriority(
+  id: number,
+  priority: Api.Demand.Priority,
+) {
   return requestClient.put<Api.Demand.Item>(`/api/demands/${id}/priority`, {
     priority,
   });
+}
+
+/** 超管任意状态调整人天：预估任意状态可改，实际人天仅完成后可改；联动未确认账单（仅超级管理员） */
+export function updateDemandHalfDays(
+  id: number,
+  params: Api.Demand.HalfDaysParams,
+) {
+  return requestClient.put<Api.Demand.Item>(
+    `/api/demands/${id}/half-days`,
+    params,
+  );
+}
+
+/** 查询需求人天调整历史，登录即可查看，按时间倒序 */
+export function fetchDemandMandayHistory(id: number) {
+  return requestClient.get<Api.AuditLog.Item[]>(
+    `/api/demands/${id}/manday-history`,
+  );
 }

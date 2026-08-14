@@ -406,6 +406,85 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
+  /api/demands/{id}/half-days:
+    put:
+      tags: [Demands]
+      operationId: demandsUpdateHalfDays
+      summary: 调整需求人天
+      description: 超管任意状态修正人天：预估人天任意状态可改，实际人天仅完成后（pending_acceptance / accepted）可改；联动更新未确认账单的明细与合计，已确认账单保持快照（仅超级管理员）
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              properties:
+                estimated_half_days:
+                  type: integer
+                  description: 预估半天数，1 人天 = 2，必须为正
+                actual_half_days:
+                  type: integer
+                  description: 实际半天数，1 人天 = 2，必须为正
+      responses:
+        '200':
+          description: 调整成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Demand'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/InvalidTransition'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/demands/{id}/manday-history:
+    get:
+      tags: [Demands]
+      operationId: demandsMandayHistory
+      summary: 查询需求人天调整历史
+      description: 人天调整历史按时间倒序，数据源为 demand.update_half_days 审计日志；登录即可查看，需求方以此追溯超管修正记录
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DemandID'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AuditLog'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
   /api/demands/{id}/confirm-estimate:
     post:
       tags: [Demands]

@@ -15,6 +15,7 @@ describe('状态字典', () => {
     expect(DEMAND_STATUS.draft.actions.admin).toEqual([
       'edit',
       'submitEstimate',
+      'adjustManday',
       'delete',
     ]);
     expect(DEMAND_STATUS.draft.actions.client).toEqual(['edit']);
@@ -22,6 +23,7 @@ describe('状态字典', () => {
       'edit',
       'submitEstimate',
       'confirmEstimate',
+      'adjustManday',
       'delete',
     ]);
     expect(DEMAND_STATUS.pending_estimate.actions.client).toEqual([
@@ -31,20 +33,27 @@ describe('状态字典', () => {
     expect(DEMAND_STATUS.confirmed.actions.admin).toEqual([
       'start',
       'edit',
+      'adjustManday',
       'delete',
     ]);
     expect(DEMAND_STATUS.in_progress.actions.admin).toEqual([
       'finish',
       'edit',
+      'adjustManday',
       'delete',
     ]);
     expect(DEMAND_STATUS.pending_acceptance.actions.admin).toEqual([
       'accept',
       'edit',
+      'adjustManday',
       'delete',
     ]);
     expect(DEMAND_STATUS.pending_acceptance.actions.client).toEqual(['accept']);
-    expect(DEMAND_STATUS.accepted.actions.admin).toEqual(['edit', 'delete']);
+    expect(DEMAND_STATUS.accepted.actions.admin).toEqual([
+      'edit',
+      'adjustManday',
+      'delete',
+    ]);
   });
 
   it('锁定状态编辑为超管专属：人天确认后需求方不再可编辑', () => {
@@ -69,6 +78,15 @@ describe('状态字典', () => {
     for (const [status, meta] of Object.entries(DEMAND_STATUS)) {
       expect(meta.actions.admin, `需求 ${status}`).toContain('delete');
       expect(meta.actions.client, `需求 ${status}`).not.toContain('delete');
+    }
+  });
+
+  it('调整人天为超管专属：任何状态都可调整且不开放给需求方', () => {
+    for (const [status, meta] of Object.entries(DEMAND_STATUS)) {
+      expect(meta.actions.admin, `需求 ${status}`).toContain('adjustManday');
+      expect(meta.actions.client, `需求 ${status}`).not.toContain(
+        'adjustManday',
+      );
     }
   });
 

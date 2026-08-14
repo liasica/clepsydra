@@ -22,6 +22,7 @@ export type DemandPriority = 'high' | 'low' | 'normal' | 'urgent';
 
 export type DemandAction =
   | 'accept'
+  | 'adjustManday'
   | 'confirmEstimate'
   | 'delete'
   | 'edit'
@@ -79,38 +80,54 @@ export const DEMAND_STATUS: Record<DemandStatus, StatusMeta<DemandAction>> = {
   draft: {
     label: '草稿',
     type: 'info',
-    actions: { admin: ['edit', 'submitEstimate', 'delete'], client: ['edit'] },
+    actions: {
+      admin: ['edit', 'submitEstimate', 'adjustManday', 'delete'],
+      client: ['edit'],
+    },
   },
   pending_estimate: {
     label: '待确认人天',
     type: 'warning',
     actions: {
       // 代确认属兜底操作，排在超管自身的编辑与修改预估之后
-      admin: ['edit', 'submitEstimate', 'confirmEstimate', 'delete'],
+      admin: [
+        'edit',
+        'submitEstimate',
+        'confirmEstimate',
+        'adjustManday',
+        'delete',
+      ],
       client: ['edit', 'confirmEstimate'],
     },
   },
   // 人天确认后的四个状态：标题与描述对超管保持可编辑（后端按角色放开状态锁），
-  // edit 排在主流转操作之后、delete 之前；需求方仍被锁定，client 不给 edit
+  // edit 排在主流转操作之后、delete 之前；需求方仍被锁定，client 不给 edit。
+  // adjustManday 为超管任意状态修正人天的入口，统一排在 delete 之前
   confirmed: {
     label: '已确认待开工',
     type: 'primary',
-    actions: { admin: ['start', 'edit', 'delete'], client: [] },
+    actions: { admin: ['start', 'edit', 'adjustManday', 'delete'], client: [] },
   },
   in_progress: {
     label: '进行中',
     type: 'primary',
-    actions: { admin: ['finish', 'edit', 'delete'], client: [] },
+    actions: {
+      admin: ['finish', 'edit', 'adjustManday', 'delete'],
+      client: [],
+    },
   },
   pending_acceptance: {
     label: '完成待确认',
     type: 'warning',
-    actions: { admin: ['accept', 'edit', 'delete'], client: ['accept'] },
+    actions: {
+      admin: ['accept', 'edit', 'adjustManday', 'delete'],
+      client: ['accept'],
+    },
   },
   accepted: {
     label: '已确认',
     type: 'success',
-    actions: { admin: ['edit', 'delete'], client: [] },
+    actions: { admin: ['edit', 'adjustManday', 'delete'], client: [] },
   },
 };
 

@@ -182,6 +182,15 @@ declare namespace Api {
       actual_end_date: string;
       actual_half_days: number;
     }
+
+    /**
+     * 调整人天请求体（仅超级管理员），两字段至少提供一个
+     * 预估任意状态可改，实际人天仅完成后（pending_acceptance / accepted）可改
+     */
+    interface HalfDaysParams {
+      actual_half_days?: number;
+      estimated_half_days?: number;
+    }
   }
 
   /** 账单 */
