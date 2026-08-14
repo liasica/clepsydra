@@ -132,6 +132,9 @@ func (s *Demand) UpdateHalfDays(ctx context.Context, actor Actor, id int, patch 
 // syncBillableItem 同步实际人天到未确认账单的计费行并重算合计
 // 计费行全局至多一行（部分唯一索引），无计费行或账单已确认时跳过；
 // 减免行金额恒 0 只改半天数，其余按账单快照单价联动重算金额
+//
+// 写入改条件更新（谓词带 ConfirmedAtIsNil）防 TOCTOU：与账单 Confirm 并发时，
+// 若确认发生在查询之后、更新之前，Save 影响行数为 0，视为已确认，跳过重算直接返回
 func (s *Demand) syncBillableItem(ctx context.Context, tx *ent.Tx, id, halfDays int) error {
 	item, err := tx.BillItem.Query().
 		Where(billitem.DemandID(id), billitem.Billable(true)).
@@ -149,12 +152,18 @@ func (s *Demand) syncBillableItem(ctx context.Context, tx *ent.Tx, id, halfDays 
 		return nil
 	}
 
-	upd := tx.BillItem.UpdateOneID(item.ID).SetHalfDays(halfDays)
+	upd := tx.BillItem.Update().
+		Where(billitem.ID(item.ID), billitem.HasBillWith(bill.ConfirmedAtIsNil())).
+		SetHalfDays(halfDays)
 	if !item.Waived {
 		upd.SetAmount(halfDays * b.DailyRate / 2)
 	}
-	if _, err = upd.Save(ctx); err != nil {
+	var n int
+	if n, err = upd.Save(ctx); err != nil {
 		return err
+	}
+	if n == 0 {
+		return nil
 	}
 
 	return txRecalcTotals(ctx, tx, b.ID)

@@ -51,7 +51,7 @@
 ### 3. 审计
 
 - action：`demand.update_half_days`
-- detail：只记录实际发生变化的字段，形如 `{"estimated_old": 8, "estimated_new": 10, "actual_old": 12, "actual_new": 14}`
+- detail：只记录实际发生变化的字段，形如 `{"estimated_half_days": {"from": 8, "to": 10}, "actual_half_days": {"from": 12, "to": 14}}`
 
 ### 4. `GET /api/demands/:id/manday-history`（authed 组，需求方可见）
 

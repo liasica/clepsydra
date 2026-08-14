@@ -85,7 +85,12 @@ const [Modal, modalApi] = useVbenModal({
     form.actualManday = demand.actual_half_days
       ? halfDaysToManday(demand.actual_half_days)
       : undefined;
-    initial.estimatedManday = form.estimatedManday;
+    // initial 记录真实后端值用于 diff，未预估时留 undefined（不等于表单起步值 1），
+    // 这样未预估需求即使用户不改动表单直接提交，也能识别为「有变化」并发出 estimated_half_days
+    initial.estimatedManday =
+      demand.estimated_half_days > 0
+        ? halfDaysToManday(demand.estimated_half_days)
+        : undefined;
     initial.actualManday = form.actualManday;
     formRef.value?.clearValidate();
   },

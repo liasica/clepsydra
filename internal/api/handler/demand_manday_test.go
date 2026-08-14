@@ -117,8 +117,7 @@ func TestDemandMandayHistoryHandler(t *testing.T) {
 
 	adminActor := service.Actor{ID: 1, Name: "超级管理员"}
 	d, _ := svc.Create(ctx, adminActor, "需求", "", 4, nil, false, nil, nil, "")
-	est := 6
-	_, _ = svc.UpdateHalfDays(ctx, adminActor, d.ID, service.DemandHalfDaysPatch{EstimatedHalfDays: &est})
+	_, _ = svc.UpdateHalfDays(ctx, adminActor, d.ID, service.DemandHalfDaysPatch{EstimatedHalfDays: new(6)})
 
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/api/demands/"+strconv.Itoa(d.ID)+"/manday-history", nil)
