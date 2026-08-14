@@ -203,3 +203,33 @@ func TestDemandUpdateHalfDaysTotalOverride(t *testing.T) {
 		t.Errorf("锁定总额不应被触碰: %d, want %d", b2.TotalAmount, locked)
 	}
 }
+
+// TestDemandMandayHistory 人天调整历史按时间倒序返回，未调整过为空，需求不存在 404
+func TestDemandMandayHistory(t *testing.T) {
+	_, svc := newDemandEnv(t, "dmanday-history")
+	ctx := context.Background()
+
+	d, _ := svc.Create(ctx, admin, "需求", "", 4, nil, false, nil, nil, "")
+
+	rows, err := svc.MandayHistory(ctx, d.ID)
+	if err != nil || len(rows) != 0 {
+		t.Fatalf("未调整过应为空: %v, len=%d", err, len(rows))
+	}
+
+	_, _ = svc.UpdateHalfDays(ctx, admin, d.ID, DemandHalfDaysPatch{EstimatedHalfDays: intPtr(6)})
+	_, _ = svc.UpdateHalfDays(ctx, admin, d.ID, DemandHalfDaysPatch{EstimatedHalfDays: intPtr(8)})
+
+	rows, err = svc.MandayHistory(ctx, d.ID)
+	if err != nil || len(rows) != 2 {
+		t.Fatalf("应有 2 条历史: %v, len=%d", err, len(rows))
+	}
+	// 倒序：第一条是最新的 6 → 8
+	est, ok := rows[0].Detail["estimated_half_days"].(map[string]any)
+	if !ok || est["to"] != float64(8) {
+		t.Errorf("最新一条 to = %v, want 8", rows[0].Detail["estimated_half_days"])
+	}
+
+	if _, err = svc.MandayHistory(ctx, 999); err != ErrNotFound {
+		t.Errorf("不存在的需求应 ErrNotFound, got %v", err)
+	}
+}

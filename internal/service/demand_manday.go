@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"clepsydra/internal/ent"
+	"clepsydra/internal/ent/auditlog"
 	"clepsydra/internal/ent/bill"
 	"clepsydra/internal/ent/billitem"
 	"clepsydra/internal/ent/demand"
@@ -157,4 +158,21 @@ func (s *Demand) syncBillableItem(ctx context.Context, tx *ent.Tx, id, halfDays 
 	}
 
 	return txRecalcTotals(ctx, tx, b.ID)
+}
+
+// MandayHistory 查询需求的人天调整历史，按时间倒序
+// 数据源是 demand.update_half_days 审计日志；登录即可查看，需求方以此追溯超管修正记录
+func (s *Demand) MandayHistory(ctx context.Context, id int) ([]*ent.AuditLog, error) {
+	if _, err := s.Get(ctx, id); err != nil {
+		return nil, err
+	}
+
+	return s.client.AuditLog.Query().
+		Where(
+			auditlog.TargetType("demand"),
+			auditlog.Action("demand.update_half_days"),
+			auditlog.TargetID(id),
+		).
+		Order(ent.Desc(auditlog.FieldID)).
+		All(ctx)
 }
