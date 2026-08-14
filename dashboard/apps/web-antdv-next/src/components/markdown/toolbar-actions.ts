@@ -130,6 +130,13 @@ export function readToolbarState(ctx: Ctx): ToolbarState {
   const view = ctx.get(editorViewCtx);
   const { state } = view;
 
+  // Milkdown 在 EditorView 构造完成后才注入真实 view；构造期间 NodeView（如列表项
+  // 序号同步）派发的事务会同步触发 listener 走到这里，此时 ctx 里还是占位对象。
+  // 若在这里抛错，异常会沿 applyTransaction 掀翻编辑器初始化，编辑器从此无响应
+  if (!state) {
+    return EMPTY_TOOLBAR_STATE;
+  }
+
   return {
     block: resolveBlockKind(state, ctx),
     marks: {
