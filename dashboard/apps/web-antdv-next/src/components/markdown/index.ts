@@ -12,4 +12,5 @@ const MarkdownEditor = defineAsyncComponent(
 );
 
 export { default as MarkdownViewer } from './MarkdownViewer.vue';
+export { toggleTaskLine } from './renderer';
 export { MarkdownEditor };

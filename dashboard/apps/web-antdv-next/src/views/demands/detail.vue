@@ -25,8 +25,9 @@ import {
   deleteDemand,
   fetchDemand,
   fetchDemandMandayHistory,
+  updateDemand,
 } from '#/api/demand';
-import { MarkdownViewer } from '#/components/markdown';
+import { MarkdownViewer, toggleTaskLine } from '#/components/markdown';
 import { formatDate, formatDateTime } from '#/utils/clepsydra/date';
 import {
   DEMAND_PRIORITY,
@@ -173,6 +174,57 @@ async function runDelete(target: Api.Demand.Item) {
 
   showSuccess('已删除');
   await router.push('/demands');
+}
+
+/**
+ * 描述里的任务列表能否直接勾选
+ *
+ * 复用「编辑」这一项白名单——勾选本质就是改描述，后端 PUT /demands/:id 用的也是同一套
+ * 角色与状态规则，这里不另立判断
+ */
+const canToggleTask = computed(() => actions.value.includes('edit'));
+
+/**
+ * 连续勾选的提交队列
+ *
+ * 每次提交的都是整段描述，并发发出时后端最终留下哪一版由网络快慢决定，
+ * 这里串成一条链保证落库顺序与点击顺序一致
+ */
+let taskQueue: Promise<unknown> = Promise.resolve();
+
+/**
+ * 勾选 / 取消勾选描述里的任务项
+ *
+ * 先本地翻转再落库：勾选是高频轻操作，等接口回来再更新会有可感的延迟。
+ * 失败则把描述回滚并重新拉取，让页面回到后端的真实内容
+ */
+function onToggleTask(line: number, checked: boolean) {
+  const target = demand.value;
+  if (!target) return;
+
+  const next = toggleTaskLine(target.description, line, checked);
+  if (next === null) {
+    // 描述已被别处改动，行号对不上原文了，直接拉最新的一份
+    void load();
+    return;
+  }
+
+  const previous = target.description;
+  target.description = next;
+  taskQueue = taskQueue
+    .then(async () => {
+      const updated = await updateDemand(target.id, {
+        title: target.title,
+        description: next,
+      });
+      // 描述以本地为准（队列里可能还排着后续勾选），只把更新时间同步过来
+      target.updated_at = updated.updated_at;
+    })
+    .catch(async () => {
+      // 失败提示已由请求拦截器统一弹出
+      target.description = previous;
+      await load();
+    });
 }
 
 /**
@@ -398,7 +450,11 @@ onMounted(load);
 
         <!-- 描述是大块富文本正文，独立成卡获得整卡宽度，空内容由 MarkdownViewer 的占位文案兜底 -->
         <Card class="mt-4" title="需求描述">
-          <MarkdownViewer :content="demand.description" />
+          <MarkdownViewer
+            :content="demand.description"
+            :interactive="canToggleTask"
+            @toggle-task="onToggleTask"
+          />
         </Card>
       </template>
     </Spin>

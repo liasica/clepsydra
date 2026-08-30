@@ -194,41 +194,60 @@
   color: var(--md-fg-muted);
 }
 
-/* 任务列表：markdown-it 侧只打标记类，勾选框完全用 CSS 画，避免注入任何 HTML */
+/* 任务列表：勾选框是渲染时补出的 input（见 renderer.ts），这里用 appearance: none 接管外观 */
 .markdown-body li.task-list-item {
-  position: relative;
   padding-left: 1.6em;
   margin-left: -1.5em;
   list-style: none;
 }
 
-.markdown-body li.task-list-item::before {
-  position: absolute;
-  top: 0.42em;
-  left: 0;
+/* 负左边距把勾选框拉进 li 的左侧留白，右边距补回来让文字从 padding 边缘起排，
+   正文换行后的次行也就与首行文字对齐 */
+.markdown-body .task-list-checkbox {
+  position: relative;
   box-sizing: border-box;
+  display: inline-block;
   width: 1em;
   height: 1em;
-  content: '';
+  margin: 0 0.6em 0 -1.6em;
+  vertical-align: -0.15em;
+  appearance: none;
+  background: var(--md-bg);
   border: 1px solid var(--md-border);
   border-radius: 3px;
 }
 
-.markdown-body li.task-list-item-checked::before {
+.markdown-body .task-list-checkbox:checked {
   background: var(--md-primary);
   border-color: var(--md-primary);
 }
 
-.markdown-body li.task-list-item-checked::after {
+/* 勾由两条边框旋转 -45° 画成，旋转后包围盒的视觉中心比元素几何中心低约 0.09em，
+   translate 里一并补偿，勾才真正落在方框中央 */
+.markdown-body .task-list-checkbox:checked::after {
   position: absolute;
-  top: 0.56em;
-  left: 0.24em;
+  top: 50%;
+  left: 50%;
   width: 0.5em;
   height: 0.26em;
   content: '';
   border-bottom: 2px solid hsl(var(--primary-foreground));
   border-left: 2px solid hsl(var(--primary-foreground));
-  transform: rotate(-45deg);
+  transform: translate(-50%, calc(-50% - 0.09em)) rotate(-45deg);
+}
+
+/* 可勾选态由 MarkdownViewer 的 interactive 决定，只读时渲染成 disabled 保持纯展示 */
+.markdown-body .task-list-checkbox:not(:disabled) {
+  cursor: pointer;
+}
+
+.markdown-body .task-list-checkbox:not(:disabled):hover {
+  border-color: var(--md-primary);
+}
+
+.markdown-body .task-list-checkbox:focus-visible {
+  outline: 2px solid hsl(var(--primary) / 45%);
+  outline-offset: 1px;
 }
 
 .markdown-body li.task-list-item-checked {
