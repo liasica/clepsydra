@@ -27,19 +27,19 @@ func init() {
 	billFields := schema.Bill{}.Fields()
 	_ = billFields
 	// billDescTotalOverride is the schema descriptor for total_override field.
-	billDescTotalOverride := billFields[7].Descriptor()
+	billDescTotalOverride := billFields[6].Descriptor()
 	// bill.DefaultTotalOverride holds the default value on creation for the total_override field.
 	bill.DefaultTotalOverride = billDescTotalOverride.Default.(bool)
 	// billDescConfirmAuto is the schema descriptor for confirm_auto field.
-	billDescConfirmAuto := billFields[11].Descriptor()
+	billDescConfirmAuto := billFields[10].Descriptor()
 	// bill.DefaultConfirmAuto holds the default value on creation for the confirm_auto field.
 	bill.DefaultConfirmAuto = billDescConfirmAuto.Default.(bool)
 	// billDescCreatedAt is the schema descriptor for created_at field.
-	billDescCreatedAt := billFields[14].Descriptor()
+	billDescCreatedAt := billFields[13].Descriptor()
 	// bill.DefaultCreatedAt holds the default value on creation for the created_at field.
 	bill.DefaultCreatedAt = billDescCreatedAt.Default.(func() time.Time)
 	// billDescUpdatedAt is the schema descriptor for updated_at field.
-	billDescUpdatedAt := billFields[15].Descriptor()
+	billDescUpdatedAt := billFields[14].Descriptor()
 	// bill.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	bill.DefaultUpdatedAt = billDescUpdatedAt.Default.(func() time.Time)
 	// bill.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -47,11 +47,11 @@ func init() {
 	billitemFields := schema.BillItem{}.Fields()
 	_ = billitemFields
 	// billitemDescWaived is the schema descriptor for waived field.
-	billitemDescWaived := billitemFields[6].Descriptor()
+	billitemDescWaived := billitemFields[5].Descriptor()
 	// billitem.DefaultWaived holds the default value on creation for the waived field.
 	billitem.DefaultWaived = billitemDescWaived.Default.(bool)
 	// billitemDescCreatedAt is the schema descriptor for created_at field.
-	billitemDescCreatedAt := billitemFields[9].Descriptor()
+	billitemDescCreatedAt := billitemFields[8].Descriptor()
 	// billitem.DefaultCreatedAt holds the default value on creation for the created_at field.
 	billitem.DefaultCreatedAt = billitemDescCreatedAt.Default.(func() time.Time)
 	demandMixin := schema.Demand{}.Mixin()
@@ -70,16 +70,12 @@ func init() {
 	demandDescAcceptAuto := demandFields[14].Descriptor()
 	// demand.DefaultAcceptAuto holds the default value on creation for the accept_auto field.
 	demand.DefaultAcceptAuto = demandDescAcceptAuto.Default.(bool)
-	// demandDescAcceptLocked is the schema descriptor for accept_locked field.
-	demandDescAcceptLocked := demandFields[15].Descriptor()
-	// demand.DefaultAcceptLocked holds the default value on creation for the accept_locked field.
-	demand.DefaultAcceptLocked = demandDescAcceptLocked.Default.(bool)
 	// demandDescCreatedAt is the schema descriptor for created_at field.
-	demandDescCreatedAt := demandFields[16].Descriptor()
+	demandDescCreatedAt := demandFields[15].Descriptor()
 	// demand.DefaultCreatedAt holds the default value on creation for the created_at field.
 	demand.DefaultCreatedAt = demandDescCreatedAt.Default.(func() time.Time)
 	// demandDescUpdatedAt is the schema descriptor for updated_at field.
-	demandDescUpdatedAt := demandFields[17].Descriptor()
+	demandDescUpdatedAt := demandFields[16].Descriptor()
 	// demand.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	demand.DefaultUpdatedAt = demandDescUpdatedAt.Default.(func() time.Time)
 	// demand.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

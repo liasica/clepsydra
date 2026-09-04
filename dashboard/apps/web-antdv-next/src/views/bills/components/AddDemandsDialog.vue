@@ -12,7 +12,7 @@ import BillDemandPicker from './BillDemandPicker.vue';
 
 /**
  * 向账单添加需求弹窗，多选后逐个调用添加接口
- * 选择器已过滤当前账单中的需求与已被计费的需求
+ * 选择器已过滤已在任何账单中的需求
  */
 defineOptions({ name: 'AddDemandsDialog' });
 
@@ -69,10 +69,6 @@ async function submit() {
 
 <template>
   <Modal class="w-[720px]" title="添加需求">
-    <BillDemandPicker
-      ref="pickerRef"
-      v-model:value="demandIds"
-      :exclude-bill-id="billId"
-    />
+    <BillDemandPicker ref="pickerRef" v-model:value="demandIds" />
   </Modal>
 </template>

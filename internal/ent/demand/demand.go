@@ -48,8 +48,6 @@ const (
 	FieldAcceptedBy = "accepted_by"
 	// FieldAcceptAuto holds the string denoting the accept_auto field in the database.
 	FieldAcceptAuto = "accept_auto"
-	// FieldAcceptLocked holds the string denoting the accept_locked field in the database.
-	FieldAcceptLocked = "accept_locked"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -91,7 +89,6 @@ var Columns = []string{
 	FieldAcceptedAt,
 	FieldAcceptedBy,
 	FieldAcceptAuto,
-	FieldAcceptLocked,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -127,8 +124,6 @@ var (
 	EstimatedHalfDaysValidator func(int) error
 	// DefaultAcceptAuto holds the default value on creation for the "accept_auto" field.
 	DefaultAcceptAuto bool
-	// DefaultAcceptLocked holds the default value on creation for the "accept_locked" field.
-	DefaultAcceptLocked bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -281,11 +276,6 @@ func ByAcceptedBy(opts ...sql.OrderTermOption) OrderOption {
 // ByAcceptAuto orders the results by the accept_auto field.
 func ByAcceptAuto(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAcceptAuto, opts...).ToFunc()
-}
-
-// ByAcceptLocked orders the results by the accept_locked field.
-func ByAcceptLocked(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAcceptLocked, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

@@ -10,7 +10,7 @@ export function fetchBill(id: number) {
   return requestClient.get<Api.Bill.Detail>(`/api/bills/${id}`);
 }
 
-/** 手动生成账单：输入名称并选择需求（仅超级管理员） */
+/** 创建账单：输入名称并选择需求（仅超级管理员） */
 export function createManualBill(name: string, demandIds: number[]) {
   return requestClient.post<Api.Bill.Detail>('/api/bills/manual', {
     name,
@@ -18,12 +18,9 @@ export function createManualBill(name: string, demandIds: number[]) {
   });
 }
 
-/** 查询可加入账单的需求，excludeBillId 排除已在该账单中的需求（仅超级管理员） */
-export function fetchSelectableDemands(excludeBillId?: number) {
-  return requestClient.get<Api.Bill.SelectableDemands>(
-    '/api/bills/selectable-demands',
-    { params: excludeBillId ? { exclude_bill: excludeBillId } : undefined },
-  );
+/** 查询可加入账单的需求，排除已在任何账单中的需求（仅超级管理员） */
+export function fetchSelectableDemands() {
+  return requestClient.get<Api.Demand.Item[]>('/api/bills/selectable-demands');
 }
 
 /** 向账单添加需求明细，已支付账单拒绝（仅超级管理员） */
@@ -38,7 +35,7 @@ export function removeBillItem(billId: number, itemId: number): Promise<void> {
   return requestClient.delete(`/api/bills/${billId}/items/${itemId}`);
 }
 
-/** 切换明细行减免状态，待确认与待支付账单的计费行可用（仅超级管理员） */
+/** 切换明细行减免状态，待确认与待支付账单可用（仅超级管理员） */
 export function toggleWaive(billId: number, itemId: number): Promise<void> {
   return requestClient.post(`/api/bills/${billId}/items/${itemId}/waive`);
 }

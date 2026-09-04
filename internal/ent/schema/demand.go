@@ -44,7 +44,6 @@ func (Demand) Fields() []ent.Field {
 		field.Time("accepted_at").Optional().Nillable(),
 		field.Int("accepted_by").Optional().Nillable(),
 		field.Bool("accept_auto").Default(false),
-		field.Bool("accept_locked").Default(false), // 出账前锁定产生的自动确认
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}

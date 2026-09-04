@@ -17,7 +17,7 @@ import (
 	"clepsydra/internal/service"
 )
 
-// newBillUpdateEnv 构建账单编辑接口测试环境，返回一张含单个计费行的手动账单
+// newBillUpdateEnv 构建账单编辑接口测试环境，返回一张含单条明细的账单
 func newBillUpdateEnv(t *testing.T, name string) (*ent.Client, *Bill, *service.Bill, *ent.Bill) {
 	t.Helper()
 
@@ -40,7 +40,7 @@ func newBillUpdateEnv(t *testing.T, name string) (*ent.Client, *Bill, *service.B
 	end := time.Date(2026, 7, 15, 0, 0, 0, 0, time.Local)
 	_ = demandSvc.Start(ctx, act, d.ID, start)
 	_ = demandSvc.Finish(ctx, act, d.ID, start, end, 4)
-	_ = demandSvc.Accept(ctx, act, d.ID, false, false)
+	_ = demandSvc.Accept(ctx, act, d.ID, false)
 
 	b, err := billSvc.CreateManual(ctx, act, "结算单", []int{d.ID})
 	if err != nil {

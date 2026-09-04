@@ -1,39 +1,26 @@
 <script lang="ts" setup>
 import type { DemandStatus } from '#/utils/clepsydra/dict';
 
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Page } from '@vben/common-ui';
-import { useUserStore } from '@vben/stores';
 
-import { Alert, Card } from 'antdv-next';
+import { Card } from 'antdv-next';
 
 import { fetchTodos } from '#/api/dashboard';
 
 /**
  * 工作台，admin / client 两个角色都可见
  *
- * 三张待办卡片点击跳转对应列表并带上状态筛选；出账截止提醒仅超级管理员可见
- * （出账与账单调整是超级管理员的操作，需求方无需关心出账截止日）
+ * 三张待办卡片点击跳转对应列表并带上状态筛选
  */
 defineOptions({ name: 'Dashboard' });
 
 const router = useRouter();
-const userStore = useUserStore();
-
-const isAdmin = computed(() => userStore.userRoles.includes('admin'));
 
 const todos = ref<Api.Dashboard.Todos>();
 const loading = ref(false);
-
-/** 出账截止提醒文案，当天截止与非当天用不同措辞 */
-const billingAlertText = computed(() => {
-  if (!todos.value) return '';
-  return todos.value.billing_due_today
-    ? `今天（${todos.value.billing_due_date}）是本月出账截止日，上月账单尚未生成`
-    : `本月出账截止日为 ${todos.value.billing_due_date}，上月账单尚未生成`;
-});
 
 /** 跳转需求列表并带上状态筛选 */
 function goDemands(status: DemandStatus) {
@@ -60,15 +47,6 @@ onMounted(load);
 
 <template>
   <Page>
-    <Alert
-      v-if="isAdmin && todos && !todos.prev_bill_generated"
-      :closable="false"
-      :message="billingAlertText"
-      :type="todos.billing_due_today ? 'error' : 'warning'"
-      class="mb-4"
-      show-icon
-    />
-
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <Card
         class="cursor-pointer"

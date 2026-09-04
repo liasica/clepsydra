@@ -19,8 +19,6 @@ type Bill struct {
 	ID int `json:"id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
-	// Period holds the value of the "period" field.
-	Period *string `json:"period,omitempty"`
 	// Status holds the value of the "status" field.
 	Status bill.Status `json:"status,omitempty"`
 	// DailyRate holds the value of the "daily_rate" field.
@@ -82,7 +80,7 @@ func (*Bill) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case bill.FieldID, bill.FieldDailyRate, bill.FieldBaseFee, bill.FieldTotalHalfDays, bill.FieldTotalAmount, bill.FieldConfirmedBy, bill.FieldPaidBy:
 			values[i] = new(sql.NullInt64)
-		case bill.FieldName, bill.FieldPeriod, bill.FieldStatus:
+		case bill.FieldName, bill.FieldStatus:
 			values[i] = new(sql.NullString)
 		case bill.FieldConfirmDeadline, bill.FieldConfirmedAt, bill.FieldPaidAt, bill.FieldCreatedAt, bill.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -112,13 +110,6 @@ func (_m *Bill) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
 				_m.Name = value.String
-			}
-		case bill.FieldPeriod:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field period", values[i])
-			} else if value.Valid {
-				_m.Period = new(string)
-				*_m.Period = value.String
 			}
 		case bill.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -252,11 +243,6 @@ func (_m *Bill) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)
-	builder.WriteString(", ")
-	if v := _m.Period; v != nil {
-		builder.WriteString("period=")
-		builder.WriteString(*v)
-	}
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))

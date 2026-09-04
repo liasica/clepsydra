@@ -80,11 +80,6 @@ func Amount(v int) predicate.BillItem {
 	return predicate.BillItem(sql.FieldEQ(FieldAmount, v))
 }
 
-// Billable applies equality check predicate on the "billable" field. It's identical to BillableEQ.
-func Billable(v bool) predicate.BillItem {
-	return predicate.BillItem(sql.FieldEQ(FieldBillable, v))
-}
-
 // Waived applies equality check predicate on the "waived" field. It's identical to WaivedEQ.
 func Waived(v bool) predicate.BillItem {
 	return predicate.BillItem(sql.FieldEQ(FieldWaived, v))
@@ -353,16 +348,6 @@ func AmountLT(v int) predicate.BillItem {
 // AmountLTE applies the LTE predicate on the "amount" field.
 func AmountLTE(v int) predicate.BillItem {
 	return predicate.BillItem(sql.FieldLTE(FieldAmount, v))
-}
-
-// BillableEQ applies the EQ predicate on the "billable" field.
-func BillableEQ(v bool) predicate.BillItem {
-	return predicate.BillItem(sql.FieldEQ(FieldBillable, v))
-}
-
-// BillableNEQ applies the NEQ predicate on the "billable" field.
-func BillableNEQ(v bool) predicate.BillItem {
-	return predicate.BillItem(sql.FieldNEQ(FieldBillable, v))
 }
 
 // WaivedEQ applies the EQ predicate on the "waived" field.

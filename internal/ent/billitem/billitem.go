@@ -24,8 +24,6 @@ const (
 	FieldHalfDays = "half_days"
 	// FieldAmount holds the string denoting the amount field in the database.
 	FieldAmount = "amount"
-	// FieldBillable holds the string denoting the billable field in the database.
-	FieldBillable = "billable"
 	// FieldWaived holds the string denoting the waived field in the database.
 	FieldWaived = "waived"
 	// FieldPlannedStartDate holds the string denoting the planned_start_date field in the database.
@@ -55,7 +53,6 @@ var Columns = []string{
 	FieldDemandStatus,
 	FieldHalfDays,
 	FieldAmount,
-	FieldBillable,
 	FieldWaived,
 	FieldPlannedStartDate,
 	FieldNote,
@@ -121,11 +118,6 @@ func ByHalfDays(opts ...sql.OrderTermOption) OrderOption {
 // ByAmount orders the results by the amount field.
 func ByAmount(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAmount, opts...).ToFunc()
-}
-
-// ByBillable orders the results by the billable field.
-func ByBillable(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldBillable, opts...).ToFunc()
 }
 
 // ByWaived orders the results by the waived field.

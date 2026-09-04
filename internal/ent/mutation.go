@@ -791,7 +791,6 @@ type BillMutation struct {
 	typ                string
 	id                 *int
 	name               *string
-	period             *string
 	status             *bill.Status
 	daily_rate         *int
 	adddaily_rate      *int
@@ -953,55 +952,6 @@ func (m *BillMutation) OldName(ctx context.Context) (v string, err error) {
 // ResetName resets all changes to the "name" field.
 func (m *BillMutation) ResetName() {
 	m.name = nil
-}
-
-// SetPeriod sets the "period" field.
-func (m *BillMutation) SetPeriod(s string) {
-	m.period = &s
-}
-
-// Period returns the value of the "period" field in the mutation.
-func (m *BillMutation) Period() (r string, exists bool) {
-	v := m.period
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldPeriod returns the old "period" field's value of the Bill entity.
-// If the Bill object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *BillMutation) OldPeriod(ctx context.Context) (v *string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldPeriod is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldPeriod requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldPeriod: %w", err)
-	}
-	return oldValue.Period, nil
-}
-
-// ClearPeriod clears the value of the "period" field.
-func (m *BillMutation) ClearPeriod() {
-	m.period = nil
-	m.clearedFields[bill.FieldPeriod] = struct{}{}
-}
-
-// PeriodCleared returns if the "period" field was cleared in this mutation.
-func (m *BillMutation) PeriodCleared() bool {
-	_, ok := m.clearedFields[bill.FieldPeriod]
-	return ok
-}
-
-// ResetPeriod resets all changes to the "period" field.
-func (m *BillMutation) ResetPeriod() {
-	m.period = nil
-	delete(m.clearedFields, bill.FieldPeriod)
 }
 
 // SetStatus sets the "status" field.
@@ -1783,12 +1733,9 @@ func (m *BillMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BillMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 15)
 	if m.name != nil {
 		fields = append(fields, bill.FieldName)
-	}
-	if m.period != nil {
-		fields = append(fields, bill.FieldPeriod)
 	}
 	if m.status != nil {
 		fields = append(fields, bill.FieldStatus)
@@ -1842,8 +1789,6 @@ func (m *BillMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case bill.FieldName:
 		return m.Name()
-	case bill.FieldPeriod:
-		return m.Period()
 	case bill.FieldStatus:
 		return m.Status()
 	case bill.FieldDailyRate:
@@ -1883,8 +1828,6 @@ func (m *BillMutation) OldField(ctx context.Context, name string) (ent.Value, er
 	switch name {
 	case bill.FieldName:
 		return m.OldName(ctx)
-	case bill.FieldPeriod:
-		return m.OldPeriod(ctx)
 	case bill.FieldStatus:
 		return m.OldStatus(ctx)
 	case bill.FieldDailyRate:
@@ -1928,13 +1871,6 @@ func (m *BillMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetName(v)
-		return nil
-	case bill.FieldPeriod:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetPeriod(v)
 		return nil
 	case bill.FieldStatus:
 		v, ok := value.(bill.Status)
@@ -2139,9 +2075,6 @@ func (m *BillMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *BillMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(bill.FieldPeriod) {
-		fields = append(fields, bill.FieldPeriod)
-	}
 	if m.FieldCleared(bill.FieldConfirmDeadline) {
 		fields = append(fields, bill.FieldConfirmDeadline)
 	}
@@ -2171,9 +2104,6 @@ func (m *BillMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *BillMutation) ClearField(name string) error {
 	switch name {
-	case bill.FieldPeriod:
-		m.ClearPeriod()
-		return nil
 	case bill.FieldConfirmDeadline:
 		m.ClearConfirmDeadline()
 		return nil
@@ -2199,9 +2129,6 @@ func (m *BillMutation) ResetField(name string) error {
 	switch name {
 	case bill.FieldName:
 		m.ResetName()
-		return nil
-	case bill.FieldPeriod:
-		m.ResetPeriod()
 		return nil
 	case bill.FieldStatus:
 		m.ResetStatus()
@@ -2347,7 +2274,6 @@ type BillItemMutation struct {
 	addhalf_days       *int
 	amount             *int
 	addamount          *int
-	billable           *bool
 	waived             *bool
 	planned_start_date *time.Time
 	note               *string
@@ -2698,42 +2624,6 @@ func (m *BillItemMutation) ResetAmount() {
 	m.addamount = nil
 }
 
-// SetBillable sets the "billable" field.
-func (m *BillItemMutation) SetBillable(b bool) {
-	m.billable = &b
-}
-
-// Billable returns the value of the "billable" field in the mutation.
-func (m *BillItemMutation) Billable() (r bool, exists bool) {
-	v := m.billable
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldBillable returns the old "billable" field's value of the BillItem entity.
-// If the BillItem object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *BillItemMutation) OldBillable(ctx context.Context) (v bool, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldBillable is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldBillable requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldBillable: %w", err)
-	}
-	return oldValue.Billable, nil
-}
-
-// ResetBillable resets all changes to the "billable" field.
-func (m *BillItemMutation) ResetBillable() {
-	m.billable = nil
-}
-
 // SetWaived sets the "waived" field.
 func (m *BillItemMutation) SetWaived(b bool) {
 	m.waived = &b
@@ -2977,7 +2867,7 @@ func (m *BillItemMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BillItemMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 9)
 	if m.demand_id != nil {
 		fields = append(fields, billitem.FieldDemandID)
 	}
@@ -2992,9 +2882,6 @@ func (m *BillItemMutation) Fields() []string {
 	}
 	if m.amount != nil {
 		fields = append(fields, billitem.FieldAmount)
-	}
-	if m.billable != nil {
-		fields = append(fields, billitem.FieldBillable)
 	}
 	if m.waived != nil {
 		fields = append(fields, billitem.FieldWaived)
@@ -3026,8 +2913,6 @@ func (m *BillItemMutation) Field(name string) (ent.Value, bool) {
 		return m.HalfDays()
 	case billitem.FieldAmount:
 		return m.Amount()
-	case billitem.FieldBillable:
-		return m.Billable()
 	case billitem.FieldWaived:
 		return m.Waived()
 	case billitem.FieldPlannedStartDate:
@@ -3055,8 +2940,6 @@ func (m *BillItemMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldHalfDays(ctx)
 	case billitem.FieldAmount:
 		return m.OldAmount(ctx)
-	case billitem.FieldBillable:
-		return m.OldBillable(ctx)
 	case billitem.FieldWaived:
 		return m.OldWaived(ctx)
 	case billitem.FieldPlannedStartDate:
@@ -3108,13 +2991,6 @@ func (m *BillItemMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAmount(v)
-		return nil
-	case billitem.FieldBillable:
-		v, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetBillable(v)
 		return nil
 	case billitem.FieldWaived:
 		v, ok := value.(bool)
@@ -3262,9 +3138,6 @@ func (m *BillItemMutation) ResetField(name string) error {
 	case billitem.FieldAmount:
 		m.ResetAmount()
 		return nil
-	case billitem.FieldBillable:
-		m.ResetBillable()
-		return nil
 	case billitem.FieldWaived:
 		m.ResetWaived()
 		return nil
@@ -3381,7 +3254,6 @@ type DemandMutation struct {
 	accepted_by              *int
 	addaccepted_by           *int
 	accept_auto              *bool
-	accept_locked            *bool
 	created_at               *time.Time
 	updated_at               *time.Time
 	clearedFields            map[string]struct{}
@@ -4296,42 +4168,6 @@ func (m *DemandMutation) ResetAcceptAuto() {
 	m.accept_auto = nil
 }
 
-// SetAcceptLocked sets the "accept_locked" field.
-func (m *DemandMutation) SetAcceptLocked(b bool) {
-	m.accept_locked = &b
-}
-
-// AcceptLocked returns the value of the "accept_locked" field in the mutation.
-func (m *DemandMutation) AcceptLocked() (r bool, exists bool) {
-	v := m.accept_locked
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldAcceptLocked returns the old "accept_locked" field's value of the Demand entity.
-// If the Demand object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DemandMutation) OldAcceptLocked(ctx context.Context) (v bool, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldAcceptLocked is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldAcceptLocked requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldAcceptLocked: %w", err)
-	}
-	return oldValue.AcceptLocked, nil
-}
-
-// ResetAcceptLocked resets all changes to the "accept_locked" field.
-func (m *DemandMutation) ResetAcceptLocked() {
-	m.accept_locked = nil
-}
-
 // SetCreatedAt sets the "created_at" field.
 func (m *DemandMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -4546,7 +4382,7 @@ func (m *DemandMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DemandMutation) Fields() []string {
-	fields := make([]string, 0, 19)
+	fields := make([]string, 0, 18)
 	if m.deleted_at != nil {
 		fields = append(fields, demand.FieldDeletedAt)
 	}
@@ -4595,9 +4431,6 @@ func (m *DemandMutation) Fields() []string {
 	if m.accept_auto != nil {
 		fields = append(fields, demand.FieldAcceptAuto)
 	}
-	if m.accept_locked != nil {
-		fields = append(fields, demand.FieldAcceptLocked)
-	}
 	if m.created_at != nil {
 		fields = append(fields, demand.FieldCreatedAt)
 	}
@@ -4644,8 +4477,6 @@ func (m *DemandMutation) Field(name string) (ent.Value, bool) {
 		return m.AcceptedBy()
 	case demand.FieldAcceptAuto:
 		return m.AcceptAuto()
-	case demand.FieldAcceptLocked:
-		return m.AcceptLocked()
 	case demand.FieldCreatedAt:
 		return m.CreatedAt()
 	case demand.FieldUpdatedAt:
@@ -4691,8 +4522,6 @@ func (m *DemandMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldAcceptedBy(ctx)
 	case demand.FieldAcceptAuto:
 		return m.OldAcceptAuto(ctx)
-	case demand.FieldAcceptLocked:
-		return m.OldAcceptLocked(ctx)
 	case demand.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case demand.FieldUpdatedAt:
@@ -4817,13 +4646,6 @@ func (m *DemandMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAcceptAuto(v)
-		return nil
-	case demand.FieldAcceptLocked:
-		v, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetAcceptLocked(v)
 		return nil
 	case demand.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -5055,9 +4877,6 @@ func (m *DemandMutation) ResetField(name string) error {
 		return nil
 	case demand.FieldAcceptAuto:
 		m.ResetAcceptAuto()
-		return nil
-	case demand.FieldAcceptLocked:
-		m.ResetAcceptLocked()
 		return nil
 	case demand.FieldCreatedAt:
 		m.ResetCreatedAt()

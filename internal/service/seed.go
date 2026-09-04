@@ -15,7 +15,6 @@ import (
 
 // 设置项 key 常量，全项目唯一入口
 const (
-	SettingBillIncludeStatuses = "bill_include_statuses"
 	SettingDemandConfirmWindow = "demand_confirm_window"
 	SettingBillConfirmWindow   = "bill_confirm_window"
 	SettingWindowUnit          = "window_unit"
@@ -26,7 +25,6 @@ const (
 
 // defaultSettings 默认设置值
 var defaultSettings = map[string]string{
-	SettingBillIncludeStatuses: "accepted,in_progress,confirmed",
 	SettingDemandConfirmWindow: "5",
 	SettingBillConfirmWindow:   "3",
 	SettingWindowUnit:          "natural",

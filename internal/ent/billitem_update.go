@@ -120,20 +120,6 @@ func (_u *BillItemUpdate) AddAmount(v int) *BillItemUpdate {
 	return _u
 }
 
-// SetBillable sets the "billable" field.
-func (_u *BillItemUpdate) SetBillable(v bool) *BillItemUpdate {
-	_u.mutation.SetBillable(v)
-	return _u
-}
-
-// SetNillableBillable sets the "billable" field if the given value is not nil.
-func (_u *BillItemUpdate) SetNillableBillable(v *bool) *BillItemUpdate {
-	if v != nil {
-		_u.SetBillable(*v)
-	}
-	return _u
-}
-
 // SetWaived sets the "waived" field.
 func (_u *BillItemUpdate) SetWaived(v bool) *BillItemUpdate {
 	_u.mutation.SetWaived(v)
@@ -280,9 +266,6 @@ func (_u *BillItemUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedAmount(); ok {
 		_spec.AddField(billitem.FieldAmount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.Billable(); ok {
-		_spec.SetField(billitem.FieldBillable, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Waived(); ok {
 		_spec.SetField(billitem.FieldWaived, field.TypeBool, value)
@@ -436,20 +419,6 @@ func (_u *BillItemUpdateOne) SetNillableAmount(v *int) *BillItemUpdateOne {
 // AddAmount adds value to the "amount" field.
 func (_u *BillItemUpdateOne) AddAmount(v int) *BillItemUpdateOne {
 	_u.mutation.AddAmount(v)
-	return _u
-}
-
-// SetBillable sets the "billable" field.
-func (_u *BillItemUpdateOne) SetBillable(v bool) *BillItemUpdateOne {
-	_u.mutation.SetBillable(v)
-	return _u
-}
-
-// SetNillableBillable sets the "billable" field if the given value is not nil.
-func (_u *BillItemUpdateOne) SetNillableBillable(v *bool) *BillItemUpdateOne {
-	if v != nil {
-		_u.SetBillable(*v)
-	}
 	return _u
 }
 
@@ -629,9 +598,6 @@ func (_u *BillItemUpdateOne) sqlSave(ctx context.Context) (_node *BillItem, err 
 	}
 	if value, ok := _u.mutation.AddedAmount(); ok {
 		_spec.AddField(billitem.FieldAmount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.Billable(); ok {
-		_spec.SetField(billitem.FieldBillable, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Waived(); ok {
 		_spec.SetField(billitem.FieldWaived, field.TypeBool, value)

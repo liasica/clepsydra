@@ -11,13 +11,13 @@ import { showSuccess } from '#/utils/http/error';
 import BillDemandPicker from './BillDemandPicker.vue';
 
 /**
- * 手动生成账单弹窗：输入账单名称并选择需求
- * 生成即待确认，需求方立即可见
+ * 创建账单弹窗：输入账单名称并选择需求
+ * 创建即待确认，需求方立即可见
  */
 defineOptions({ name: 'ManualBillDialog' });
 
 const emit = defineEmits<{
-  /** 生成成功，携带新账单 ID 供父级跳转详情 */
+  /** 创建成功，携带新账单 ID 供父级跳转详情 */
   success: [billId: number];
 }>();
 
@@ -51,7 +51,7 @@ async function submit() {
   modalApi.lock();
   try {
     const bill = await createManualBill(name.value.trim(), demandIds.value);
-    showSuccess('账单已生成');
+    showSuccess('账单已创建');
     emit('success', bill.id);
     modalApi.close();
   } catch {
@@ -63,7 +63,7 @@ async function submit() {
 </script>
 
 <template>
-  <Modal class="w-[720px]" title="手动生成账单">
+  <Modal class="w-[720px]" title="创建账单">
     <Form layout="vertical">
       <FormItem label="账单名称" required>
         <Input

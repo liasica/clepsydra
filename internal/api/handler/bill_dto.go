@@ -11,7 +11,6 @@ import (
 type billDTO struct {
 	ID              int           `json:"id"`
 	Name            string        `json:"name"`
-	Period          *string       `json:"period"`
 	Status          string        `json:"status"`
 	DailyRate       int           `json:"daily_rate"`
 	BaseFee         int           `json:"base_fee"`
@@ -37,7 +36,6 @@ type billItemDTO struct {
 	DemandStatus     string          `json:"demand_status"`
 	HalfDays         int             `json:"half_days"`
 	Amount           int             `json:"amount"`
-	Billable         bool            `json:"billable"`
 	Waived           bool            `json:"waived"`
 	PlannedStartDate *time.Time      `json:"planned_start_date"`
 	Note             string          `json:"note"`
@@ -57,7 +55,6 @@ func newBillDTO(b *ent.Bill) billDTO {
 	return billDTO{
 		ID:              b.ID,
 		Name:            b.Name,
-		Period:          b.Period,
 		Status:          b.Status.String(),
 		DailyRate:       b.DailyRate,
 		BaseFee:         b.BaseFee,
@@ -89,7 +86,6 @@ func newBillItemDTO(it *ent.BillItem, projects []*ent.Project) billItemDTO {
 		DemandStatus:     it.DemandStatus,
 		HalfDays:         it.HalfDays,
 		Amount:           it.Amount,
-		Billable:         it.Billable,
 		Waived:           it.Waived,
 		PlannedStartDate: it.PlannedStartDate,
 		Note:             it.Note,

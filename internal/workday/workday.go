@@ -70,19 +70,6 @@ func (c *Calendar) IsWorkday(d time.Time) bool {
 	}
 }
 
-// BillingDueDate 计算某月的出账截止日
-// 默认 10 号，若非工作日则从 10 号起逐日向前取第一个工作日
-// 业务规则限定在 1-10 号范围内，极端配置下最多回溯到 1 号
-func (c *Calendar) BillingDueDate(year int, month time.Month) time.Time {
-	d := time.Date(year, month, 10, 0, 0, 0, 0, time.Local)
-
-	for d.Day() > 1 && !c.IsWorkday(d) {
-		d = d.AddDate(0, 0, -1)
-	}
-
-	return d
-}
-
 // Deadline 计算确认截止日期
 // 自然日口径直接加 days 天；工作日口径逐日累计 days 个工作日
 // 入参先规范化到本地时区，保证与 IsWorkday 的日界一致

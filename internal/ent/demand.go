@@ -49,8 +49,6 @@ type Demand struct {
 	AcceptedBy *int `json:"accepted_by,omitempty"`
 	// AcceptAuto holds the value of the "accept_auto" field.
 	AcceptAuto bool `json:"accept_auto,omitempty"`
-	// AcceptLocked holds the value of the "accept_locked" field.
-	AcceptLocked bool `json:"accept_locked,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -95,7 +93,7 @@ func (*Demand) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case demand.FieldAcceptAuto, demand.FieldAcceptLocked:
+		case demand.FieldAcceptAuto:
 			values[i] = new(sql.NullBool)
 		case demand.FieldID, demand.FieldEstimatedHalfDays, demand.FieldEstimateConfirmedBy, demand.FieldActualHalfDays, demand.FieldAcceptedBy:
 			values[i] = new(sql.NullInt64)
@@ -230,12 +228,6 @@ func (_m *Demand) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.AcceptAuto = value.Bool
 			}
-		case demand.FieldAcceptLocked:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field accept_locked", values[i])
-			} else if value.Valid {
-				_m.AcceptLocked = value.Bool
-			}
 		case demand.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -361,9 +353,6 @@ func (_m *Demand) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("accept_auto=")
 	builder.WriteString(fmt.Sprintf("%v", _m.AcceptAuto))
-	builder.WriteString(", ")
-	builder.WriteString("accept_locked=")
-	builder.WriteString(fmt.Sprintf("%v", _m.AcceptLocked))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

@@ -90,7 +90,7 @@ func TestDemandUpdateHalfDaysGuardAndAudit(t *testing.T) {
 	}
 }
 
-// TestDemandUpdateHalfDaysBillSync 改实际人天联动未确认账单的计费行与合计，
+// TestDemandUpdateHalfDaysBillSync 改实际人天联动未确认账单的明细与合计，
 // 已确认账单保持快照不动
 func TestDemandUpdateHalfDaysBillSync(t *testing.T) {
 	client, demandSvc, billSvc := newBillEnv(t, "dmanday-bill")
@@ -105,7 +105,7 @@ func TestDemandUpdateHalfDaysBillSync(t *testing.T) {
 	}
 	item := client.BillItem.Query().Where(billitem.DemandID(id1)).OnlyX(ctx)
 	if item.HalfDays != 6 || item.Amount != 3600 {
-		t.Errorf("计费行 = %d 半天 / %d 元, want 6 / 3600", item.HalfDays, item.Amount)
+		t.Errorf("明细行 = %d 半天 / %d 元, want 6 / 3600", item.HalfDays, item.Amount)
 	}
 	b2, _ := billSvc.Get(ctx, b.ID)
 	if b2.TotalHalfDays != 6 || b2.TotalAmount != 3600 {
@@ -130,7 +130,7 @@ func TestDemandUpdateHalfDaysBillSync(t *testing.T) {
 	}
 }
 
-// TestDemandUpdateHalfDaysBillSyncWaived 计费行被减免后调整实际人天：半天数仍联动更新，
+// TestDemandUpdateHalfDaysBillSyncWaived 明细被减免后调整实际人天：半天数仍联动更新，
 // 金额恒 0、减免状态不变；账单人天合计口径含减免行同步更新，总额因减免行金额恒 0 而不变
 func TestDemandUpdateHalfDaysBillSyncWaived(t *testing.T) {
 	client, demandSvc, billSvc := newBillEnv(t, "dmanday-waived")
@@ -161,48 +161,44 @@ func TestDemandUpdateHalfDaysBillSyncWaived(t *testing.T) {
 	}
 }
 
-// TestDemandUpdateHalfDaysDisplayRowSync 改预估人天联动未确认账单的展示行，合计不受影响
-func TestDemandUpdateHalfDaysDisplayRowSync(t *testing.T) {
-	client, demandSvc, billSvc := newBillEnv(t, "dmanday-display")
+// TestDemandUpdateHalfDaysEstimateSync 未填实际人天的需求改预估时，联动未确认账单的明细与合计
+func TestDemandUpdateHalfDaysEstimateSync(t *testing.T) {
+	client, demandSvc, billSvc := newBillEnv(t, "dmanday-estimate")
 	ctx := context.Background()
 
-	// 一个已验收计费需求保证账单可生成，一个进行中需求进展示行
-	_ = prepareAccepted(t, demandSvc, "已验收需求", 6)
-	d2, _ := demandSvc.Create(ctx, admin, "进行中需求", "", 0, nil, false, nil, nil, "")
-	_ = demandSvc.SubmitEstimate(ctx, admin, d2.ID, 8, nil)
-	_ = demandSvc.ConfirmEstimate(ctx, clientActor, d2.ID)
-	_ = demandSvc.Start(ctx, admin, d2.ID, time.Date(2026, 7, 25, 0, 0, 0, 0, time.Local))
+	// 进行中需求：无实际人天，明细人天取预估的 8 半天
+	d, _ := demandSvc.Create(ctx, admin, "进行中需求", "", 0, nil, false, nil, nil, "")
+	_ = demandSvc.SubmitEstimate(ctx, admin, d.ID, 8, nil)
+	_ = demandSvc.ConfirmEstimate(ctx, clientActor, d.ID)
+	_ = demandSvc.Start(ctx, admin, d.ID, time.Date(2026, 7, 25, 0, 0, 0, 0, time.Local))
 
-	b, err := billSvc.Generate(ctx, admin, "2026-07")
+	b, err := billSvc.CreateManual(ctx, admin, "结算单", []int{d.ID})
 	if err != nil {
-		t.Fatalf("生成账单失败: %v", err)
+		t.Fatalf("创建账单失败: %v", err)
 	}
-	totalBefore := b.TotalAmount
 
-	if _, err = demandSvc.UpdateHalfDays(ctx, admin, d2.ID, DemandHalfDaysPatch{EstimatedHalfDays: new(10)}); err != nil {
+	if _, err = demandSvc.UpdateHalfDays(ctx, admin, d.ID, DemandHalfDaysPatch{EstimatedHalfDays: new(10)}); err != nil {
 		t.Fatalf("调整预估失败: %v", err)
 	}
-	row := client.BillItem.Query().
-		Where(billitem.DemandID(d2.ID), billitem.Billable(false)).
-		OnlyX(ctx)
-	if row.HalfDays != 10 || row.Amount != 0 {
-		t.Errorf("展示行 = %d 半天 / %d 元, want 10 / 0", row.HalfDays, row.Amount)
+	row := client.BillItem.Query().Where(billitem.DemandID(d.ID)).OnlyX(ctx)
+	if row.HalfDays != 10 || row.Amount != 6000 {
+		t.Errorf("明细行 = %d 半天 / %d 元, want 10 / 6000", row.HalfDays, row.Amount)
 	}
 	b2, _ := billSvc.Get(ctx, b.ID)
-	if b2.TotalAmount != totalBefore {
-		t.Errorf("展示行联动不应影响总额: %d → %d", totalBefore, b2.TotalAmount)
+	if b2.TotalHalfDays != 10 || b2.TotalAmount != 6000 {
+		t.Errorf("合计 = %d 半天 / %d 元, want 10 / 6000", b2.TotalHalfDays, b2.TotalAmount)
 	}
 
-	// 确认账单后展示行不再联动
+	// 确认账单后不再联动
 	if err = billSvc.Confirm(ctx, clientActor, b.ID, false); err != nil {
 		t.Fatalf("确认账单失败: %v", err)
 	}
-	if _, err = demandSvc.UpdateHalfDays(ctx, admin, d2.ID, DemandHalfDaysPatch{EstimatedHalfDays: new(12)}); err != nil {
+	if _, err = demandSvc.UpdateHalfDays(ctx, admin, d.ID, DemandHalfDaysPatch{EstimatedHalfDays: new(12)}); err != nil {
 		t.Fatalf("确认后调整失败: %v", err)
 	}
 	row = client.BillItem.GetX(ctx, row.ID)
 	if row.HalfDays != 10 {
-		t.Errorf("已确认账单展示行不应联动: %d, want 10", row.HalfDays)
+		t.Errorf("已确认账单明细不应联动: %d, want 10", row.HalfDays)
 	}
 }
 

@@ -34,8 +34,8 @@ func (p DemandHalfDaysPatch) validate() error {
 // UpdateHalfDays 超管任意状态修正人天：预估任意状态可改，实际人天仅已产生后
 // （pending_acceptance / accepted）可改，其余状态返回 ErrInvalidTransition
 //
-// 需求字段更新与未确认账单联动包在同一事务：计费行按账单快照单价重算金额并重算合计
-// （total_override 时只动人天合计），展示行只改半天数；已确认账单保持快照不动。
+// 需求字段更新与未确认账单联动包在同一事务：明细行按账单快照单价重算金额并重算合计
+// （total_override 时只动人天合计）；已确认账单保持快照不动。
 // 值未变化时幂等成功，不写库也不写审计
 func (s *Demand) UpdateHalfDays(ctx context.Context, actor Actor, id int, patch DemandHalfDaysPatch) (*ent.Demand, error) {
 	if err := patch.validate(); err != nil {
@@ -100,22 +100,16 @@ func (s *Demand) UpdateHalfDays(ctx context.Context, actor Actor, id int, patch 
 		return nil, ErrInvalidTransition
 	}
 
+	// 明细人天口径为实际人天（缺省取预估），口径值变化时同步到未确认账单
+	updated := *d
 	if actChanged {
-		if err = s.syncBillableItem(ctx, tx, id, *patch.ActualHalfDays); err != nil {
-			return nil, rollback(tx, err)
-		}
+		updated.ActualHalfDays = patch.ActualHalfDays
 	}
 	if estChanged {
-		// 展示行金额恒 0 不参与合计，只同步半天数，无需重算
-		_, err = tx.BillItem.Update().
-			Where(
-				billitem.DemandID(id),
-				billitem.Billable(false),
-				billitem.HasBillWith(bill.ConfirmedAtIsNil()),
-			).
-			SetHalfDays(*patch.EstimatedHalfDays).
-			Save(ctx)
-		if err != nil {
+		updated.EstimatedHalfDays = *patch.EstimatedHalfDays
+	}
+	if halfDays := demandHalfDays(&updated); halfDays != demandHalfDays(d) {
+		if err = s.syncBillItem(ctx, tx, id, halfDays); err != nil {
 			return nil, rollback(tx, err)
 		}
 	}
@@ -129,15 +123,15 @@ func (s *Demand) UpdateHalfDays(ctx context.Context, actor Actor, id int, patch 
 	return s.Get(ctx, id)
 }
 
-// syncBillableItem 同步实际人天到未确认账单的计费行并重算合计
-// 计费行全局至多一行（部分唯一索引），无计费行或账单已确认时跳过；
+// syncBillItem 同步人天到未确认账单的明细行并重算合计
+// 明细行全局至多一行（唯一索引），无明细行或账单已确认时跳过；
 // 减免行金额恒 0 只改半天数，其余按账单快照单价联动重算金额
 //
 // 写入改条件更新（谓词带 ConfirmedAtIsNil）防 TOCTOU：与账单 Confirm 并发时，
 // 若确认发生在查询之后、更新之前，Save 影响行数为 0，视为已确认，跳过重算直接返回
-func (s *Demand) syncBillableItem(ctx context.Context, tx *ent.Tx, id, halfDays int) error {
+func (s *Demand) syncBillItem(ctx context.Context, tx *ent.Tx, id, halfDays int) error {
 	item, err := tx.BillItem.Query().
-		Where(billitem.DemandID(id), billitem.Billable(true)).
+		Where(billitem.DemandID(id)).
 		WithBill().
 		Only(ctx)
 	if ent.IsNotFound(err) {

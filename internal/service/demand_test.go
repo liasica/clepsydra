@@ -77,7 +77,7 @@ func TestDemandLifecycle(t *testing.T) {
 		t.Fatalf("完成后状态 = %s, deadline = %v", d.Status, d.AcceptDeadline)
 	}
 
-	if err = svc.Accept(ctx, clientActor, d.ID, false, false); err != nil {
+	if err = svc.Accept(ctx, clientActor, d.ID, false); err != nil {
 		t.Fatalf("验收失败: %v", err)
 	}
 	d = svc.mustGet(ctx, t, d.ID)
@@ -98,7 +98,7 @@ func TestDemandInvalidTransition(t *testing.T) {
 	d, _ := svc.Create(ctx, admin, "需求", "", 0, nil, false, nil, nil, "")
 
 	// draft 不能直接验收
-	if err := svc.Accept(ctx, clientActor, d.ID, false, false); err == nil {
+	if err := svc.Accept(ctx, clientActor, d.ID, false); err == nil {
 		t.Error("draft 直接验收应拒绝")
 	}
 

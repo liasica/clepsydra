@@ -11,9 +11,9 @@ import (
 )
 
 // expectedRouteCount 与 router.go 登记在 spec 里的业务路由数量保持一致：1 条公开 login（root 组）+
-// 17 条登录组业务路由（含 auth/me）+ 29 条 admin 组业务路由，docs 自身的两条路由、root 组的 1 条 uploads
+// 17 条登录组业务路由（含 auth/me）+ 28 条 admin 组业务路由，docs 自身的两条路由、root 组的 1 条 uploads
 // 读取（GET /uploads/:name）与登录组的 1 条图片上传（POST /uploads）均未纳入 spec 文档，因此均不计入此数
-const expectedRouteCount = 47
+const expectedRouteCount = 46
 
 // httpMethods 用于从 path item 中筛出真正的操作，排除 parameters 等非方法字段
 var httpMethods = map[string]bool{

@@ -548,8 +548,8 @@ func (s *Demand) Finish(ctx context.Context, actor Actor, id int, actualStart, a
 	return nil
 }
 
-// Accept 确认完成：auto 表示逾期自动确认，locked 表示出账前锁定
-func (s *Demand) Accept(ctx context.Context, actor Actor, id int, auto, locked bool) error {
+// Accept 确认完成：auto 表示逾期自动确认
+func (s *Demand) Accept(ctx context.Context, actor Actor, id int, auto bool) error {
 	d, err := s.Get(ctx, id)
 	if err != nil {
 		return err
@@ -557,15 +557,13 @@ func (s *Demand) Accept(ctx context.Context, actor Actor, id int, auto, locked b
 
 	now := time.Now()
 	err = s.transit(ctx, id, d.Status, demand.StatusAccepted, func(u *ent.DemandUpdate) {
-		u.SetAcceptedAt(now).SetAcceptedBy(actor.ID).SetAcceptAuto(auto).SetAcceptLocked(locked)
+		u.SetAcceptedAt(now).SetAcceptedBy(actor.ID).SetAcceptAuto(auto)
 	})
 	if err != nil {
 		return err
 	}
 
-	s.audit.Record(ctx, actor, "demand.accept", "demand", id, map[string]any{
-		"auto": auto, "locked": locked,
-	})
+	s.audit.Record(ctx, actor, "demand.accept", "demand", id, map[string]any{"auto": auto})
 
 	return nil
 }

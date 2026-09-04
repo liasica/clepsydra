@@ -348,20 +348,6 @@ func (_u *DemandUpdate) SetNillableAcceptAuto(v *bool) *DemandUpdate {
 	return _u
 }
 
-// SetAcceptLocked sets the "accept_locked" field.
-func (_u *DemandUpdate) SetAcceptLocked(v bool) *DemandUpdate {
-	_u.mutation.SetAcceptLocked(v)
-	return _u
-}
-
-// SetNillableAcceptLocked sets the "accept_locked" field if the given value is not nil.
-func (_u *DemandUpdate) SetNillableAcceptLocked(v *bool) *DemandUpdate {
-	if v != nil {
-		_u.SetAcceptLocked(*v)
-	}
-	return _u
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *DemandUpdate) SetUpdatedAt(v time.Time) *DemandUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -611,9 +597,6 @@ func (_u *DemandUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AcceptAuto(); ok {
 		_spec.SetField(demand.FieldAcceptAuto, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.AcceptLocked(); ok {
-		_spec.SetField(demand.FieldAcceptLocked, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(demand.FieldUpdatedAt, field.TypeTime, value)
@@ -1046,20 +1029,6 @@ func (_u *DemandUpdateOne) SetNillableAcceptAuto(v *bool) *DemandUpdateOne {
 	return _u
 }
 
-// SetAcceptLocked sets the "accept_locked" field.
-func (_u *DemandUpdateOne) SetAcceptLocked(v bool) *DemandUpdateOne {
-	_u.mutation.SetAcceptLocked(v)
-	return _u
-}
-
-// SetNillableAcceptLocked sets the "accept_locked" field if the given value is not nil.
-func (_u *DemandUpdateOne) SetNillableAcceptLocked(v *bool) *DemandUpdateOne {
-	if v != nil {
-		_u.SetAcceptLocked(*v)
-	}
-	return _u
-}
-
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *DemandUpdateOne) SetUpdatedAt(v time.Time) *DemandUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -1339,9 +1308,6 @@ func (_u *DemandUpdateOne) sqlSave(ctx context.Context) (_node *Demand, err erro
 	}
 	if value, ok := _u.mutation.AcceptAuto(); ok {
 		_spec.SetField(demand.FieldAcceptAuto, field.TypeBool, value)
-	}
-	if value, ok := _u.mutation.AcceptLocked(); ok {
-		_spec.SetField(demand.FieldAcceptLocked, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(demand.FieldUpdatedAt, field.TypeTime, value)

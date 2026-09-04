@@ -102,7 +102,7 @@ paths:
       tags: [Dashboard]
       operationId: dashboardTodos
       summary: 查询工作台待办汇总
-      description: 汇总待预估确认、待验收确认、待出账数量，以及本月出账截止日与上月账单生成状态
+      description: 汇总待预估确认、待验收确认与待确认账单数量
       security:
         - bearerAuth: []
       responses:
@@ -518,7 +518,7 @@ paths:
       tags: [Demands]
       operationId: demandsAccept
       summary: 需求方确认验收
-      description: 需求方人工确认需求完成验收，状态由 pending_acceptance 流转为 accepted，固定 auto=false、locked=false，登录即可操作
+      description: 需求方人工确认需求完成验收，状态由 pending_acceptance 流转为 accepted，固定 auto=false，登录即可操作
       security:
         - bearerAuth: []
       parameters:
@@ -794,7 +794,7 @@ paths:
       tags: [Bills]
       operationId: billsList
       summary: 查询账单列表
-      description: 查询全部月度账单，按账期倒序排列，登录即可访问
+      description: 查询全部账单，按创建时间倒序排列，登录即可访问
       security:
         - bearerAuth: []
       responses:
@@ -1322,47 +1322,12 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
-  /api/bills/generate:
-    post:
-      tags: [Bills]
-      operationId: billsGenerate
-      summary: 生成月度账单
-      description: 生成指定账期的自动账单，同账期已存在则 400，出账前自动锁定确认账期内待验收需求（仅超级管理员）
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/BillGenerateRequest'
-      responses:
-        '200':
-          description: 生成成功
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/Envelope'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/Bill'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '500':
-          $ref: '#/components/responses/ServerError'
-
   /api/bills/manual:
     post:
       tags: [Bills]
       operationId: billsCreateManual
-      summary: 手动生成账单
-      description: 输入账单名称并选择需求，已验收需求进计费行，未完结需求进展示行，生成即进入待确认状态（仅超级管理员）
+      summary: 创建账单
+      description: 输入账单名称并选择需求，任意状态的需求均可选，已在其他账单中的除外；人天取实际人天，未填时取预估人天，创建即进入待确认状态（仅超级管理员）
       security:
         - bearerAuth: []
       requestBody:
@@ -1407,16 +1372,9 @@ paths:
       tags: [Bills]
       operationId: billsSelectableDemands
       summary: 可加入账单的需求列表
-      description: billable 为已验收且未被计费的需求，加入后为计费行；display 为已确认待开工/进行中的需求，加入后为展示行；exclude_bill 排除已在该账单中的需求（仅超级管理员）
+      description: 任意状态的需求，排除已在任何账单中的需求（仅超级管理员）
       security:
         - bearerAuth: []
-      parameters:
-        - name: exclude_bill
-          in: query
-          required: false
-          description: 排除已在该账单中的需求，缺省或非法时按 0 处理，不排除
-          schema:
-            type: integer
       responses:
         '200':
           description: 查询成功
@@ -1428,18 +1386,9 @@ paths:
                   - type: object
                     properties:
                       data:
-                        type: object
-                        properties:
-                          billable:
-                            type: array
-                            description: 已验收且未被计费的需求
-                            items:
-                              $ref: '#/components/schemas/Demand'
-                          display:
-                            type: array
-                            description: 已确认待开工/进行中的需求
-                            items:
-                              $ref: '#/components/schemas/Demand'
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Demand'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1493,7 +1442,7 @@ paths:
       tags: [Bills]
       operationId: billsRemoveItem
       summary: 从账单移除明细
-      description: 已支付账单拒绝，计费行与展示行均可移除（仅超级管理员）
+      description: 已支付账单拒绝（仅超级管理员）
       security:
         - bearerAuth: []
       parameters:
@@ -1607,7 +1556,7 @@ paths:
       tags: [Bills]
       operationId: billsToggleWaive
       summary: 切换账单明细减免状态
-      description: 翻转指定明细行的减免状态并重算账单总额，待确认与待支付账单允许，已支付拒绝，展示行不可减免（仅超级管理员）
+      description: 翻转指定明细行的减免状态并重算账单总额，待确认与待支付账单允许，已支付拒绝（仅超级管理员）
       security:
         - bearerAuth: []
       parameters:
@@ -1915,7 +1864,7 @@ components:
 
     SettingsMap:
       type: object
-      description: 设置键值对，键包括 daily_rate（单价，单位元，正偶数）、base_fee（基础维护费，单位元）、demand_confirm_window（需求确认窗口）、bill_confirm_window（账单确认窗口）、window_unit（窗口口径，natural 或 workday）、saturday_as_workday（周六是否算工作日，true 或 false）、bill_include_statuses（账单包含的需求状态，逗号分隔）
+      description: 设置键值对，键包括 daily_rate（单价，单位元，正偶数）、base_fee（基础维护费，单位元）、demand_confirm_window（需求确认窗口）、bill_confirm_window（账单确认窗口）、window_unit（窗口口径，natural 或 workday）、saturday_as_workday（周六是否算工作日，true 或 false）
       additionalProperties:
         type: string
 
@@ -2032,9 +1981,6 @@ components:
         accept_auto:
           type: boolean
           description: 是否为逾期自动确认
-        accept_locked:
-          type: boolean
-          description: 是否为出账前锁定触发的自动确认
         created_at:
           type: string
           format: date-time
@@ -2223,18 +2169,14 @@ components:
 
     Bill:
       type: object
-      description: 账单，自动账单按账期（period）幂等生成，period 形如 2026-07；手动账单无账期
+      description: 账单，手动创建，明细由选中的需求快照生成
       properties:
         id:
           type: integer
           description: 账单 ID
         name:
           type: string
-          description: 账单名称，自动账单为「自动生成：YYYY-MM」，手动账单为创建时填写的名称
-        period:
-          type: ["string", "null"]
-          description: 账期，格式 YYYY-MM，手动账单为空
-          example: "2026-07"
+          description: 账单名称，创建时填写
         status:
           type: string
           enum: [pending, unpaid, paid]
@@ -2244,13 +2186,13 @@ components:
           description: 生成时快照的单价，单位元
         base_fee:
           type: integer
-          description: 生成时快照的基础维护费，单位元，手动账单为 0
+          description: 生成时快照的基础维护费，单位元
         total_half_days:
           type: integer
-          description: 计费需求的人天合计，单位半天数
+          description: 明细人天合计，单位半天数
         total_amount:
           type: integer
-          description: 账单总金额，单位元，等于基础维护费加各计费行金额
+          description: 账单总金额，单位元，等于基础维护费加各明细金额
         total_override:
           type: boolean
           description: 总额是否被手工指定，置位后重算只更新人天合计不再触碰总额
@@ -2307,13 +2249,10 @@ components:
           description: 需求状态快照
         half_days:
           type: integer
-          description: 人天，计费行为实际人天，展示行为预估人天，单位半天数
+          description: 人天，取需求实际人天，未填时取预估人天，单位半天数
         amount:
           type: integer
-          description: 金额，单位元，展示行与减免行为 0
-        billable:
-          type: boolean
-          description: true 为计费行，false 为展示行
+          description: 金额，单位元，减免行为 0
         waived:
           type: boolean
           description: 是否已减免
@@ -2334,15 +2273,6 @@ components:
           items:
             $ref: '#/components/schemas/Project'
 
-    BillGenerateRequest:
-      type: object
-      required: [period]
-      properties:
-        period:
-          type: string
-          description: 账期，格式 YYYY-MM
-          example: "2026-08"
-
     Todos:
       type: object
       description: 工作台待办汇总
@@ -2356,16 +2286,6 @@ components:
         pending_bill_count:
           type: integer
           description: 待需求方确认的账单数量
-        billing_due_date:
-          type: string
-          format: date
-          description: 本月出账截止日
-        billing_due_today:
-          type: boolean
-          description: 今天是否为出账截止日
-        prev_bill_generated:
-          type: boolean
-          description: 上月账单是否已生成
 
     AuditLog:
       type: object

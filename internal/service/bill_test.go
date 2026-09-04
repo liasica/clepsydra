@@ -9,7 +9,6 @@ import (
 
 	"clepsydra/internal/config"
 	"clepsydra/internal/ent"
-	"clepsydra/internal/ent/billitem"
 	"clepsydra/internal/ent/enttest"
 )
 
@@ -50,77 +49,23 @@ func prepareDemand(t *testing.T, svc *Demand, title string, halfDays int) int {
 	return d.ID
 }
 
-func TestBillGenerate(t *testing.T) {
-	client, demandSvc, billSvc := newBillEnv(t, "bgen")
-	ctx := context.Background()
-
-	// 需求 1：已完成已验收（3 人天 = 6 半天）
-	id1 := prepareDemand(t, demandSvc, "已验收需求", 6)
-	_ = demandSvc.Accept(ctx, clientActor, id1, false, false)
-
-	// 需求 2：已完成未验收 → 出账时应被锁定自动确认
-	id2 := prepareDemand(t, demandSvc, "未验收需求", 4)
-
-	// 需求 3：进行中 → 展示行
-	d3, _ := demandSvc.Create(ctx, admin, "进行中需求", "", 0, nil, false, nil, nil, "")
-	_ = demandSvc.SubmitEstimate(ctx, admin, d3.ID, 8, nil)
-	_ = demandSvc.ConfirmEstimate(ctx, clientActor, d3.ID)
-	_ = demandSvc.Start(ctx, admin, d3.ID, time.Date(2026, 7, 25, 0, 0, 0, 0, time.Local))
-
-	bill, err := billSvc.Generate(ctx, admin, "2026-07")
-	if err != nil {
-		t.Fatalf("生成账单失败: %v", err)
-	}
-
-	// 出账前锁定：需求 2 已被自动确认且带锁定标记
-	d2 := demandSvc.mustGet(ctx, t, id2)
-	if d2.Status.String() != "accepted" || !d2.AcceptAuto || !d2.AcceptLocked {
-		t.Errorf("需求 2 应被出账锁定: status=%s auto=%v locked=%v", d2.Status, d2.AcceptAuto, d2.AcceptLocked)
-	}
-
-	// 金额：计费 6+4=10 半天 × 1200/2 = 6000，加基础维护费 12000 = 18000
-	if bill.TotalHalfDays != 10 || bill.TotalAmount != 18000 {
-		t.Errorf("账单合计 = %d 半天 / %d 元, want 10 / 18000", bill.TotalHalfDays, bill.TotalAmount)
-	}
-
-	// 明细：2 计费行 + 1 展示行
-	billable := client.BillItem.Query().Where(billitem.Billable(true)).CountX(ctx)
-	display := client.BillItem.Query().Where(billitem.Billable(false)).CountX(ctx)
-	if billable != 2 || display != 1 {
-		t.Errorf("明细行 = %d 计费 / %d 展示, want 2 / 1", billable, display)
-	}
-
-	// 生成即待确认：名称、状态与确认截止时间
-	if bill.Name != "自动生成：2026-07" {
-		t.Errorf("账单名称 = %s, want 自动生成：2026-07", bill.Name)
-	}
-	if bill.Status.String() != "pending" || bill.ConfirmDeadline == nil {
-		t.Errorf("生成后状态 = %s, deadline=%v, want pending 且截止时间非空", bill.Status, bill.ConfirmDeadline)
-	}
-
-	// 同账期账单已存在则拒绝
-	if _, err = billSvc.Generate(ctx, admin, "2026-07"); err == nil {
-		t.Error("同账期账单已存在应拒绝生成")
-	}
-}
-
 func TestBillWaiveAndConfirm(t *testing.T) {
 	client, demandSvc, billSvc := newBillEnv(t, "bconfirm")
 	ctx := context.Background()
 
 	id1 := prepareDemand(t, demandSvc, "小缺陷修复", 2)
-	_ = demandSvc.Accept(ctx, clientActor, id1, false, false)
+	_ = demandSvc.Accept(ctx, clientActor, id1, false)
 
-	bill, _ := billSvc.Generate(ctx, admin, "2026-07")
+	bill, _ := billSvc.CreateManual(ctx, admin, "七月结算", []int{id1})
 
-	// 减免：1 人天 × 1200 = 1200 → 减免后总额只剩基础维护费
-	item := client.BillItem.Query().Where(billitem.Billable(true)).OnlyX(ctx)
+	// 减免：1 人天 × 1200 = 1200 → 减免后总额归零
+	item := client.BillItem.Query().OnlyX(ctx)
 	if err := billSvc.ToggleWaive(ctx, admin, bill.ID, item.ID); err != nil {
 		t.Fatalf("减免失败: %v", err)
 	}
 	bill, _ = billSvc.Get(ctx, bill.ID)
-	if bill.TotalAmount != 12000 {
-		t.Errorf("减免后总额 = %d, want 12000", bill.TotalAmount)
+	if bill.TotalAmount != 0 {
+		t.Errorf("减免后总额 = %d, want 0", bill.TotalAmount)
 	}
 
 	// 确认后直接进入待支付，确认信息落库
@@ -137,8 +82,8 @@ func TestBillWaiveAndConfirm(t *testing.T) {
 		t.Errorf("待支付账单应可调整减免: %v", err)
 	}
 	bill, _ = billSvc.Get(ctx, bill.ID)
-	if bill.TotalAmount != 13200 {
-		t.Errorf("恢复减免后总额 = %d, want 13200", bill.TotalAmount)
+	if bill.TotalAmount != 1200 {
+		t.Errorf("恢复减免后总额 = %d, want 1200", bill.TotalAmount)
 	}
 
 	// 重复确认拒绝
@@ -152,8 +97,8 @@ func TestBillPay(t *testing.T) {
 	ctx := context.Background()
 
 	id1 := prepareDemand(t, demandSvc, "需求", 2)
-	_ = demandSvc.Accept(ctx, clientActor, id1, false, false)
-	bill, _ := billSvc.Generate(ctx, admin, "2026-07")
+	_ = demandSvc.Accept(ctx, clientActor, id1, false)
+	bill, _ := billSvc.CreateManual(ctx, admin, "七月结算", []int{id1})
 
 	// 待确认状态不可直接标记已支付
 	if err := billSvc.Pay(ctx, admin, bill.ID); err == nil {
@@ -180,14 +125,5 @@ func TestBillPay(t *testing.T) {
 	}
 	if err := billSvc.ToggleWaive(ctx, admin, bill.ID, item); err == nil {
 		t.Error("已支付账单不应可调整减免")
-	}
-}
-
-func TestPrevPeriod(t *testing.T) {
-	if got := PrevPeriod(time.Date(2026, 8, 1, 0, 0, 0, 0, time.Local)); got != "2026-07" {
-		t.Errorf("PrevPeriod = %s, want 2026-07", got)
-	}
-	if got := PrevPeriod(time.Date(2026, 1, 15, 0, 0, 0, 0, time.Local)); got != "2025-12" {
-		t.Errorf("PrevPeriod = %s, want 2025-12", got)
 	}
 }

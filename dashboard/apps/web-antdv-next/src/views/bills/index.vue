@@ -21,10 +21,9 @@ import ManualBillDialog from './components/ManualBillDialog.vue';
 /**
  * 账单列表
  *
- * 自动账单由后端每月 10 日 02:00 定时生成（含上月计费与展示明细），页面仅提供
- * 手动生成入口（超级管理员可见），用于补录自动账单未覆盖的需求
+ * 创建入口仅超级管理员可见，选中需求后生成账单
  * 状态筛选走客户端过滤（后端 /api/bills 不分页也不支持 status 查询参数，
- * 数据量本身是按月生成，一次性拉全量即可），供工作台待办卡片跳转带筛选使用
+ * 一次性拉全量即可），供工作台待办卡片跳转带筛选使用
  */
 defineOptions({ name: 'BillList' });
 
@@ -59,19 +58,18 @@ const columns: TableColumnsType<Api.Bill.Detail> = [
     minWidth: 180,
     title: '名称',
   },
-  { key: 'period', title: '账期', width: 100 },
   { key: 'status', title: '状态', width: 110 },
   { key: 'total_half_days', title: '总人天', width: 110 },
   { key: 'total_amount', title: '总金额', width: 130 },
   // 与其它列表的日期时间列统一，避免「2026-08-05 18:34」折行
-  { key: 'created_at', title: '生成时间', width: 176 },
+  { key: 'created_at', title: '创建时间', width: 176 },
 ];
 
 const [ManualModal, manualModalApi] = useVbenModal({
   connectedComponent: ManualBillDialog,
 });
 
-/** 手动生成成功后跳详情 */
+/** 创建成功后跳详情 */
 function onManualSuccess(billId: number) {
   router.push(`/bills/${billId}`);
 }
@@ -108,7 +106,7 @@ onMounted(load);
       />
       <div v-if="isAdmin">
         <Button type="primary" @click="manualModalApi.open()">
-          手动生成账单
+          创建账单
         </Button>
       </div>
     </div>
@@ -123,10 +121,7 @@ onMounted(load);
       row-key="id"
     >
       <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'period'">
-          {{ record.period ?? '—' }}
-        </template>
-        <template v-else-if="column.key === 'status'">
+        <template v-if="column.key === 'status'">
           <Tag :color="tagColor(BILL_STATUS[record.status].type)">
             {{ BILL_STATUS[record.status].label }}
           </Tag>

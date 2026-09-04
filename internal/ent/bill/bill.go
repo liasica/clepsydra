@@ -17,8 +17,6 @@ const (
 	FieldID = "id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
-	// FieldPeriod holds the string denoting the period field in the database.
-	FieldPeriod = "period"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// FieldDailyRate holds the string denoting the daily_rate field in the database.
@@ -64,7 +62,6 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldName,
-	FieldPeriod,
 	FieldStatus,
 	FieldDailyRate,
 	FieldBaseFee,
@@ -142,11 +139,6 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByName orders the results by the name field.
 func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
-}
-
-// ByPeriod orders the results by the period field.
-func ByPeriod(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldPeriod, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

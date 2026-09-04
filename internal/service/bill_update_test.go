@@ -281,49 +281,6 @@ func TestBillUpdateItemWaived(t *testing.T) {
 	}
 }
 
-// TestBillUpdateItemDisplayRow 验证展示行（billable=false）金额不可被直调 API 改为非零，人天与备注不受限
-func TestBillUpdateItemDisplayRow(t *testing.T) {
-	client, demandSvc, billSvc := newBillEnv(t, "bupditemd")
-	ctx := context.Background()
-
-	// 需求走到 confirmed 状态：CreateManual 生成展示行
-	d, err := demandSvc.Create(ctx, admin, "confirmed 需求", "", 0, nil, false, nil, nil, "")
-	if err != nil {
-		t.Fatalf("创建需求失败: %v", err)
-	}
-	if err = demandSvc.SubmitEstimate(ctx, admin, d.ID, 4, nil); err != nil {
-		t.Fatalf("提交预估失败: %v", err)
-	}
-	if err = demandSvc.ConfirmEstimate(ctx, clientActor, d.ID); err != nil {
-		t.Fatalf("确认预估失败: %v", err)
-	}
-
-	b, err := billSvc.CreateManual(ctx, admin, "结算单", []int{d.ID})
-	if err != nil {
-		t.Fatalf("手动生成失败: %v", err)
-	}
-	item := client.BillItem.Query().Where(billitem.DemandID(d.ID)).OnlyX(ctx)
-	if item.Billable {
-		t.Fatalf("该明细应为展示行，Billable=%v", item.Billable)
-	}
-
-	// 展示行金额不可改为非零
-	amount := 100
-	if err = billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{Amount: &amount}); err == nil {
-		t.Error("展示行金额应拒绝修改")
-	}
-
-	// 人天与备注可改，金额保持 0
-	halfDays, note := 6, "展示行备注"
-	if err = billSvc.UpdateItem(ctx, admin, b.ID, item.ID, BillItemPatch{HalfDays: &halfDays, Note: &note}); err != nil {
-		t.Fatalf("展示行人天/备注更新失败: %v", err)
-	}
-	got := client.BillItem.GetX(ctx, item.ID)
-	if got.HalfDays != 6 || got.Note != "展示行备注" || got.Amount != 0 {
-		t.Errorf("展示行 halfDays=%d note=%q amount=%d, want 6 / 展示行备注 / 0", got.HalfDays, got.Note, got.Amount)
-	}
-}
-
 func TestBillUpdateItemValidation(t *testing.T) {
 	client, demandSvc, billSvc := newBillEnv(t, "bupditemv")
 	ctx := context.Background()

@@ -24,7 +24,7 @@ import { showSuccess } from '#/utils/http/error';
  * 编辑账单弹窗（仅超级管理员）
  *
  * 全部字段按 diff 提交，未变更的字段不进请求体；
- * 单价变更会触发后端按新单价重算全部计费明细金额，提交前需二次确认；
+ * 单价变更会触发后端按新单价重算全部明细金额，提交前需二次确认；
  * 「手动指定总额」开启后总额锁定为输入值，后续调整明细不再自动重算总额，
  * 原先已锁定时关闭开关即提交 reset_total 恢复公式自动计算
  */
@@ -136,7 +136,7 @@ async function submit() {
   if (payload.daily_rate !== undefined) {
     try {
       await confirm(
-        '修改单价将按新单价重算全部计费明细金额，确定吗？',
+        '修改单价将按新单价重算全部明细金额，确定吗？',
         '操作确认',
       );
     } catch {
@@ -171,7 +171,7 @@ async function submit() {
         <Input v-model:value="form.name" :maxlength="60" />
       </FormItem>
       <FormItem
-        extra="单位元；修改后将按新单价重算全部计费明细金额"
+        extra="单位元；修改后将按新单价重算全部明细金额"
         label="人天单价"
         name="dailyRate"
       >

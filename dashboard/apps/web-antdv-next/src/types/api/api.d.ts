@@ -130,7 +130,6 @@ declare namespace Api {
       accepted_at: null | string;
       accepted_by: null | number;
       accept_auto: boolean;
-      accept_locked: boolean;
       created_at: string;
       updated_at: string;
       /** ent 关联预加载结果：项目与性质标签 */
@@ -205,7 +204,6 @@ declare namespace Api {
       demand_status: string;
       half_days: number;
       amount: number;
-      billable: boolean;
       waived: boolean;
       planned_start_date: null | string;
       note: string;
@@ -218,7 +216,6 @@ declare namespace Api {
     interface Detail {
       id: number;
       name: string;
-      period: null | string;
       status: Status;
       daily_rate: number;
       base_fee: number;
@@ -234,12 +231,6 @@ declare namespace Api {
       created_at: string;
       updated_at: string;
       items?: Item[];
-    }
-
-    /** 可加入账单的需求，按加入后的行类型分组 */
-    interface SelectableDemands {
-      billable: Api.Demand.Item[];
-      display: Api.Demand.Item[];
     }
 
     /** 编辑账单请求体，缺省字段不修改（仅超级管理员） */
@@ -347,9 +338,6 @@ declare namespace Api {
       pending_estimate_count: number;
       pending_acceptance_count: number;
       pending_bill_count: number;
-      billing_due_date: string;
-      billing_due_today: boolean;
-      prev_bill_generated: boolean;
     }
   }
 }

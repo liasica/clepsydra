@@ -35,7 +35,7 @@ func TestDashboardTodosHandler(t *testing.T) {
 		t.Fatalf("提交预估失败: %v", err)
 	}
 
-	svc := service.NewDashboard(client, settingSvc)
+	svc := service.NewDashboard(client)
 	h := NewDashboard(svc)
 	e := echo.New()
 
@@ -52,9 +52,6 @@ func TestDashboardTodosHandler(t *testing.T) {
 		`"pending_estimate_count":1`,
 		`"pending_acceptance_count":0`,
 		`"pending_bill_count":0`,
-		`"billing_due_date":"`,
-		`"billing_due_today":`,
-		`"prev_bill_generated":false`,
 	} {
 		if !strings.Contains(body, field) {
 			t.Errorf("响应缺少字段 %s: %s", field, body)

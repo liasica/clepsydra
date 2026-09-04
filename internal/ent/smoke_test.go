@@ -25,13 +25,15 @@ func TestSchemaSmoke(t *testing.T) {
 		t.Errorf("默认状态 = %s, want draft", d.Status)
 	}
 
-	// 账单账期唯一约束
-	client.Bill.Create().SetName("自动生成：2026-07").SetPeriod("2026-07").SetDailyRate(1200).SetBaseFee(12000).
-		SetTotalHalfDays(0).SetTotalAmount(12000).SaveX(ctx)
-	_, err := client.Bill.Create().SetName("自动生成：2026-07").SetPeriod("2026-07").SetDailyRate(1200).SetBaseFee(12000).
-		SetTotalHalfDays(0).SetTotalAmount(12000).Save(ctx)
+	// 一个需求只能出现在一张账单里
+	b := client.Bill.Create().SetName("八月账单").SetDailyRate(1200).SetBaseFee(0).
+		SetTotalHalfDays(0).SetTotalAmount(0).SaveX(ctx)
+	client.BillItem.Create().SetBill(b).SetDemandID(d.ID).SetDemandTitle(d.Title).
+		SetDemandStatus(d.Status.String()).SetHalfDays(4).SetAmount(2400).SaveX(ctx)
+	_, err := client.BillItem.Create().SetBill(b).SetDemandID(d.ID).SetDemandTitle(d.Title).
+		SetDemandStatus(d.Status.String()).SetHalfDays(4).SetAmount(2400).Save(ctx)
 	if err == nil {
-		t.Error("重复账期应违反唯一约束")
+		t.Error("同一需求重复入账应违反唯一约束")
 	}
 
 	_ = ent.Asc

@@ -82,7 +82,6 @@ const actions = computed<DemandAction[]>(() =>
 
 const acceptWay = computed(() => {
   if (!demand.value?.accepted_at) return '—';
-  if (demand.value.accept_locked) return '出账锁定自动确认';
   if (demand.value.accept_auto) return '逾期自动确认';
   // 需求方与超管都可确认，此处不区分具体角色
   return '手动确认';

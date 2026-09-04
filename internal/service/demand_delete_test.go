@@ -104,17 +104,14 @@ func TestDeletedDemandExcludedFromDashboardAndBilling(t *testing.T) {
 	client, svc := newDemandEnv(t, "ddelete4")
 	ctx := context.Background()
 
-	settingSvc := NewSetting(client)
-	dashboardSvc := NewDashboard(client, settingSvc)
+	dashboardSvc := NewDashboard(client)
 
 	d, _ := svc.Create(ctx, admin, "待确认人天的需求", "", 0, nil, false, nil, nil, "")
 	if err := svc.SubmitEstimate(ctx, admin, d.ID, 4, nil); err != nil {
 		t.Fatalf("提交预估失败: %v", err)
 	}
 
-	now := time.Date(2026, 8, 6, 0, 0, 0, 0, time.Local)
-
-	before, err := dashboardSvc.Todos(ctx, "admin", now)
+	before, err := dashboardSvc.Todos(ctx)
 	if err != nil {
 		t.Fatalf("工作台查询失败: %v", err)
 	}
@@ -126,7 +123,7 @@ func TestDeletedDemandExcludedFromDashboardAndBilling(t *testing.T) {
 		t.Fatalf("删除失败: %v", err)
 	}
 
-	after, err := dashboardSvc.Todos(ctx, "admin", now)
+	after, err := dashboardSvc.Todos(ctx)
 	if err != nil {
 		t.Fatalf("工作台查询失败: %v", err)
 	}
@@ -135,7 +132,7 @@ func TestDeletedDemandExcludedFromDashboardAndBilling(t *testing.T) {
 	}
 }
 
-// 已验收但尚未出账的需求被删除后，不应再被纳入新账单
+// 已验收但尚未入账的需求被删除后，不应再被纳入新账单
 func TestDeletedDemandExcludedFromNewBill(t *testing.T) {
 	client, svc := newDemandEnv(t, "ddelete6")
 	ctx := context.Background()
@@ -146,7 +143,7 @@ func TestDeletedDemandExcludedFromNewBill(t *testing.T) {
 	start := time.Date(2026, 7, 6, 0, 0, 0, 0, time.Local)
 	end := time.Date(2026, 7, 10, 0, 0, 0, 0, time.Local)
 
-	// 两条同账期的已验收需求，删掉其中一条
+	// 两条已验收需求，删掉其中一条
 	ids := make([]int, 0, 2)
 	for _, title := range []string{"保留计费的需求", "删除计费的需求"} {
 		d, err := svc.Create(ctx, admin, title, "", 0, nil, false, nil, nil, "")
@@ -165,7 +162,7 @@ func TestDeletedDemandExcludedFromNewBill(t *testing.T) {
 		if err = svc.Finish(ctx, admin, d.ID, start, end, 6); err != nil {
 			t.Fatalf("完成失败: %v", err)
 		}
-		if err = svc.Accept(ctx, clientActor, d.ID, false, false); err != nil {
+		if err = svc.Accept(ctx, clientActor, d.ID, false); err != nil {
 			t.Fatalf("验收失败: %v", err)
 		}
 		ids = append(ids, d.ID)
@@ -175,22 +172,18 @@ func TestDeletedDemandExcludedFromNewBill(t *testing.T) {
 		t.Fatalf("删除失败: %v", err)
 	}
 
-	b, err := billSvc.Generate(ctx, admin, "2026-07")
+	sel, err := billSvc.SelectableDemands(ctx)
 	if err != nil {
-		t.Fatalf("出账失败: %v", err)
+		t.Fatalf("查询可选需求失败: %v", err)
 	}
-
-	full, err := billSvc.Get(ctx, b.ID)
-	if err != nil {
-		t.Fatalf("账单查询失败: %v", err)
-	}
-	for _, item := range full.Edges.Items {
-		if item.DemandID == ids[1] {
-			t.Errorf("已删除的需求 %d 不应进入账单", ids[1])
+	for _, d := range sel {
+		if d.ID == ids[1] {
+			t.Errorf("已删除的需求 %d 不应出现在可选列表", ids[1])
 		}
 	}
-	if len(full.Edges.Items) != 1 {
-		t.Errorf("账单应只含未删除的那条需求，实际 %d 行", len(full.Edges.Items))
+
+	if _, err = billSvc.CreateManual(ctx, admin, "七月结算", ids); err == nil {
+		t.Error("含已删除需求的账单应拒绝创建")
 	}
 }
 
@@ -219,13 +212,13 @@ func TestDeleteKeepsGeneratedBillIntact(t *testing.T) {
 	if err := svc.Finish(ctx, admin, d.ID, start, end, 6); err != nil {
 		t.Fatalf("完成失败: %v", err)
 	}
-	if err := svc.Accept(ctx, clientActor, d.ID, false, false); err != nil {
+	if err := svc.Accept(ctx, clientActor, d.ID, false); err != nil {
 		t.Fatalf("验收失败: %v", err)
 	}
 
-	bill, err := billSvc.Generate(ctx, admin, "2026-07")
+	bill, err := billSvc.CreateManual(ctx, admin, "七月结算", []int{d.ID})
 	if err != nil {
-		t.Fatalf("出账失败: %v", err)
+		t.Fatalf("创建账单失败: %v", err)
 	}
 
 	itemsBefore, err := billSvc.Get(ctx, bill.ID)

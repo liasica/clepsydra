@@ -16,8 +16,8 @@ import { isStatusConflict, showSuccess } from '#/utils/http/error';
 /**
  * 标记完成弹窗，in_progress 流转 pending_acceptance
  *
- * 完成日期允许晚于今天：后端 98792bd 已放开该校验（排期确定但尚未到期的需求需要提前
- * 出账），这里不加任何 disabledDate 限制
+ * 完成日期允许晚于今天：排期确定但尚未到期的需求需要提前结算，
+ * 这里不加任何 disabledDate 限制
  */
 defineOptions({ name: 'DemandFinishDialog' });
 

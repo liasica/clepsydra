@@ -43,26 +43,6 @@ func (_u *BillUpdate) SetNillableName(v *string) *BillUpdate {
 	return _u
 }
 
-// SetPeriod sets the "period" field.
-func (_u *BillUpdate) SetPeriod(v string) *BillUpdate {
-	_u.mutation.SetPeriod(v)
-	return _u
-}
-
-// SetNillablePeriod sets the "period" field if the given value is not nil.
-func (_u *BillUpdate) SetNillablePeriod(v *string) *BillUpdate {
-	if v != nil {
-		_u.SetPeriod(*v)
-	}
-	return _u
-}
-
-// ClearPeriod clears the value of the "period" field.
-func (_u *BillUpdate) ClearPeriod() *BillUpdate {
-	_u.mutation.ClearPeriod()
-	return _u
-}
-
 // SetStatus sets the "status" field.
 func (_u *BillUpdate) SetStatus(v bill.Status) *BillUpdate {
 	_u.mutation.SetStatus(v)
@@ -411,12 +391,6 @@ func (_u *BillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(bill.FieldName, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.Period(); ok {
-		_spec.SetField(bill.FieldPeriod, field.TypeString, value)
-	}
-	if _u.mutation.PeriodCleared() {
-		_spec.ClearField(bill.FieldPeriod, field.TypeString)
-	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(bill.FieldStatus, field.TypeEnum, value)
 	}
@@ -565,26 +539,6 @@ func (_u *BillUpdateOne) SetNillableName(v *string) *BillUpdateOne {
 	if v != nil {
 		_u.SetName(*v)
 	}
-	return _u
-}
-
-// SetPeriod sets the "period" field.
-func (_u *BillUpdateOne) SetPeriod(v string) *BillUpdateOne {
-	_u.mutation.SetPeriod(v)
-	return _u
-}
-
-// SetNillablePeriod sets the "period" field if the given value is not nil.
-func (_u *BillUpdateOne) SetNillablePeriod(v *string) *BillUpdateOne {
-	if v != nil {
-		_u.SetPeriod(*v)
-	}
-	return _u
-}
-
-// ClearPeriod clears the value of the "period" field.
-func (_u *BillUpdateOne) ClearPeriod() *BillUpdateOne {
-	_u.mutation.ClearPeriod()
 	return _u
 }
 
@@ -965,12 +919,6 @@ func (_u *BillUpdateOne) sqlSave(ctx context.Context) (_node *Bill, err error) {
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(bill.FieldName, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Period(); ok {
-		_spec.SetField(bill.FieldPeriod, field.TypeString, value)
-	}
-	if _u.mutation.PeriodCleared() {
-		_spec.ClearField(bill.FieldPeriod, field.TypeString)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(bill.FieldStatus, field.TypeEnum, value)

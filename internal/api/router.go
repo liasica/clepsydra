@@ -76,7 +76,6 @@ type BillHandler interface {
 	Get(c echo.Context) error
 	Update(c echo.Context) error
 	UpdateItem(c echo.Context) error
-	Generate(c echo.Context) error
 	ToggleWaive(c echo.Context) error
 	Confirm(c echo.Context) error
 	CreateManual(c echo.Context) error
@@ -173,7 +172,6 @@ func Register(e *echo.Echo, auth *service.Auth, h Handlers) {
 	adminGroup.POST("/demands/:id/start", h.Demand.Start)
 	adminGroup.POST("/demands/:id/finish", h.Demand.Finish)
 	adminGroup.PUT("/demands/:id/half-days", h.Demand.UpdateHalfDays)
-	adminGroup.POST("/bills/generate", h.Bill.Generate)
 	adminGroup.POST("/bills/manual", h.Bill.CreateManual)
 	adminGroup.GET("/bills/selectable-demands", h.Bill.SelectableDemands)
 	adminGroup.POST("/bills/:id/items", h.Bill.AddItem)

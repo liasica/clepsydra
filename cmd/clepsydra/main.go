@@ -17,6 +17,7 @@ import (
 	"clepsydra/internal/api/handler"
 	"clepsydra/internal/config"
 	"clepsydra/internal/ent"
+	"clepsydra/internal/ent/migrate"
 
 	// 注册 schema 上声明的 hook 与 interceptor，需求软删除依赖它们生效；
 	// 缺了这个空导入，查询会直接报 uninitialized interceptor
@@ -52,8 +53,9 @@ func main() {
 	}
 	defer client.Close()
 
+	// schema 是表结构的唯一来源：迁移时删掉 schema 中已不存在的列与索引，保持库结构与代码一致
 	ctx := context.Background()
-	if err = client.Schema.Create(ctx); err != nil {
+	if err = client.Schema.Create(ctx, migrate.WithDropColumn(true), migrate.WithDropIndex(true)); err != nil {
 		log.Fatal().Err(err).Msg("数据库迁移失败")
 	}
 
@@ -80,7 +82,7 @@ func main() {
 	projectSvc := service.NewProject(client, audit)
 	tagSvc := service.NewTag(client, audit)
 	billSvc := service.NewBill(client, settingSvc, demandSvc, audit)
-	dashboardSvc := service.NewDashboard(client, settingSvc)
+	dashboardSvc := service.NewDashboard(client)
 
 	uploadSvc, err := service.NewUpload(cfg.Upload)
 	if err != nil {
@@ -101,7 +103,7 @@ func main() {
 	}
 
 	// 启动定时任务
-	runner := task.New(client, settingSvc, demandSvc, billSvc, rotator, log)
+	runner := task.New(client, demandSvc, billSvc, rotator, log)
 	runner.Start()
 	defer runner.Stop()
 

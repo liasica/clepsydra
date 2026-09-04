@@ -27,20 +27,6 @@ func (_c *BillCreate) SetName(v string) *BillCreate {
 	return _c
 }
 
-// SetPeriod sets the "period" field.
-func (_c *BillCreate) SetPeriod(v string) *BillCreate {
-	_c.mutation.SetPeriod(v)
-	return _c
-}
-
-// SetNillablePeriod sets the "period" field if the given value is not nil.
-func (_c *BillCreate) SetNillablePeriod(v *string) *BillCreate {
-	if v != nil {
-		_c.SetPeriod(*v)
-	}
-	return _c
-}
-
 // SetStatus sets the "status" field.
 func (_c *BillCreate) SetStatus(v bill.Status) *BillCreate {
 	_c.mutation.SetStatus(v)
@@ -343,10 +329,6 @@ func (_c *BillCreate) createSpec() (*Bill, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(bill.FieldName, field.TypeString, value)
 		_node.Name = value
-	}
-	if value, ok := _c.mutation.Period(); ok {
-		_spec.SetField(bill.FieldPeriod, field.TypeString, value)
-		_node.Period = &value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(bill.FieldStatus, field.TypeEnum, value)

@@ -60,11 +60,6 @@ func Name(v string) predicate.Bill {
 	return predicate.Bill(sql.FieldEQ(FieldName, v))
 }
 
-// Period applies equality check predicate on the "period" field. It's identical to PeriodEQ.
-func Period(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldEQ(FieldPeriod, v))
-}
-
 // DailyRate applies equality check predicate on the "daily_rate" field. It's identical to DailyRateEQ.
 func DailyRate(v int) predicate.Bill {
 	return predicate.Bill(sql.FieldEQ(FieldDailyRate, v))
@@ -193,81 +188,6 @@ func NameEqualFold(v string) predicate.Bill {
 // NameContainsFold applies the ContainsFold predicate on the "name" field.
 func NameContainsFold(v string) predicate.Bill {
 	return predicate.Bill(sql.FieldContainsFold(FieldName, v))
-}
-
-// PeriodEQ applies the EQ predicate on the "period" field.
-func PeriodEQ(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldEQ(FieldPeriod, v))
-}
-
-// PeriodNEQ applies the NEQ predicate on the "period" field.
-func PeriodNEQ(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldNEQ(FieldPeriod, v))
-}
-
-// PeriodIn applies the In predicate on the "period" field.
-func PeriodIn(vs ...string) predicate.Bill {
-	return predicate.Bill(sql.FieldIn(FieldPeriod, vs...))
-}
-
-// PeriodNotIn applies the NotIn predicate on the "period" field.
-func PeriodNotIn(vs ...string) predicate.Bill {
-	return predicate.Bill(sql.FieldNotIn(FieldPeriod, vs...))
-}
-
-// PeriodGT applies the GT predicate on the "period" field.
-func PeriodGT(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldGT(FieldPeriod, v))
-}
-
-// PeriodGTE applies the GTE predicate on the "period" field.
-func PeriodGTE(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldGTE(FieldPeriod, v))
-}
-
-// PeriodLT applies the LT predicate on the "period" field.
-func PeriodLT(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldLT(FieldPeriod, v))
-}
-
-// PeriodLTE applies the LTE predicate on the "period" field.
-func PeriodLTE(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldLTE(FieldPeriod, v))
-}
-
-// PeriodContains applies the Contains predicate on the "period" field.
-func PeriodContains(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldContains(FieldPeriod, v))
-}
-
-// PeriodHasPrefix applies the HasPrefix predicate on the "period" field.
-func PeriodHasPrefix(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldHasPrefix(FieldPeriod, v))
-}
-
-// PeriodHasSuffix applies the HasSuffix predicate on the "period" field.
-func PeriodHasSuffix(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldHasSuffix(FieldPeriod, v))
-}
-
-// PeriodIsNil applies the IsNil predicate on the "period" field.
-func PeriodIsNil() predicate.Bill {
-	return predicate.Bill(sql.FieldIsNull(FieldPeriod))
-}
-
-// PeriodNotNil applies the NotNil predicate on the "period" field.
-func PeriodNotNil() predicate.Bill {
-	return predicate.Bill(sql.FieldNotNull(FieldPeriod))
-}
-
-// PeriodEqualFold applies the EqualFold predicate on the "period" field.
-func PeriodEqualFold(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldEqualFold(FieldPeriod, v))
-}
-
-// PeriodContainsFold applies the ContainsFold predicate on the "period" field.
-func PeriodContainsFold(v string) predicate.Bill {
-	return predicate.Bill(sql.FieldContainsFold(FieldPeriod, v))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.

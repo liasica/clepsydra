@@ -103,7 +103,6 @@ const columns: TableColumnsType<Api.Bill.Item> = [
     title: '需求标题',
   },
   { key: 'projects', title: '项目', width: 160 },
-  { key: 'billable', title: '类型', width: 90 },
   { key: 'demand_status', title: '状态快照', width: 120 },
   { key: 'half_days', title: '人天', width: 90 },
   { key: 'amount', title: '金额', width: 110 },
@@ -280,16 +279,13 @@ onMounted(load);
         />
 
         <Descriptions :column="3" bordered size="small">
-          <DescriptionsItem label="账期">
-            {{ bill.period ?? '—' }}
-          </DescriptionsItem>
           <DescriptionsItem label="人天单价">
             {{ formatAmount(bill.daily_rate) }}
           </DescriptionsItem>
           <DescriptionsItem label="基础维护费">
             {{ formatAmount(bill.base_fee) }}
           </DescriptionsItem>
-          <DescriptionsItem label="计费人天">
+          <DescriptionsItem label="总人天">
             {{ formatMandayStrict(bill.total_half_days) }}
           </DescriptionsItem>
           <DescriptionsItem label="账单总额">
@@ -320,12 +316,7 @@ onMounted(load);
           row-key="id"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'billable'">
-              <Tag :color="record.billable ? 'processing' : 'default'">
-                {{ record.billable ? '计费' : '展示' }}
-              </Tag>
-            </template>
-            <template v-else-if="column.key === 'projects'">
+            <template v-if="column.key === 'projects'">
               <div class="flex flex-wrap items-center gap-2">
                 <Tag
                   v-for="p in record.projects"
@@ -354,7 +345,7 @@ onMounted(load);
             </template>
             <template v-else-if="column.key === 'waived'">
               <Switch
-                v-if="record.billable && canWaive"
+                v-if="canWaive"
                 :checked="record.waived"
                 @change="onWaive(record)"
               />

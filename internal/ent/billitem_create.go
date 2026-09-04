@@ -51,12 +51,6 @@ func (_c *BillItemCreate) SetAmount(v int) *BillItemCreate {
 	return _c
 }
 
-// SetBillable sets the "billable" field.
-func (_c *BillItemCreate) SetBillable(v bool) *BillItemCreate {
-	_c.mutation.SetBillable(v)
-	return _c
-}
-
 // SetWaived sets the "waived" field.
 func (_c *BillItemCreate) SetWaived(v bool) *BillItemCreate {
 	_c.mutation.SetWaived(v)
@@ -186,9 +180,6 @@ func (_c *BillItemCreate) check() error {
 	if _, ok := _c.mutation.Amount(); !ok {
 		return &ValidationError{Name: "amount", err: errors.New(`ent: missing required field "BillItem.amount"`)}
 	}
-	if _, ok := _c.mutation.Billable(); !ok {
-		return &ValidationError{Name: "billable", err: errors.New(`ent: missing required field "BillItem.billable"`)}
-	}
 	if _, ok := _c.mutation.Waived(); !ok {
 		return &ValidationError{Name: "waived", err: errors.New(`ent: missing required field "BillItem.waived"`)}
 	}
@@ -243,10 +234,6 @@ func (_c *BillItemCreate) createSpec() (*BillItem, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Amount(); ok {
 		_spec.SetField(billitem.FieldAmount, field.TypeInt, value)
 		_node.Amount = value
-	}
-	if value, ok := _c.mutation.Billable(); ok {
-		_spec.SetField(billitem.FieldBillable, field.TypeBool, value)
-		_node.Billable = value
 	}
 	if value, ok := _c.mutation.Waived(); ok {
 		_spec.SetField(billitem.FieldWaived, field.TypeBool, value)

@@ -125,11 +125,6 @@ func AcceptAuto(v bool) predicate.Demand {
 	return predicate.Demand(sql.FieldEQ(FieldAcceptAuto, v))
 }
 
-// AcceptLocked applies equality check predicate on the "accept_locked" field. It's identical to AcceptLockedEQ.
-func AcceptLocked(v bool) predicate.Demand {
-	return predicate.Demand(sql.FieldEQ(FieldAcceptLocked, v))
-}
-
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Demand {
 	return predicate.Demand(sql.FieldEQ(FieldCreatedAt, v))
@@ -868,16 +863,6 @@ func AcceptAutoEQ(v bool) predicate.Demand {
 // AcceptAutoNEQ applies the NEQ predicate on the "accept_auto" field.
 func AcceptAutoNEQ(v bool) predicate.Demand {
 	return predicate.Demand(sql.FieldNEQ(FieldAcceptAuto, v))
-}
-
-// AcceptLockedEQ applies the EQ predicate on the "accept_locked" field.
-func AcceptLockedEQ(v bool) predicate.Demand {
-	return predicate.Demand(sql.FieldEQ(FieldAcceptLocked, v))
-}
-
-// AcceptLockedNEQ applies the NEQ predicate on the "accept_locked" field.
-func AcceptLockedNEQ(v bool) predicate.Demand {
-	return predicate.Demand(sql.FieldNEQ(FieldAcceptLocked, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

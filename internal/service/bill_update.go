@@ -51,7 +51,7 @@ func change(changes map[string]any, field string, from, to any) {
 }
 
 // Update 编辑账单头字段并重算合计，已支付账单拒绝
-// 单价变更按新单价重算全部计费未减免明细行金额（覆盖此前手工修改的明细金额）；
+// 单价变更按新单价重算全部未减免明细行金额（覆盖此前手工修改的明细金额）；
 // 指定 TotalAmount 直接覆盖总额并锁定（total_override 置位，此后重算不再触碰总额），
 // ResetTotal 解除锁定并恢复公式值；修改不重置确认状态，审计日志记录逐字段前后值留痕
 func (s *Bill) Update(ctx context.Context, actor Actor, id int, patch BillUpdatePatch) error {
@@ -114,12 +114,11 @@ func (s *Bill) Update(ctx context.Context, actor Actor, id int, patch BillUpdate
 		return rollback(tx, err)
 	}
 
-	// 单价变更后按新单价重算计费未减免行金额，减免行金额保持 0
+	// 单价变更后按新单价重算未减免行金额，减免行金额保持 0
 	if rateChanged {
 		var items []*ent.BillItem
 		items, err = tx.BillItem.Query().Where(
 			billitem.HasBillWith(bill.ID(id)),
-			billitem.Billable(true),
 			billitem.Waived(false),
 		).All(ctx)
 		if err != nil {
@@ -170,7 +169,7 @@ func (p BillItemPatch) validate() error {
 }
 
 // UpdateItem 编辑账单明细行并重算合计，已支付账单拒绝
-// 计费未减免行只改人天时按账单快照单价联动重算金额，显式给金额则以给定值为准；
+// 未减免行只改人天时按账单快照单价联动重算金额，显式给金额则以给定值为准；
 // 减免行金额恒为 0 不可修改，人天与备注可改
 func (s *Bill) UpdateItem(ctx context.Context, actor Actor, billID, itemID int, patch BillItemPatch) error {
 	if err := patch.validate(); err != nil {
@@ -198,10 +197,6 @@ func (s *Bill) UpdateItem(ctx context.Context, actor Actor, billID, itemID int, 
 	if item.Waived && patch.Amount != nil && *patch.Amount != 0 {
 		return ErrBadRequest("已减免明细的金额不可修改")
 	}
-	if !item.Billable && patch.Amount != nil && *patch.Amount != 0 {
-		return ErrBadRequest("展示行金额不可修改")
-	}
-
 	var tx *ent.Tx
 	tx, err = s.client.Tx(ctx)
 	if err != nil {
@@ -213,8 +208,8 @@ func (s *Bill) UpdateItem(ctx context.Context, actor Actor, billID, itemID int, 
 	if patch.HalfDays != nil && *patch.HalfDays != item.HalfDays {
 		upd.SetHalfDays(*patch.HalfDays)
 		change(changes, "half_days", item.HalfDays, *patch.HalfDays)
-		// 计费未减免行只改人天时按账单快照单价联动重算金额
-		if patch.Amount == nil && item.Billable && !item.Waived {
+		// 未减免行只改人天时按账单快照单价联动重算金额
+		if patch.Amount == nil && !item.Waived {
 			if amount := *patch.HalfDays * b.DailyRate / 2; amount != item.Amount {
 				upd.SetAmount(amount)
 				change(changes, "amount", item.Amount, amount)

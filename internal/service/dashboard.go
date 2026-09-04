@@ -2,40 +2,33 @@ package service
 
 import (
 	"context"
-	"time"
 
 	"clepsydra/internal/ent"
 	"clepsydra/internal/ent/bill"
 	"clepsydra/internal/ent/demand"
-	"clepsydra/internal/workday"
 )
 
 // Todos 工作台待办汇总
 type Todos struct {
-	PendingEstimateCount   int    `json:"pending_estimate_count"`
-	PendingAcceptanceCount int    `json:"pending_acceptance_count"`
-	PendingBillCount       int    `json:"pending_bill_count"`
-	BillingDueDate         string `json:"billing_due_date"`
-	BillingDueToday        bool   `json:"billing_due_today"`
-	PrevBillGenerated      bool   `json:"prev_bill_generated"`
+	PendingEstimateCount   int `json:"pending_estimate_count"`
+	PendingAcceptanceCount int `json:"pending_acceptance_count"`
+	PendingBillCount       int `json:"pending_bill_count"`
 }
 
 // Dashboard 工作台服务
 type Dashboard struct {
-	client  *ent.Client
-	setting *Setting
+	client *ent.Client
 }
 
 // NewDashboard 构建工作台服务
-func NewDashboard(client *ent.Client, setting *Setting) *Dashboard {
-	return &Dashboard{client: client, setting: setting}
+func NewDashboard(client *ent.Client) *Dashboard {
+	return &Dashboard{client: client}
 }
 
 // Todos 汇总待办信息
-func (s *Dashboard) Todos(ctx context.Context, role string, now time.Time) (*Todos, error) {
+func (s *Dashboard) Todos(ctx context.Context) (*Todos, error) {
 	todos := new(Todos)
 
-	// 各状态计数
 	var err error
 	if todos.PendingEstimateCount, err = s.client.Demand.Query().
 		Where(demand.StatusEQ(demand.StatusPendingEstimate)).Count(ctx); err != nil {
@@ -49,23 +42,6 @@ func (s *Dashboard) Todos(ctx context.Context, role string, now time.Time) (*Tod
 		Where(bill.StatusEQ(bill.StatusPending)).Count(ctx); err != nil {
 		return nil, err
 	}
-
-	// 出账截止日与上月账单状态
-	var cal *workday.Calendar
-	cal, err = s.setting.Calendar(ctx)
-	if err != nil {
-		return nil, err
-	}
-	due := cal.BillingDueDate(now.Year(), now.Month())
-	todos.BillingDueDate = due.Format("2006-01-02")
-	todos.BillingDueToday = due.Format("2006-01-02") == now.Format("2006-01-02")
-
-	var prev *ent.Bill
-	prev, err = s.client.Bill.Query().Where(bill.Period(PrevPeriod(now))).Only(ctx)
-	if err != nil && !ent.IsNotFound(err) {
-		return nil, err
-	}
-	todos.PrevBillGenerated = prev != nil
 
 	return todos, nil
 }

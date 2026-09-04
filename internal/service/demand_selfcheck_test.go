@@ -73,10 +73,10 @@ func TestDemandSkipStageRejected(t *testing.T) {
 
 	_ = svc.Start(ctx, admin, d.ID, time.Now())
 	_ = svc.Finish(ctx, admin, d.ID, time.Now(), time.Now(), 2)
-	_ = svc.Accept(ctx, clientActor, d.ID, false, false)
+	_ = svc.Accept(ctx, clientActor, d.ID, false)
 
 	// accepted 为终态，不能再次验收
-	if err := svc.Accept(ctx, clientActor, d.ID, false, false); err == nil {
+	if err := svc.Accept(ctx, clientActor, d.ID, false); err == nil {
 		t.Error("accepted 终态不应允许重复验收")
 	}
 }
@@ -245,8 +245,8 @@ func TestDemandConfirmEstimateRecordsActor(t *testing.T) {
 	}
 }
 
-// TestDemandAcceptAutoLockedFlags Accept 的 auto/locked 标记应准确落库
-func TestDemandAcceptAutoLockedFlags(t *testing.T) {
+// TestDemandAcceptAutoFlag Accept 的 auto 标记应准确落库
+func TestDemandAcceptAutoFlag(t *testing.T) {
 	_, svc := newDemandEnv(t, "dacceptflags")
 	ctx := context.Background()
 
@@ -256,14 +256,14 @@ func TestDemandAcceptAutoLockedFlags(t *testing.T) {
 	_ = svc.Start(ctx, admin, d.ID, time.Now())
 	_ = svc.Finish(ctx, admin, d.ID, time.Now(), time.Now(), 2)
 
-	// 系统自动确认场景：auto=true、locked=true（出账锁定）
-	if err := svc.Accept(ctx, SystemActor, d.ID, true, true); err != nil {
+	// 系统自动确认场景：auto=true
+	if err := svc.Accept(ctx, SystemActor, d.ID, true); err != nil {
 		t.Fatalf("自动验收失败: %v", err)
 	}
 
 	d = svc.mustGet(ctx, t, d.ID)
-	if !d.AcceptAuto || !d.AcceptLocked {
-		t.Errorf("accept_auto = %v, accept_locked = %v, want true/true", d.AcceptAuto, d.AcceptLocked)
+	if !d.AcceptAuto {
+		t.Errorf("accept_auto = %v, want true", d.AcceptAuto)
 	}
 	if d.AcceptedBy == nil || *d.AcceptedBy != SystemActor.ID {
 		t.Errorf("accepted_by = %v, want %d", d.AcceptedBy, SystemActor.ID)
@@ -309,8 +309,6 @@ func TestDemandListFilterByStatus(t *testing.T) {
 	}
 }
 
-// 以下为最终审查修复补充测试：覆盖 Finish 的未来日期放行与账期封闭校验
-
 // TestDemandFinishAllowsFutureDate 完成日期允许晚于当前时间（支持预登记未来完成）
 func TestDemandFinishAllowsFutureDate(t *testing.T) {
 	_, svc := newDemandEnv(t, "dfinishfuture")
@@ -327,8 +325,7 @@ func TestDemandFinishAllowsFutureDate(t *testing.T) {
 	}
 }
 
-// TestDemandFinishIgnoresBills 完成日期不再受账单状态限制，已出账账期也可补录
-// 补录需求经手动加项进入账单结算，账期封闭校验已随之移除
+// TestDemandFinishIgnoresBills 完成日期不受账单状态限制
 func TestDemandFinishIgnoresBills(t *testing.T) {
 	client, svc := newDemandEnv(t, "dfinishopen")
 	ctx := context.Background()
@@ -339,22 +336,21 @@ func TestDemandFinishIgnoresBills(t *testing.T) {
 	start := time.Date(2026, 7, 5, 0, 0, 0, 0, time.Local)
 	_ = svc.Start(ctx, admin, d.ID, start)
 
-	// 7 月账单已确认待支付，按旧规则账期已封闭，新规则不再拦截
+	// 已确认待支付的账单不拦截需求完成
 	_, err := client.Bill.Create().
-		SetName("自动生成：2026-07").
-		SetPeriod("2026-07").
+		SetName("七月结算").
 		SetStatus(bill.StatusUnpaid).
 		SetDailyRate(1200).
-		SetBaseFee(12000).
+		SetBaseFee(0).
 		SetTotalHalfDays(0).
-		SetTotalAmount(12000).
+		SetTotalAmount(0).
 		Save(ctx)
 	if err != nil {
-		t.Fatalf("构造 7 月账单失败: %v", err)
+		t.Fatalf("构造账单失败: %v", err)
 	}
 
 	end := time.Date(2026, 7, 20, 0, 0, 0, 0, time.Local)
 	if err = svc.Finish(ctx, admin, d.ID, start, end, 2); err != nil {
-		t.Errorf("已出账账期补录应放行: %v", err)
+		t.Errorf("账单已存在时补录应放行: %v", err)
 	}
 }

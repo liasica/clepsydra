@@ -230,20 +230,6 @@ func (_c *DemandCreate) SetNillableAcceptAuto(v *bool) *DemandCreate {
 	return _c
 }
 
-// SetAcceptLocked sets the "accept_locked" field.
-func (_c *DemandCreate) SetAcceptLocked(v bool) *DemandCreate {
-	_c.mutation.SetAcceptLocked(v)
-	return _c
-}
-
-// SetNillableAcceptLocked sets the "accept_locked" field if the given value is not nil.
-func (_c *DemandCreate) SetNillableAcceptLocked(v *bool) *DemandCreate {
-	if v != nil {
-		_c.SetAcceptLocked(*v)
-	}
-	return _c
-}
-
 // SetCreatedAt sets the "created_at" field.
 func (_c *DemandCreate) SetCreatedAt(v time.Time) *DemandCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -351,10 +337,6 @@ func (_c *DemandCreate) defaults() error {
 		v := demand.DefaultAcceptAuto
 		_c.mutation.SetAcceptAuto(v)
 	}
-	if _, ok := _c.mutation.AcceptLocked(); !ok {
-		v := demand.DefaultAcceptLocked
-		_c.mutation.SetAcceptLocked(v)
-	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		if demand.DefaultCreatedAt == nil {
 			return fmt.Errorf("ent: uninitialized demand.DefaultCreatedAt (forgotten import ent/runtime?)")
@@ -403,9 +385,6 @@ func (_c *DemandCreate) check() error {
 	}
 	if _, ok := _c.mutation.AcceptAuto(); !ok {
 		return &ValidationError{Name: "accept_auto", err: errors.New(`ent: missing required field "Demand.accept_auto"`)}
-	}
-	if _, ok := _c.mutation.AcceptLocked(); !ok {
-		return &ValidationError{Name: "accept_locked", err: errors.New(`ent: missing required field "Demand.accept_locked"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Demand.created_at"`)}
@@ -502,10 +481,6 @@ func (_c *DemandCreate) createSpec() (*Demand, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.AcceptAuto(); ok {
 		_spec.SetField(demand.FieldAcceptAuto, field.TypeBool, value)
 		_node.AcceptAuto = value
-	}
-	if value, ok := _c.mutation.AcceptLocked(); ok {
-		_spec.SetField(demand.FieldAcceptLocked, field.TypeBool, value)
-		_node.AcceptLocked = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(demand.FieldCreatedAt, field.TypeTime, value)

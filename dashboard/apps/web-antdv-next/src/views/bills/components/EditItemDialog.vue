@@ -14,9 +14,9 @@ import { showSuccess } from '#/utils/http/error';
 /**
  * 编辑账单明细弹窗（仅超级管理员）
  *
- * 人天以 0.5 人天（1 半天）为最小粒度；计费未减免行修改人天时金额自动按账单
- * 快照单价联动，联动后仍可手动改金额；减免行金额恒为 0、展示行金额不计费，
- * 两者金额输入均禁用；全部字段按 diff 提交
+ * 人天以 0.5 人天（1 半天）为最小粒度；未减免行修改人天时金额自动按账单
+ * 快照单价联动，联动后仍可手动改金额；减免行金额恒为 0，金额输入禁用；
+ * 全部字段按 diff 提交
  */
 defineOptions({ name: 'EditItemDialog' });
 
@@ -36,9 +36,9 @@ const form = reactive({
   note: '',
 });
 
-/** 金额是否可编辑：减免行恒为 0，展示行不计费，均禁用 */
+/** 金额是否可编辑：减免行金额恒为 0，禁用 */
 const amountEditable = computed(
-  () => !!item.value && item.value.billable && !item.value.waived,
+  () => !!item.value && !item.value.waived,
 );
 
 const rules: FormProps['rules'] = {
@@ -77,7 +77,7 @@ const [Modal, modalApi] = useVbenModal({
   },
 });
 
-/** 人天变更时计费未减免行金额自动按账单快照单价联动，用户仍可再手动修改 */
+/** 人天变更时未减免行金额自动按账单快照单价联动，用户仍可再手动修改 */
 function onMandayChange(value: number | string | undefined) {
   if (!amountEditable.value || typeof value !== 'number') return;
   if (!Number.isInteger(value * 2)) return;
@@ -142,7 +142,7 @@ async function submit() {
         :extra="
           amountEditable
             ? '单位元，修改人天后自动联动，可再手动调整'
-            : '减免行与展示行金额不可修改'
+            : '减免行金额不可修改'
         "
         label="金额"
         name="amount"

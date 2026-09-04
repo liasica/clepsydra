@@ -28,8 +28,6 @@ type BillItem struct {
 	HalfDays int `json:"half_days,omitempty"`
 	// Amount holds the value of the "amount" field.
 	Amount int `json:"amount,omitempty"`
-	// Billable holds the value of the "billable" field.
-	Billable bool `json:"billable,omitempty"`
 	// Waived holds the value of the "waived" field.
 	Waived bool `json:"waived,omitempty"`
 	// PlannedStartDate holds the value of the "planned_start_date" field.
@@ -70,7 +68,7 @@ func (*BillItem) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case billitem.FieldBillable, billitem.FieldWaived:
+		case billitem.FieldWaived:
 			values[i] = new(sql.NullBool)
 		case billitem.FieldID, billitem.FieldDemandID, billitem.FieldHalfDays, billitem.FieldAmount:
 			values[i] = new(sql.NullInt64)
@@ -130,12 +128,6 @@ func (_m *BillItem) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field amount", values[i])
 			} else if value.Valid {
 				_m.Amount = int(value.Int64)
-			}
-		case billitem.FieldBillable:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field billable", values[i])
-			} else if value.Valid {
-				_m.Billable = value.Bool
 			}
 		case billitem.FieldWaived:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -224,9 +216,6 @@ func (_m *BillItem) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("amount=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Amount))
-	builder.WriteString(", ")
-	builder.WriteString("billable=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Billable))
 	builder.WriteString(", ")
 	builder.WriteString("waived=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Waived))

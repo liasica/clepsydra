@@ -17,7 +17,7 @@ import (
 	"clepsydra/internal/service"
 )
 
-// TestBillLifecycleHandlers 覆盖账单从生成到确认的完整链路
+// TestBillLifecycleHandlers 覆盖账单从创建到确认的完整链路
 func TestBillLifecycleHandlers(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", "file:hbill?mode=memory&cache=shared&_fk=1")
 	defer client.Close()
@@ -32,7 +32,7 @@ func TestBillLifecycleHandlers(t *testing.T) {
 	h := NewBill(billSvc)
 	e := echo.New()
 
-	// 准备一个账期内已完成并验收的需求
+	// 准备一个已完成并验收的需求
 	act := service.Actor{ID: 1, Name: "管理员"}
 	d, err := demandSvc.Create(ctx, act, "联调需求", "", 0, nil, false, nil, nil, "")
 	if err != nil {
@@ -46,43 +46,33 @@ func TestBillLifecycleHandlers(t *testing.T) {
 	if err = demandSvc.Finish(ctx, act, d.ID, start, end, 4); err != nil {
 		t.Fatalf("完成需求失败: %v", err)
 	}
-	if err = demandSvc.Accept(ctx, act, d.ID, false, false); err != nil {
+	if err = demandSvc.Accept(ctx, act, d.ID, false); err != nil {
 		t.Fatalf("验收需求失败: %v", err)
 	}
 
-	// Generate：生成 2026-07 账单
-	c, rec := newDemandTestContext(e, http.MethodPost, "/api/bills/generate", `{"period":"2026-07"}`)
-	if err = h.Generate(c); err != nil {
-		t.Fatalf("Generate 失败: %v", err)
+	// CreateManual：选中该需求创建账单
+	c, rec := newDemandTestContext(e, http.MethodPost, "/api/bills/manual", `{"name":"七月结算","demand_ids":[`+strconv.Itoa(d.ID)+`]}`)
+	if err = h.CreateManual(c); err != nil {
+		t.Fatalf("CreateManual 失败: %v", err)
 	}
 	if rec.Code != http.StatusOK {
-		t.Fatalf("Generate 响应异常: %d, %s", rec.Code, rec.Body.String())
+		t.Fatalf("CreateManual 响应异常: %d, %s", rec.Code, rec.Body.String())
 	}
 
 	bills, err := billSvc.List(ctx)
 	if err != nil || len(bills) != 1 {
-		t.Fatalf("生成后查询列表失败: %v, len=%d", err, len(bills))
+		t.Fatalf("创建后查询列表失败: %v, len=%d", err, len(bills))
 	}
 	billID := bills[0].ID
 	billIDStr := strconv.Itoa(billID)
 
-	// Generate：账期格式非法应返回 400
-	c, rec = newDemandTestContext(e, http.MethodPost, "/api/bills/generate", `{"period":"202607"}`)
-	_ = h.Generate(c)
-	if rec.Code != http.StatusBadRequest {
-		t.Errorf("非法账期应返回 400, got %d", rec.Code)
-	}
-
-	// List：应能查到刚生成的账单
+	// List：应能查到刚创建的账单
 	c, rec = newDemandTestContext(e, http.MethodGet, "/api/bills", "")
 	if err = h.List(c); err != nil {
 		t.Fatalf("List 失败: %v", err)
 	}
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "2026-07") {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "七月结算") {
 		t.Errorf("List 响应异常: %d, %s", rec.Code, rec.Body.String())
-	}
-	if !strings.Contains(rec.Body.String(), "自动生成：2026-07") {
-		t.Errorf("List 响应应包含自动账单名称, got %s", rec.Body.String())
 	}
 
 	// List：契约上明细仅详情接口返回，列表项不应残留 items/edges 字段
@@ -125,7 +115,7 @@ func TestBillLifecycleHandlers(t *testing.T) {
 		t.Errorf("非法 ID 应返回 400, got %d", rec.Code)
 	}
 
-	// 取出计费明细 ID 用于 ToggleWaive
+	// 取出明细 ID 用于 ToggleWaive
 	full, err := billSvc.Get(ctx, billID)
 	if err != nil || len(full.Edges.Items) == 0 {
 		t.Fatalf("查询账单明细失败: %v", err)
@@ -187,7 +177,7 @@ func TestBillLifecycleHandlers(t *testing.T) {
 	}
 }
 
-// TestBillManualAndItemsHandlers 覆盖手动生成、可选需求、加/移项、标记支付接口
+// TestBillManualAndItemsHandlers 覆盖创建账单、可选需求、加/移项、标记支付接口
 func TestBillManualAndItemsHandlers(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", "file:hbillmanual?mode=memory&cache=shared&_fk=1")
 	defer client.Close()
@@ -212,18 +202,18 @@ func TestBillManualAndItemsHandlers(t *testing.T) {
 		end := time.Date(2026, 7, 15, 0, 0, 0, 0, time.Local)
 		_ = demandSvc.Start(ctx, act, d.ID, start)
 		_ = demandSvc.Finish(ctx, act, d.ID, start, end, halfDays)
-		_ = demandSvc.Accept(ctx, act, d.ID, false, false)
+		_ = demandSvc.Accept(ctx, act, d.ID, false)
 		return d.ID
 	}
 	id1 := mk("结算需求一", 2)
 	id2 := mk("结算需求二", 4)
 
-	// SelectableDemands：两个需求都可计费
+	// SelectableDemands：两个需求都可选
 	c, rec := newDemandTestContext(e, http.MethodGet, "/api/bills/selectable-demands", "")
 	if err := h.SelectableDemands(c); err != nil {
 		t.Fatalf("SelectableDemands 失败: %v", err)
 	}
-	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"billable"`) {
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "结算需求一") {
 		t.Fatalf("SelectableDemands 响应异常: %d, %s", rec.Code, rec.Body.String())
 	}
 
@@ -244,15 +234,11 @@ func TestBillManualAndItemsHandlers(t *testing.T) {
 	}
 	var created struct {
 		Data struct {
-			ID     int     `json:"id"`
-			Period *string `json:"period"`
+			ID int `json:"id"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil {
 		t.Fatalf("CreateManual 响应解析失败: %v", err)
-	}
-	if created.Data.Period != nil {
-		t.Errorf("手动账单 period 应为 null, got %v", *created.Data.Period)
 	}
 	billIDStr := strconv.Itoa(created.Data.ID)
 

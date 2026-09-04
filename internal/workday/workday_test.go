@@ -48,24 +48,6 @@ func TestIsWorkday(t *testing.T) {
 	}
 }
 
-func TestBillingDueDate(t *testing.T) {
-	// 10 号是周六且为工作日 → 直接取 10 号
-	c := testCalendar(true)
-	if got := c.BillingDueDate(2026, time.October); !got.Equal(date("2026-10-10")) {
-		t.Errorf("BillingDueDate = %s, want 2026-10-10", got.Format("2006-01-02"))
-	}
-
-	// 构造 10 号为节假日的场景：9 号也是节假日 → 应取 8 号
-	entries := []Entry{
-		{Date: "2026-10-09", Type: "holiday"},
-		{Date: "2026-10-10", Type: "holiday"},
-	}
-	c3 := New(entries, true)
-	if got := c3.BillingDueDate(2026, time.October); !got.Equal(date("2026-10-08")) {
-		t.Errorf("BillingDueDate = %s, want 2026-10-08", got.Format("2006-01-02"))
-	}
-}
-
 func TestDeadline(t *testing.T) {
 	c := testCalendar(true)
 	start := date("2026-09-28")

@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"strconv"
-	"strings"
 
 	"clepsydra/internal/ent"
 	"clepsydra/internal/ent/holiday"
@@ -19,12 +18,6 @@ type Setting struct {
 // NewSetting 构建设置服务
 func NewSetting(client *ent.Client) *Setting {
 	return &Setting{client: client}
-}
-
-// validDemandStatuses 账单可包含的需求状态合法值
-var validDemandStatuses = map[string]bool{
-	"draft": true, "pending_estimate": true, "confirmed": true,
-	"in_progress": true, "pending_acceptance": true, "accepted": true,
 }
 
 // validate 校验单个设置值
@@ -52,12 +45,6 @@ func validate(key, value string) error {
 	case SettingSaturdayAsWorkday:
 		if value != "true" && value != "false" {
 			return ErrBadRequest("周六口径仅支持 true 或 false")
-		}
-	case SettingBillIncludeStatuses:
-		for _, s := range strings.Split(value, ",") {
-			if !validDemandStatuses[strings.TrimSpace(s)] {
-				return ErrBadRequest("包含非法的需求状态: " + s)
-			}
 		}
 	default:
 		return ErrBadRequest("未知设置项: " + key)

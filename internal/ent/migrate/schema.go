@@ -3,7 +3,6 @@
 package migrate
 
 import (
-	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 )
@@ -37,7 +36,6 @@ var (
 	BillsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "name", Type: field.TypeString},
-		{Name: "period", Type: field.TypeString, Unique: true, Nullable: true},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"pending", "unpaid", "paid"}, Default: "pending"},
 		{Name: "daily_rate", Type: field.TypeInt},
 		{Name: "base_fee", Type: field.TypeInt},
@@ -67,7 +65,6 @@ var (
 		{Name: "demand_status", Type: field.TypeString},
 		{Name: "half_days", Type: field.TypeInt},
 		{Name: "amount", Type: field.TypeInt},
-		{Name: "billable", Type: field.TypeBool},
 		{Name: "waived", Type: field.TypeBool, Default: false},
 		{Name: "planned_start_date", Type: field.TypeTime, Nullable: true},
 		{Name: "note", Type: field.TypeString, Nullable: true},
@@ -82,7 +79,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "bill_items_bills_items",
-				Columns:    []*schema.Column{BillItemsColumns[11]},
+				Columns:    []*schema.Column{BillItemsColumns[10]},
 				RefColumns: []*schema.Column{BillsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -92,9 +89,6 @@ var (
 				Name:    "billitem_demand_id",
 				Unique:  true,
 				Columns: []*schema.Column{BillItemsColumns[1]},
-				Annotation: &entsql.IndexAnnotation{
-					Where: "billable",
-				},
 			},
 		},
 	}
@@ -117,7 +111,6 @@ var (
 		{Name: "accepted_at", Type: field.TypeTime, Nullable: true},
 		{Name: "accepted_by", Type: field.TypeInt, Nullable: true},
 		{Name: "accept_auto", Type: field.TypeBool, Default: false},
-		{Name: "accept_locked", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}

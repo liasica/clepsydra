@@ -21,11 +21,6 @@ func NewBill(svc *service.Bill) *Bill {
 	return &Bill{svc: svc}
 }
 
-// generateRequest 生成账单请求体
-type generateRequest struct {
-	Period string `json:"period"`
-}
-
 // detail 组装含明细项目标签的账单详情响应
 func (h *Bill) detail(c echo.Context, b *ent.Bill) error {
 	projects, err := h.svc.ItemProjects(c.Request().Context(), b.Edges.Items)
@@ -76,26 +71,6 @@ func (h *Bill) Get(c echo.Context) error {
 	return h.detail(c, b)
 }
 
-// Generate POST /api/bills/generate
-func (h *Bill) Generate(c echo.Context) error {
-	var req generateRequest
-	if err := c.Bind(&req); err != nil {
-		return api.Fail(c, service.ErrBadRequest("参数错误"))
-	}
-
-	b, err := h.svc.Generate(c.Request().Context(), actor(c), req.Period)
-	if err != nil {
-		return api.Fail(c, err)
-	}
-
-	full, err := h.svc.Get(c.Request().Context(), b.ID)
-	if err != nil {
-		return api.Fail(c, err)
-	}
-
-	return h.detail(c, full)
-}
-
 // ToggleWaive POST /api/bills/:id/items/:itemId/waive
 func (h *Bill) ToggleWaive(c echo.Context) error {
 	id, err := parseID(c)
@@ -130,7 +105,7 @@ func (h *Bill) Confirm(c echo.Context) error {
 	return api.OK(c, nil)
 }
 
-// manualRequest 手动生成账单请求体
+// manualRequest 创建账单请求体
 type manualRequest struct {
 	Name      string `json:"name"`
 	DemandIDs []int  `json:"demand_ids"`
@@ -161,20 +136,14 @@ func (h *Bill) CreateManual(c echo.Context) error {
 	return h.detail(c, full)
 }
 
-// SelectableDemands GET /api/bills/selectable-demands?exclude_bill=<id>
-// exclude_bill 缺省或非法时按 0 处理，不做排除
+// SelectableDemands GET /api/bills/selectable-demands
 func (h *Bill) SelectableDemands(c echo.Context) error {
-	excludeBill, _ := strconv.Atoi(c.QueryParam("exclude_bill"))
-
-	sel, err := h.svc.SelectableDemands(c.Request().Context(), excludeBill)
+	demands, err := h.svc.SelectableDemands(c.Request().Context())
 	if err != nil {
 		return api.Fail(c, err)
 	}
 
-	return api.OK(c, map[string]any{
-		"billable": sel.Billable,
-		"display":  sel.Display,
-	})
+	return api.OK(c, demands)
 }
 
 // AddItem POST /api/bills/:id/items

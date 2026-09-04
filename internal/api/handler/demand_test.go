@@ -232,9 +232,6 @@ func TestDemandLifecycleHandlers(t *testing.T) {
 	if final.AcceptAuto {
 		t.Error("人工确认 AcceptAuto 应为 false")
 	}
-	if final.AcceptLocked {
-		t.Error("人工确认 AcceptLocked 应为 false")
-	}
 }
 
 // TestDemandFinishRequiresBothDates 校验 Finish 接口两个日期均必填

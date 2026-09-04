@@ -35,8 +35,8 @@ func TestSeedIdempotent(t *testing.T) {
 	}
 
 	// 默认设置齐全
-	if n := client.Setting.Query().CountX(ctx); n != 7 {
-		t.Errorf("设置项数量 = %d, want 7", n)
+	if n := client.Setting.Query().CountX(ctx); n != 6 {
+		t.Errorf("设置项数量 = %d, want 6", n)
 	}
 	rate := client.Setting.Query().Where(setting.Key(SettingDailyRate)).OnlyX(ctx)
 	if rate.Value != "1200" {

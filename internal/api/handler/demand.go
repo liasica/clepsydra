@@ -383,20 +383,14 @@ func (h *Demand) Finish(c echo.Context) error {
 }
 
 // Accept POST /api/demands/:id/accept
-// 路由层仅要求登录态，人工确认固定传 auto=false, locked=false
+// 路由层仅要求登录态，人工确认固定传 auto=false
 func (h *Demand) Accept(c echo.Context) error {
 	id, err := parseID(c)
 	if err != nil {
 		return api.Fail(c, err)
 	}
 
-	err = h.svc.Accept(
-		c.Request().Context(),
-		actor(c),
-		id,
-		false,
-		false,
-	)
+	err = h.svc.Accept(c.Request().Context(), actor(c), id, false)
 	if err != nil {
 		return api.Fail(c, err)
 	}
