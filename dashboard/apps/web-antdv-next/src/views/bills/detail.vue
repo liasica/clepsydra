@@ -3,7 +3,7 @@ import type { TableColumnsType } from 'antdv-next';
 
 import type { BillAction, DemandStatus } from '#/utils/clepsydra/dict';
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, onActivated, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 
 import { confirm, Page, useVbenModal } from '@vben/common-ui';
@@ -103,7 +103,7 @@ const columns: TableColumnsType<Api.Bill.Item> = [
     title: '需求标题',
   },
   { key: 'projects', title: '项目', width: 160 },
-  { key: 'demand_status', title: '状态快照', width: 120 },
+  { key: 'demand_status', title: '需求状态', width: 120 },
   { key: 'half_days', title: '人天', width: 90 },
   { key: 'amount', title: '金额', width: 110 },
   // 与需求列表同宽，容下「2026-08-20」加单元格内边距
@@ -187,7 +187,7 @@ function openEditItem(record: Api.Bill.Item) {
     .open();
 }
 
-/** 明细行状态快照转字典项，未知值时兜底为 undefined，模板里原样展示原始字符串 */
+/** 明细行需求状态转字典项，未知值时兜底为 `undefined`，模板里原样展示原始字符串 */
 function demandStatusOf(status: string) {
   return DEMAND_STATUS[status as DemandStatus];
 }
@@ -256,7 +256,13 @@ async function onRemoveItem(item: Api.Bill.Item) {
   }
 }
 
-onMounted(load);
+/** 进入或切回账单页签时加载详情 */
+function refresh() {
+  if (!loading.value) void load().catch(() => {});
+}
+
+onMounted(refresh);
+onActivated(refresh);
 </script>
 
 <template>

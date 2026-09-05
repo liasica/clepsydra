@@ -72,8 +72,15 @@ func newBillDTO(b *ent.Bill) billDTO {
 	}
 }
 
-// newBillItemDTO 将 ent.BillItem 映射为响应结构，projects 为该明细所属需求的项目标签
-func newBillItemDTO(it *ent.BillItem, projects []*ent.Project) billItemDTO {
+// newBillItemDTO 将账单明细映射为响应结构，需求状态及项目标签取当前关联数据
+func newBillItemDTO(it *ent.BillItem, currentDemand *ent.Demand) billItemDTO {
+	status := it.DemandStatus
+	var projects []*ent.Project
+	if currentDemand != nil {
+		status = currentDemand.Status.String()
+		projects = currentDemand.Edges.Projects
+	}
+
 	refs := make([]projectRefDTO, 0, len(projects))
 	for _, p := range projects {
 		refs = append(refs, projectRefDTO{ID: p.ID, Name: p.Name, Color: p.Color})
@@ -83,7 +90,7 @@ func newBillItemDTO(it *ent.BillItem, projects []*ent.Project) billItemDTO {
 		ID:               it.ID,
 		DemandID:         it.DemandID,
 		DemandTitle:      it.DemandTitle,
-		DemandStatus:     it.DemandStatus,
+		DemandStatus:     status,
 		HalfDays:         it.HalfDays,
 		Amount:           it.Amount,
 		Waived:           it.Waived,
@@ -96,13 +103,13 @@ func newBillItemDTO(it *ent.BillItem, projects []*ent.Project) billItemDTO {
 
 // newBillDetailDTO 将 ent.Bill 映射为含顶层 items 的详情响应结构
 // 明细取自 b.Edges.Items，调用方需确保查询时已 WithItems 预加载
-// projects 为按 demand_id 索引的项目标签集合，通常来自 (*service.Bill).ItemProjects
-func newBillDetailDTO(b *ent.Bill, projects map[int][]*ent.Project) billDTO {
+// demands 为按 `demand_id` 索引的需求集合，包含当前状态及项目标签
+func newBillDetailDTO(b *ent.Bill, demands map[int]*ent.Demand) billDTO {
 	dto := newBillDTO(b)
 
 	items := make([]billItemDTO, 0, len(b.Edges.Items))
 	for _, it := range b.Edges.Items {
-		items = append(items, newBillItemDTO(it, projects[it.DemandID]))
+		items = append(items, newBillItemDTO(it, demands[it.DemandID]))
 	}
 	dto.Items = items
 

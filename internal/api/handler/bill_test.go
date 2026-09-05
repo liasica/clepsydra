@@ -32,7 +32,7 @@ func TestBillLifecycleHandlers(t *testing.T) {
 	h := NewBill(billSvc)
 	e := echo.New()
 
-	// 准备一个已完成并验收的需求
+	// 准备一个待验收的需求
 	act := service.Actor{ID: 1, Name: "管理员"}
 	d, err := demandSvc.Create(ctx, act, "联调需求", "", 0, nil, false, nil, nil, "")
 	if err != nil {
@@ -46,9 +46,6 @@ func TestBillLifecycleHandlers(t *testing.T) {
 	if err = demandSvc.Finish(ctx, act, d.ID, start, end, 4); err != nil {
 		t.Fatalf("完成需求失败: %v", err)
 	}
-	if err = demandSvc.Accept(ctx, act, d.ID, false); err != nil {
-		t.Fatalf("验收需求失败: %v", err)
-	}
 
 	// CreateManual：选中该需求创建账单
 	c, rec := newDemandTestContext(e, http.MethodPost, "/api/bills/manual", `{"name":"七月结算","demand_ids":[`+strconv.Itoa(d.ID)+`]}`)
@@ -57,6 +54,9 @@ func TestBillLifecycleHandlers(t *testing.T) {
 	}
 	if rec.Code != http.StatusOK {
 		t.Fatalf("CreateManual 响应异常: %d, %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"demand_status":"pending_acceptance"`) {
+		t.Fatalf("创建账单时应返回待验收状态，实际为 %s", rec.Body.String())
 	}
 
 	bills, err := billSvc.List(ctx)
@@ -92,6 +92,11 @@ func TestBillLifecycleHandlers(t *testing.T) {
 		t.Errorf("List 响应不应包含 edges 字段, got %s", rec.Body.String())
 	}
 
+	// 需求验收后，账单详情返回当前需求状态
+	if err = demandSvc.Accept(ctx, act, d.ID, false); err != nil {
+		t.Fatalf("验收需求失败：%v", err)
+	}
+
 	// Get：应在顶层含 items 明细，不应再嵌套于 ent 的 edges 结构下
 	c, rec = newDemandTestContext(e, http.MethodGet, "/api/bills/"+billIDStr, "")
 	c.SetParamNames("id")
@@ -104,6 +109,9 @@ func TestBillLifecycleHandlers(t *testing.T) {
 	}
 	if strings.Contains(rec.Body.String(), `"edges"`) {
 		t.Errorf("Get 响应不应包含 edges 嵌套结构, got %s", rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"demand_status":"accepted"`) {
+		t.Errorf("账单应返回已验收状态，实际为 %s", rec.Body.String())
 	}
 
 	// Get：非法 ID 返回 400
@@ -192,7 +200,7 @@ func TestBillManualAndItemsHandlers(t *testing.T) {
 	h := NewBill(billSvc)
 	e := echo.New()
 
-	// 准备两个已验收需求
+	// 准备两个待验收需求
 	act := service.Actor{ID: 1, Name: "管理员"}
 	mk := func(title string, halfDays int) int {
 		d, _ := demandSvc.Create(ctx, act, title, "", 0, nil, false, nil, nil, "")
@@ -202,7 +210,6 @@ func TestBillManualAndItemsHandlers(t *testing.T) {
 		end := time.Date(2026, 7, 15, 0, 0, 0, 0, time.Local)
 		_ = demandSvc.Start(ctx, act, d.ID, start)
 		_ = demandSvc.Finish(ctx, act, d.ID, start, end, halfDays)
-		_ = demandSvc.Accept(ctx, act, d.ID, false)
 		return d.ID
 	}
 	id1 := mk("结算需求一", 2)
@@ -295,5 +302,22 @@ func TestBillManualAndItemsHandlers(t *testing.T) {
 	final, _ := billSvc.Get(ctx, created.Data.ID)
 	if final.Status.String() != "paid" {
 		t.Errorf("最终状态 = %s, want paid", final.Status)
+	}
+
+	// 已支付账单中的需求验收并软删除后，详情仍返回最新状态
+	if err := demandSvc.Accept(ctx, act, id1, false); err != nil {
+		t.Fatalf("验收需求失败：%v", err)
+	}
+	if err := demandSvc.Delete(ctx, act, id1); err != nil {
+		t.Fatalf("删除需求失败：%v", err)
+	}
+	c, rec = newDemandTestContext(e, http.MethodGet, "/api/bills/"+billIDStr, "")
+	c.SetParamNames("id")
+	c.SetParamValues(billIDStr)
+	if err := h.Get(c); err != nil {
+		t.Fatalf("查询账单失败：%v", err)
+	}
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"demand_status":"accepted"`) {
+		t.Errorf("已支付账单应返回已验收状态，实际为 %s", rec.Body.String())
 	}
 }

@@ -21,14 +21,14 @@ func NewBill(svc *service.Bill) *Bill {
 	return &Bill{svc: svc}
 }
 
-// detail 组装含明细项目标签的账单详情响应
+// detail 组装含需求当前状态及项目标签的账单详情响应
 func (h *Bill) detail(c echo.Context, b *ent.Bill) error {
-	projects, err := h.svc.ItemProjects(c.Request().Context(), b.Edges.Items)
+	demands, err := h.svc.ItemDemands(c.Request().Context(), b.Edges.Items)
 	if err != nil {
 		return api.Fail(c, err)
 	}
 
-	return api.OK(c, newBillDetailDTO(b, projects))
+	return api.OK(c, newBillDetailDTO(b, demands))
 }
 
 // parseItemID 解析路径中的账单明细 ID

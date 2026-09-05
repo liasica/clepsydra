@@ -2233,7 +2233,7 @@ components:
 
     BillItem:
       type: object
-      description: 账单明细行，快照生成时的需求信息
+      description: 账单明细行，包含计费信息、需求当前状态及项目标签
       properties:
         id:
           type: integer
@@ -2246,7 +2246,7 @@ components:
           description: 需求标题快照
         demand_status:
           type: string
-          description: 需求状态快照
+          description: 需求当前状态，需求软删后仍可追溯，关联需求不存在时取账单记录的状态
         half_days:
           type: integer
           description: 人天，取需求实际人天，未填时取预估人天，单位半天数

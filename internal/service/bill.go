@@ -462,11 +462,11 @@ func (s *Bill) RemoveItem(ctx context.Context, actor Actor, billID, itemID int) 
 	return nil
 }
 
-// ItemProjects 按明细行的 demand_id 批量取需求的项目标签，key 为 demand_id
-// 项目是实时关联而非快照；用 SkipSoftDelete 查询，已软删需求的明细行也能追溯项目
-func (s *Bill) ItemProjects(ctx context.Context, items []*ent.BillItem) (map[int][]*ent.Project, error) {
+// ItemDemands 按明细行的 `demand_id` 批量取需求当前状态及项目标签
+// 用 `SkipSoftDelete` 查询，已软删需求也能追溯
+func (s *Bill) ItemDemands(ctx context.Context, items []*ent.BillItem) (map[int]*ent.Demand, error) {
 	if len(items) == 0 {
-		return map[int][]*ent.Project{}, nil
+		return map[int]*ent.Demand{}, nil
 	}
 
 	seen := make(map[int]bool, len(items))
@@ -486,12 +486,12 @@ func (s *Bill) ItemProjects(ctx context.Context, items []*ent.BillItem) (map[int
 		return nil, err
 	}
 
-	m := make(map[int][]*ent.Project, len(rows))
+	demands := make(map[int]*ent.Demand, len(rows))
 	for _, d := range rows {
-		m[d.ID] = d.Edges.Projects
+		demands[d.ID] = d
 	}
 
-	return m, nil
+	return demands, nil
 }
 
 // SelectableDemands 查询可加入账单的需求：任意状态，排除已在任何账单中的需求

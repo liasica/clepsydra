@@ -201,6 +201,7 @@ declare namespace Api {
       id: number;
       demand_id: number;
       demand_title: string;
+      /** 需求当前状态，关联需求不存在时取账单记录的状态 */
       demand_status: string;
       half_days: number;
       amount: number;

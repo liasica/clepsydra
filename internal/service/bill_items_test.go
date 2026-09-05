@@ -94,8 +94,8 @@ func newBillItemsEnv(t *testing.T, name string) (*ent.Client, *Bill) {
 	return client, billSvc
 }
 
-// TestBillItemProjects 明细行项目组装：有关联、无关联与已软删需求
-func TestBillItemProjects(t *testing.T) {
+// TestBillItemDemands 明细行需求及项目组装：有关联、无关联与已软删需求
+func TestBillItemDemands(t *testing.T) {
 	client, billSvc := newBillItemsEnv(t, "bitem-proj")
 	ctx := context.Background()
 
@@ -111,18 +111,18 @@ func TestBillItemProjects(t *testing.T) {
 		{DemandID: d3.ID},
 	}
 
-	m, err := billSvc.ItemProjects(ctx, items)
+	m, err := billSvc.ItemDemands(ctx, items)
 	if err != nil {
 		t.Fatalf("组装失败: %v", err)
 	}
-	if len(m[d1.ID]) != 1 || m[d1.ID][0].Name != "官网" {
+	if len(m[d1.ID].Edges.Projects) != 1 || m[d1.ID].Edges.Projects[0].Name != "官网" {
 		t.Errorf("d1 项目异常: %+v", m[d1.ID])
 	}
-	if len(m[d2.ID]) != 0 {
+	if len(m[d2.ID].Edges.Projects) != 0 {
 		t.Errorf("d2 应无项目: %+v", m[d2.ID])
 	}
 	// 已软删需求的明细行仍能追溯项目（账单可追溯语义）
-	if len(m[d3.ID]) != 1 {
+	if len(m[d3.ID].Edges.Projects) != 1 {
 		t.Errorf("软删需求的明细行应仍能取到项目: %+v", m[d3.ID])
 	}
 }
